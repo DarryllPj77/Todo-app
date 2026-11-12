@@ -39,7 +39,9 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 
 ## Uncommitted changes
 
-All deliverable files are new, uncommitted work. After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches when checked. Git status shows the foundation as untracked; nothing is staged.
+The foundation files are committed in `2b24e81`. This documentation follow-up is being prepared for a separate commit as part of the user's authorized push. Use `git status` for current uncommitted changes rather than treating this publication-time snapshot as live Git status. Local template downloads and build output remain ignored.
+
+After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
 
 Created file groups:
 
@@ -55,7 +57,8 @@ Modified pre-existing files: **none**. Generated starter files were adjusted onl
 
 ## Committed milestones
 
-**None.** The local repository and remote connection are configured, but no commit, push, or merge has been performed.
+- `2b24e81` — `Create Todo App Phase 1 foundation`: all 69 foundation files committed after reviewing staging scope and rerunning the core integration test (1 passed).
+- A documentation follow-up records this milestone. Publication is verified against GitHub after the push; inspect `git log` and `git status -sb` for the current commit and tracking state. No merge or force-push is planned.
 
 ## Next task
 

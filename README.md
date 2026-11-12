@@ -83,4 +83,4 @@ To provision the broader workload set, `dotnet workload install maui` is availab
 
 Start with [ARCHITECTURE.md](docs/ARCHITECTURE.md), then [LEARNINGS.md](docs/LEARNINGS.md). Follow [ROADMAP.md](docs/ROADMAP.md) after reviewing Phase 1. No later phase starts automatically.
 
-This folder was not a Git repository at initial inspection. It is now initialized on `main`, with `origin` set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches when checked. Nothing has been staged, committed, pushed, or merged. The first push will need to create remote `main`; a rebase pull is only applicable once that remote branch exists.
+This folder was not a Git repository at initial inspection. It is now initialized on `main`, with `origin` set to `https://github.com/DarryllPj77/Todo-app.git`. The foundation is recorded in commit `2b24e81` (`Create Todo App Phase 1 foundation`). See Git history and remote tracking status for subsequent documentation commits and publication status. No merge was performed.
