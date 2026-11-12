@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 1 — Solution foundation.** Source scaffolding is implemented; client compilation and visual/runtime verification await MAUI tooling. Phase 2 has not started. No domain model was required for this foundation to compile, so none was introduced.
+**Phase 2 — Domain models and business rules implemented.** The user authorized starting the next system-building step after the foundation push. TaskItem, Category, and TaskPriority are implemented with validation and focused tests. Phase 1 client compilation and visual/runtime verification remain pending: no MAUI workloads are installed. Phase 3 CRUD/filtering has not started.
 
 ## Completed work
 
@@ -16,14 +16,18 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Added API controller registration, Problem Details, exception handling, HTTPS redirection, and liveness controller. Removed the generated weather example.
 - Added one meaningful API startup integration test and the core solution filter.
 - Added all six requested Markdown documents and pinned SDK configuration.
+- Added TaskItem and Category entities plus TaskPriority (Low/Normal/High); no new packages were needed.
+- Added trimmed text validation, optional description/due date, UTC timestamps, completion/reopening, and category assignment that keeps both navigation directions consistent.
+- Validated all edit inputs before mutation; repeated equivalent updates preserve UpdatedAt.
+- Added 21 domain test cases; updated README, architecture, database rules, roadmap, learnings, and this progress record.
 
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| `dotnet test TodoApp.Core.slnf --no-build --no-restore --nologo -m:1` | Passed: 1 test, 0 failed, 0 skipped |
-| `dotnet build TodoApp.slnx --nologo -m:1` | Blocked: NETSDK1147, missing maui-android workload |
+| `dotnet test TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 22 tests, 0 failed, 0 skipped; core projects rebuilt |
+| `dotnet build TodoApp.slnx --nologo -m:1` (Phase 1 check) | Blocked: NETSDK1147, missing maui-android workload; workload list is still empty in Phase 2 |
 | MAUI launch, theme switching, native device verification | Not run; workloads are absent |
 | PostgreSQL/SQLite verification | Not applicable; persistence is not implemented |
 
@@ -35,15 +39,19 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 
 - Install a target MAUI workload and its native prerequisites using README instructions.
 - Build/run that target; verify welcome content, resizing, and system light/dark theme changes.
-- Review Phase 1 before approving Phase 2. Full client compilation is not claimed.
+- Review the Phase 2 domain rules before proceeding to CRUD/filtering. Full client compilation is not claimed.
 
 ## Uncommitted changes
 
-The foundation files are committed in `2b24e81`. This documentation follow-up is being prepared for a separate commit as part of the user's authorized push. Use `git status` for current uncommitted changes rather than treating this publication-time snapshot as live Git status. Local template downloads and build output remain ignored.
+The Phase 2 changes are uncommitted. No commit or push has been performed for this phase. Use `git status` for live state. Local template downloads and build output remain ignored.
+
+- New: `src/TodoApp.Domain/Entities/TaskItem.cs`, `Entities/Category.cs`, `Enums/TaskPriority.cs`; `tests/TodoApp.Tests/TaskItemTests.cs` and `CategoryTests.cs`.
+- Removed: `.gitkeep` from the now-populated Domain/Entities and Domain/Enums folders.
+- Modified: README and all five documentation files to reflect the implemented domain behavior and next task.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
 
-Created file groups:
+Foundation file groups (historical):
 
 - Root: `.gitignore`, `global.json`, `Directory.Build.props`, `TodoApp.slnx`, `TodoApp.Core.slnf`, `README.md`.
 - Domain: `TodoApp.Domain.csproj`; reserved `Entities`, `Enums`, `Rules` folders with `.gitkeep`.
@@ -53,17 +61,18 @@ Created file groups:
 - Tests: project file and `ApiStartupTests.cs`.
 - Docs: README plus ROADMAP, ARCHITECTURE, DATABASE, LEARNINGS, and this progress file.
 
-Modified pre-existing files: **none**. Generated starter files were adjusted only after inspection. `.tools`, `bin`, and `obj` are local generated artifacts excluded from the intended Git scope.
+Phase 2 preserves the existing API, Infrastructure, and MAUI source. `.tools`, `bin`, and `obj` are local generated artifacts excluded from the intended Git scope.
 
 ## Committed milestones
 
 - `2b24e81` — `Create Todo App Phase 1 foundation`: all 69 foundation files committed after reviewing staging scope and rerunning the core integration test (1 passed).
-- A documentation follow-up records this milestone. Publication is verified against GitHub after the push; inspect `git log` and `git status -sb` for the current commit and tracking state. No merge or force-push is planned.
+- `00ee06a` — `docs: record initial foundation milestone`: foundation publication verified against GitHub on main in the preceding run.
+- Phase 2 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-First finish MAUI workload setup and Phase 1 client verification. Then, after user approval, define TaskItem/Category/Priority and readable validation/completion rules with focused tests in Phase 2. Do not begin CRUD, persistence, synchronization, or advanced features during this run.
+Review Phase 2, then add the small local task service and the five LINQ filters in Phase 3. Before client UI work, finish the MAUI workload setup and outstanding Phase 1 client verification. Persistence remains Phase 4, and the task UI remains Phase 5; neither is implemented in this step.
 
 ## What to learn now
 
-Trace project references, then follow API startup to its controller and MAUI startup to its ViewModel binding. Understand why the UI, domain rules, and storage have different homes, how constructors receive dependencies, and why a partial build cannot prove the whole application works. See LEARNINGS for short examples.
+Read TaskItem's constructor, UpdateDetails, SetCompleted, and SetCategory alongside their tests. Practice why private setters protect invariants, why an enum still needs validation, and how a rejected edit avoids partial mutation. Compare DateOnly deadlines with UTC DateTimeOffset timestamps, then trace both sides of the Category relationship. See LEARNINGS for short examples.

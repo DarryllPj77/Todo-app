@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 1 has no entities, persistence packages, connection strings, DbContext, databases, or migrations. All sections below describe intended decisions for later phases.
+Phase 2 implements TaskItem, Category, and TaskPriority in Domain. There are still no persistence packages, connection strings, DbContext, databases, or migrations. Entity rules below are implemented; database mapping and setup remain planned.
 
 ## Initial entities and relationship
 
@@ -11,9 +11,20 @@ Category (1) ---- (0..many) TaskItem
 TaskItem.CategoryId is optional: uncategorized tasks are valid.
 ```
 
-Proposed TaskItem fields: client-generated `Guid Id`, required trimmed `Title`, optional `Description`, `bool IsCompleted`, optional `DateOnly DueDate`, enum `Priority`, optional `Guid CategoryId`, and UTC `DateTimeOffset CreatedAt/UpdatedAt`. Date-only due dates avoid changing the intended day across time zones. Reminders with a time will need a separate design.
+TaskItem fields: client-generated `Guid Id`, required trimmed `Title`, optional `Description`, `bool IsCompleted`, optional `DateOnly DueDate`, enum `Priority`, optional `Guid CategoryId`, and UTC `DateTimeOffset CreatedAt/UpdatedAt`. Date-only due dates avoid changing the intended day across time zones. Reminders with a time will need a separate design.
 
-Proposed Category fields: `Guid Id`, required `Name`, and a task navigation collection. Explicitly decide title/name lengths, allowed priority values, timestamp ownership, and mutation methods in Phase 2. Implement completion with a domain method only when those rules are defined; no placeholder entity is needed to compile Phase 1.
+Category has a generated `Guid Id`, required trimmed `Name`, and a read-only task navigation collection. TaskItem.SetCategory keeps both sides consistent and supports clearing the category. CategoryId is currently computed from the in-memory reference, not an independently persisted foreign key. Before persistence, introduce explicit mapping/loading support (including scalar FK storage as needed) and test round trips; these plain classes are not claimed to be ready-made EF/SQLite mappings.
+
+Implemented rules:
+
+- Title: 1–200 characters after trimming. Description: optional, at most 4000 characters after trimming; whitespace-only becomes null.
+- Category name: 1–100 characters after trimming. Duplicate category names are currently allowed; no uniqueness policy has been introduced.
+- Priority: Low = 0, Normal = 1 (default), High = 2. Undefined enum values are rejected.
+- Tasks start pending. SetCompleted supports completion/reopening; assigning the existing state does not change UpdatedAt.
+- UpdateDetails validates before mutation. IDs/CreatedAt stay fixed, and effective task edits update UpdatedAt with DateTimeOffset.UtcNow. Equivalent normalized edits are no-ops.
+- DueDate can be absent or in the past. It represents a calendar day, not a time zone or scheduled reminder.
+
+These timestamps describe local in-memory edits, not server revision ordering. The database/service phases must define materialization of persisted IDs/timestamps without creating replacement identities, and server timestamp ownership for incoming DTOs. No persistence constructors or mapping attributes are added speculatively.
 
 Deleting a category should preserve its tasks and clear their category reference. Confirm the behavior with tests and explicit FK configuration when implementing persistence. Parent tasks, dependencies, recurrence, users, and synchronization metadata are excluded from this initial schema.
 

@@ -1,8 +1,8 @@
 # Roadmap
 
-Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Only Phase 1 source work has been performed; its MAUI verification remains pending.
+Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 2 domain work is implemented and tested; Phase 1 MAUI verification remains pending because no workloads are installed.
 
-## Phase 1 — Solution foundation (current)
+## Phase 1 — Solution foundation (client verification pending)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
 
@@ -18,9 +18,9 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 - [x] Core build and API integration test pass.
 - [ ] Install target MAUI workload and compile the client.
 - [ ] Run client and verify welcome page in light and dark themes.
-- [ ] User reviews foundation before authorizing Phase 2.
+- [x] User reviewed the foundation and authorized starting system implementation.
 
-## Phase 2 — Domain models and business rules
+## Phase 2 — Domain models and business rules (implemented)
 
 **Goal:** Define TaskItem, Category, and Priority with small, explicit rules.
 
@@ -32,8 +32,8 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 
 **Completion checklist:**
 
-- [ ] Validate titles/priority, optional fields, and completion timestamps.
-- [ ] Explain decisions and pass meaningful domain tests.
+- [x] Validate titles/priority, optional fields, and completion timestamps.
+- [x] Explain decisions and pass meaningful domain tests (21 domain cases plus 1 API startup case).
 
 ## Phase 3 — Local CRUD and basic filters
 

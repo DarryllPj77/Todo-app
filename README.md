@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 1 foundation implemented; MAUI build and runtime verification await workload setup.** There are no task models, CRUD screens, databases, authentication, or synchronization yet. See [development progress](docs/DEVELOPMENT_PROGRESS.md) for verified results and the next task.
+**Current status (2026-11-13): Phase 2 domain models and business rules implemented and tested; MAUI build and runtime verification still await workload setup.** TaskItem, Category, and TaskPriority now define task data and validation. CRUD services/screens, databases, authentication, and synchronization are later phases. See [development progress](docs/DEVELOPMENT_PROGRESS.md) for verified results and the next task.
 
 ## Technology and prerequisites
 
@@ -20,11 +20,11 @@ Core projects require the selected SDK and NuGet access. MAUI additionally needs
 TodoApp.slnx                 All five projects, including MAUI
 TodoApp.Core.slnf            Same solution, excluding MAUI for SDK-only checks
 src/
-  TodoApp.Domain/           Entities, Enums, Rules (reserved)
+  TodoApp.Domain/           TaskItem, Category, TaskPriority; Rules reserved
   TodoApp.Infrastructure/   Persistence, Repositories, Services (reserved)
   TodoApp.Api/              Controllers, Services, Data, Configuration
   TodoApp.Maui/             Views, ViewModels, Models, Services, Resources, Platforms
-tests/TodoApp.Tests/        API startup integration test
+tests/TodoApp.Tests/        Domain business-rule and API startup tests
 docs/                      Roadmap, architecture, database plan, learnings, progress
 ```
 
@@ -77,10 +77,10 @@ To provision the broader workload set, `dotnet workload install maui` is availab
 
 ## Database setup
 
-**No database setup is needed for Phase 1.** There is no DbContext, SQLite file, connection string, EF tool, or migration yet. [DATABASE.md](docs/DATABASE.md) records the future setup and storage decisions. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
+**No database setup is needed for the current phase.** The domain entities are in-memory C# objects. There is no DbContext, SQLite file, connection string, EF tool, or migration yet. [DATABASE.md](docs/DATABASE.md) records the implemented domain rules and future storage decisions. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
 
 ## Learning path and Git
 
-Start with [ARCHITECTURE.md](docs/ARCHITECTURE.md), then [LEARNINGS.md](docs/LEARNINGS.md). Follow [ROADMAP.md](docs/ROADMAP.md) after reviewing Phase 1. No later phase starts automatically.
+Start with [ARCHITECTURE.md](docs/ARCHITECTURE.md), then [LEARNINGS.md](docs/LEARNINGS.md). Read TaskItem alongside TaskItemTests to see how each business rule is checked. Follow [ROADMAP.md](docs/ROADMAP.md) after reviewing this phase. No later phase starts automatically.
 
 This folder was not a Git repository at initial inspection. It is now initialized on `main`, with `origin` set to `https://github.com/DarryllPj77/Todo-app.git`. The foundation is recorded in commit `2b24e81` (`Create Todo App Phase 1 foundation`). See Git history and remote tracking status for subsequent documentation commits and publication status. No merge was performed.

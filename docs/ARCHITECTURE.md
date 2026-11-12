@@ -45,13 +45,19 @@ API --------------> Domain
 Tests ------------> API, Domain, Infrastructure
 ```
 
-Domain has no package dependencies and no entities yet. Infrastructure references Domain only. Neither library references MAUI or ASP.NET Core. Both hosts may use Infrastructure, but client and server registrations will select their own persistence implementation; future platform-specific packages can be split if that becomes necessary. No EF/SQLite packages are being shared prematurely.
+Domain contains TaskItem, Category, and TaskPriority without package dependencies. Infrastructure references Domain only. Neither library references MAUI or ASP.NET Core. Both hosts may use Infrastructure, but client and server registrations will select their own persistence implementation; future platform-specific packages can be split if that becomes necessary. No EF/SQLite packages are being shared prematurely.
 
 Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI registers the welcome ViewModel/page as transient to support separate windows; ASP.NET Core registers controllers through `AddControllers`. There is no empty repository interface or no-op registration extension: these will be added when real behavior needs them.
 
 ## Intended algorithm and main features
 
-No task algorithm runs yet. The local MVP will validate task input, save it asynchronously through a local service, query tasks, apply readable LINQ filters, and refresh observable presentation state. Completion changes and timestamp updates will be tested as business behavior. Due Today will compare a date-only due date with the user's local calendar day.
+The current task logic lives in plain domain methods. Construction validates and trims title/description, validates the priority enum, generates an ID, and captures UTC timestamps. UpdateDetails validates all inputs before assigning any fields, so rejected edits leave the task unchanged. Equivalent edits and repeated SetCompleted/SetCategory requests are no-ops. Real edits update UpdatedAt while preserving identity and CreatedAt.
+
+TaskItem.SetCategory removes the task from its previous category and adds it to the new one. Category exposes a read-only collection so callers cannot bypass that relationship logic. CategoryId currently derives from the category reference; persistence mapping and ID-only loading will be designed when storage arrives. No category deletion operation exists yet. Category rename preserves its ID and tasks.
+
+Past due dates remain valid so overdue tasks can be represented. DueDate is DateOnly? because a deadline day is different from a notification time. Priority has explicit stable values: Low = 0, Normal = 1, High = 2. Domain methods use exceptions for invalid programmer/service input; future ViewModels and API validation will translate failures into useful messages. The domain has no UI change-notification or service dependencies.
+
+The local MVP will call these rules through an asynchronous local service, save data, query tasks, apply readable LINQ filters, and refresh observable presentation state. Due Today will compare a date-only due date with the user's local calendar day. No CRUD service or filter exists yet.
 
 The MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Notification scheduling, authentication, network synchronization, and advanced task relationships are later work.
 
