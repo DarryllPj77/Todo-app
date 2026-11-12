@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "TodoApp.slnx",
+    "projects": [
+      "src\\TodoApp.Domain\\TodoApp.Domain.csproj",
+      "src\\TodoApp.Infrastructure\\TodoApp.Infrastructure.csproj",
+      "src\\TodoApp.Api\\TodoApp.Api.csproj",
+      "tests\\TodoApp.Tests\\TodoApp.Tests.csproj"
+    ]
+  }
+}
