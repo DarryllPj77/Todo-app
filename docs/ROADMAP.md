@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 2 domain work is implemented and tested; Phase 1 MAUI verification remains pending because no workloads are installed.
+Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 3 local CRUD/filtering is implemented and tested; Phase 1 MAUI verification remains pending because no workloads are installed.
 
 ## Phase 1 — Solution foundation (client verification pending)
 
@@ -35,7 +35,7 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 - [x] Validate titles/priority, optional fields, and completion timestamps.
 - [x] Explain decisions and pass meaningful domain tests (21 domain cases plus 1 API startup case).
 
-## Phase 3 — Local CRUD and basic filters
+## Phase 3 — Local CRUD and basic filters (implemented)
 
 **Goal:** Define the smallest useful local task service boundary.
 
@@ -47,8 +47,9 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 
 **Completion checklist:**
 
-- [ ] CRUD and completion work through the service boundary.
-- [ ] Filter tests include local-date behavior and missing due dates.
+- [x] CRUD and completion work through ILocalTaskService and its temporary in-memory implementation.
+- [x] Filter tests cover all five selections, local-date boundaries, midnight changes, and missing due dates.
+- [x] Missing IDs, rejected edits, category cleanup, cancellation, and result ordering are covered; 36 tests pass across the solution's core projects.
 
 ## Phase 4 — SQLite persistence
 

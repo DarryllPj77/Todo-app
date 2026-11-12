@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 2 implements TaskItem, Category, and TaskPriority in Domain. There are still no persistence packages, connection strings, DbContext, databases, or migrations. Entity rules below are implemented; database mapping and setup remain planned.
+Phase 2 implemented TaskItem, Category, and TaskPriority in Domain. Phase 3 adds ILocalTaskService and InMemoryLocalTaskService with CRUD and LINQ filters. The dictionary is temporary process memory, not a database; a new service instance starts empty. There are still no persistence packages, connection strings, DbContext, databases, or migrations. Entity/service rules are implemented; database mapping and setup remain planned.
 
 ## Initial entities and relationship
 
@@ -30,7 +30,9 @@ Deleting a category should preserve its tasks and clear their category reference
 
 ## SQLite: local device storage
 
-Choose a maintained .NET 10-compatible SQLite library during the local storage phase. Store the database under MAUI's application data directory, not in the checkout. Keep local mapping, initialization, transactions, and upgrade logic behind a small service/repository, separate from ViewModels. Do not assume a server EF migration can be reused against a different local persistence library.
+Choose a maintained .NET 10-compatible SQLite library during Phase 4. Implement the existing ILocalTaskService contract using SQLite and store the database under MAUI's application data directory, not in the checkout. Keep local mapping, initialization, transactions, and upgrade logic separate from ViewModels. Do not assume a server EF migration can be reused against a different local persistence library.
+
+Preserve the Phase 3 contract: null/false for missing tasks, domain validation, explicit completion changes, full detail replacement, optional category assignment, cancellation, and the five filters with local-day semantics. GetTasksAsync returns materialized read-only membership; the temporary store returns live entities, so persistence tests must explicitly define loading and save semantics rather than assuming automatic tracking. Persisted category IDs and task identity/timestamps need deliberate materialization support. Category deletion remains future work; deleting a task currently clears its in-memory category link.
 
 Test that tasks survive restart and that failed writes do not silently lose UI changes. Define a local schema version and an incremental upgrade path before changing an existing user's database. Never reset user data as a normal upgrade strategy.
 

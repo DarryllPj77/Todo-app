@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 2 domain models and business rules implemented and tested; MAUI build and runtime verification still await workload setup.** TaskItem, Category, and TaskPriority now define task data and validation. CRUD services/screens, databases, authentication, and synchronization are later phases. See [development progress](docs/DEVELOPMENT_PROGRESS.md) for verified results and the next task.
+**Current status (2026-11-13): Phase 3 local CRUD service and LINQ filters implemented and tested; MAUI build and runtime verification still await workload setup.** Domain rules now support create/read/edit/delete, completion/reopening, and five filters through ILocalTaskService. The temporary implementation stores data in memory only and is exercised by tests; the welcome screen does not use it yet. Task screens, databases, authentication, and synchronization are later phases. See [development progress](docs/DEVELOPMENT_PROGRESS.md) for verified results and the next task.
 
 ## Technology and prerequisites
 
@@ -10,7 +10,8 @@ A learning-focused C#/.NET Todo application, built one phase at a time. The firs
 - MAUI 10, XAML, MVVM, built-in dependency injection; Microsoft.Maui.Controls **10.0.130**, a stable .NET 10 release checked against NuGet. The official matching template supplied platform files and resources.
 - ASP.NET Core 10 controller API using the SDK's shared framework.
 - xUnit and ASP.NET Core's in-memory integration test host.
-- Planned: SQLite locally, EF Core with Npgsql/PostgreSQL on the server, LINQ filters, and JWT later. Their packages are deliberately deferred until their phases.
+- LINQ for local task filtering and ordering; no additional package is needed.
+- Planned: SQLite locally, EF Core with Npgsql/PostgreSQL on the server, and JWT later. Their packages are deliberately deferred until their phases.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -20,11 +21,11 @@ Core projects require the selected SDK and NuGet access. MAUI additionally needs
 TodoApp.slnx                 All five projects, including MAUI
 TodoApp.Core.slnf            Same solution, excluding MAUI for SDK-only checks
 src/
-  TodoApp.Domain/           TaskItem, Category, TaskPriority; Rules reserved
-  TodoApp.Infrastructure/   Persistence, Repositories, Services (reserved)
+  TodoApp.Domain/           Entities, Enums, Services contracts; Rules reserved
+  TodoApp.Infrastructure/   InMemoryLocalTaskService; persistence folders reserved
   TodoApp.Api/              Controllers, Services, Data, Configuration
   TodoApp.Maui/             Views, ViewModels, Models, Services, Resources, Platforms
-tests/TodoApp.Tests/        Domain business-rule and API startup tests
+tests/TodoApp.Tests/        Domain, local CRUD/filter, and API startup tests
 docs/                      Roadmap, architecture, database plan, learnings, progress
 ```
 
@@ -77,7 +78,20 @@ To provision the broader workload set, `dotnet workload install maui` is availab
 
 ## Database setup
 
-**No database setup is needed for the current phase.** The domain entities are in-memory C# objects. There is no DbContext, SQLite file, connection string, EF tool, or migration yet. [DATABASE.md](docs/DATABASE.md) records the implemented domain rules and future storage decisions. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
+**No database setup is needed for the current phase.** InMemoryLocalTaskService holds tasks for the lifetime of one service instance; recreating it or restarting loses data. There is no DbContext, SQLite file, connection string, EF tool, or migration yet. [DATABASE.md](docs/DATABASE.md) records the implemented domain rules and future storage decisions. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
+
+## Try the local service in code
+
+The service is currently consumed by tests, not wired into either host. This example can run inside an async test/method after importing `TodoApp.Domain.Services`, `TodoApp.Domain.Enums`, and `TodoApp.Infrastructure.Services`:
+
+```csharp
+ILocalTaskService tasks = new InMemoryLocalTaskService();
+var task = await tasks.CreateAsync(new TaskDetails("Learn LINQ", Priority: TaskPriority.High));
+await tasks.SetCompletedAsync(task.Id, true);
+var completed = await tasks.GetTasksAsync(TaskFilter.Completed);
+```
+
+Phase 4 will provide SQLite storage behind the same contract; Phase 5 will inject it into task ViewModels. Do not treat the temporary service as durable storage.
 
 ## Learning path and Git
 

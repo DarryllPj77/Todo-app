@@ -1,6 +1,6 @@
 # Learnings
 
-Only concepts used in this project are recorded here. Add async database, LINQ, and UI collection entries when their implementations arrive.
+Only concepts used in this project are recorded here. Add async database and UI collection entries when their implementations arrive.
 
 ## Solution and project reference
 
@@ -109,3 +109,51 @@ Only concepts used in this project are recorded here. Add async database, LINQ, 
 **Definition:** An xUnit Theory runs a rule against several inputs supplied by InlineData.
 
 **Short example:** Missing-title tests cover null, empty, and whitespace-only strings; the domain rejects all three. Fact tests cover specific workflows such as completion and reopening.
+
+## Interface and implementation
+
+**Definition:** An interface describes operations without choosing how they work. Callers can use another implementation without changing those operation calls.
+
+**Short example:** `ILocalTaskService service = new InMemoryLocalTaskService();` uses memory today. A SQLite implementation will implement the same contract later.
+
+## Record input model
+
+**Definition:** A record groups related values with value-based equality. A positional record gives its inputs named properties, avoiding a long list of service method arguments.
+
+**Short example:** `new TaskDetails("Study", Priority: TaskPriority.High)` supplies local editable fields. It is not a stored entity or an API DTO; its Category reference still points to a mutable object.
+
+## Dictionary and TryGetValue
+
+**Definition:** A dictionary stores values by unique keys. TryGetValue checks whether a key exists and returns its value without a missing-key exception.
+
+**Short example:** `tasks.TryGetValue(id, out var task)` retrieves an existing task; missing tasks return null or false through the service contract.
+
+## LINQ filtering and ordering
+
+**Definition:** LINQ describes queries over sequences. Where selects matching elements; OrderBy/ThenBy establish ordering.
+
+**Short example:** `tasks.Values.Where(task => !task.IsCompleted)` selects pending tasks. The service sorts by title and then ID before materializing the result.
+
+## Materialization and live references
+
+**Definition:** ToList executes a sequence query and stores its current membership. It does not clone the objects inside the list.
+
+**Short example:** A GetTasksAsync result keeps its membership after another task is added, but its TaskItem instances are still live objects. An editor should keep unsaved fields separately and use service methods to save them.
+
+## Completed tasks versus asynchronous I/O
+
+**Definition:** A Task<T> can already have a result. An in-memory operation need not occupy a background thread or pretend to perform I/O just to match an asynchronous contract.
+
+**Short example:** `Task.FromResult(result)` returns the local query result; a future SQLite implementation can await actual database work behind the same interface.
+
+## CancellationToken
+
+**Definition:** A token lets a caller request that work stop cooperatively. Code must observe the token to honor it.
+
+**Short example:** `cancellationToken.ThrowIfCancellationRequested()` runs before the in-memory service reads or changes data. SQLite will pass the token through supported asynchronous operations.
+
+## TimeProvider and deterministic date tests
+
+**Definition:** TimeProvider supplies time and local time-zone information. A test-specific implementation makes calendar behavior predictable.
+
+**Short example:** `DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime)` computes Due Today. Tests use fixed UTC instants with UTC+8/UTC-8 to verify that local dates, rather than UTC dates, drive the filter.
