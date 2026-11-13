@@ -8,8 +8,8 @@ public sealed class HierarchyExceptionFilter : IExceptionFilter
 {
     public void OnException(ExceptionContext context)
     {
-        if (context.Exception is not TaskHierarchyException error) return;
-        context.Result = new ConflictObjectResult(new ProblemDetails { Status = 409, Title = "Task hierarchy conflict", Detail = error.Message });
+        if (context.Exception is not ArgumentException error || error is not (TaskHierarchyException or TaskDependencyException)) return;
+        context.Result = new ConflictObjectResult(new ProblemDetails { Status = 409, Title = error is TaskDependencyException ? "Task dependency conflict" : "Task hierarchy conflict", Detail = error.Message });
         context.ExceptionHandled = true;
     }
 }

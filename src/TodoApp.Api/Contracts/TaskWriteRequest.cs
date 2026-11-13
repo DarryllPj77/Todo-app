@@ -9,6 +9,7 @@ namespace TodoApp.Api.Contracts;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class TaskWriteRequest : IValidatableObject
 {
+    public TaskPrerequisites? Prerequisites { get; init; }
     public TaskParent? Parent { get; init; }
     public TagSet? Tags { get; init; }
     public string? Title { get; init; }

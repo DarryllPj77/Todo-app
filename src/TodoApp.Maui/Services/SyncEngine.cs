@@ -29,7 +29,9 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
                 var row = state.Rows.Values.FirstOrDefault(r => r.Pending is not null && !r.Conflict &&
                     (retryNow || r.RetryAt <= time.GetUtcNow()) && Eligible(state, r.Pending));
                 if (row?.Pending is not { } pending) break;
-                var requiredProtocol = pending.Task?.Parent is not null ? 3 : pending.Task?.Tags is not null ? 2 : 1;
+                // Deletes also need the API's incoming-dependency policy, even
+                // though their immutable payload contains no task snapshot.
+                var requiredProtocol = pending.Deleted || pending.Task?.Prerequisites is not null ? 4 : pending.Task?.Parent is not null ? 3 : pending.Task?.Tags is not null ? 2 : 1;
                 if (requiredProtocol > checkedProtocol)
                 {
                     var capability = await api.DownloadAsync(0, token);
@@ -37,7 +39,7 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
                     if (capability.ProtocolVersion < requiredProtocol)
                     {
                         await store.FailedAsync(partition, pending, time.GetUtcNow(), permanent: true);
-                        throw new ApiClientException("This API does not support this task feature (tags/hierarchy). Upgrade the API, apply its migration, then Retry now. Your queue was retained.");
+                        throw new ApiClientException("This API does not support this task feature (tags/hierarchy/dependencies). Upgrade the API, apply its migration, then Retry now. Your queue was retained.");
                     }
                     checkedProtocol = capability.ProtocolVersion;
                 }
@@ -66,14 +68,22 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
             session.EnsureVersion(version);
             var pendingCount = final.Rows.Values.Count(r => r.Pending is not null);
             var conflicts = final.Rows.Values.Count(r => r.Conflict);
-            return $"Sync checked. {pendingCount} queued; {conflicts} conflicts. Retries respect backoff. Parent/child changes may wait for related tasks to sync; Retry now overrides backoff.";
+            return $"Sync checked. {pendingCount} queued; {conflicts} conflicts. Retries respect backoff. Parent/dependency changes may wait for related tasks to sync; Retry now overrides backoff.";
         }
         finally { gate.Release(); }
     }
     private static bool Eligible(ReplicaState state, SyncMutation pending)
     {
         if (pending.Deleted)
-            return !state.Rows.Values.Any(r => r.Remote is { Deleted: false, Task: { } task } && task.Parent?.Id == pending.TaskId);
+            return !state.Rows.Values.Any(r => r.Remote is { Deleted: false, Task: { } task } &&
+                (task.Parent?.Id == pending.TaskId || (task.Prerequisites?.Contains(pending.TaskId) ?? false)));
+        foreach (var prerequisiteId in pending.Task?.Prerequisites ?? TodoApp.Domain.Relationships.TaskPrerequisites.Empty)
+        {
+            if (!state.Rows.TryGetValue(prerequisiteId, out var prerequisite)) continue; // Server returns a reviewable conflict.
+            if (prerequisite.Remote is not { Deleted: false, Task: not null } && prerequisite.Pending is not null && !prerequisite.Conflict) return false;
+            if (pending.Task!.IsCompleted && prerequisite.Remote?.Task?.IsCompleted != true &&
+                prerequisite.Pending is not null && prerequisite.Local?.IsCompleted == true && !prerequisite.Conflict) return false;
+        }
         if (pending.Task?.Parent?.Id is { } parentId && state.Rows.TryGetValue(parentId, out var parent))
             return parent.Remote is { Deleted: false, Task: not null } || (parent.Pending is null && !parent.Conflict);
         return true;

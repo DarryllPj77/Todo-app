@@ -9,7 +9,8 @@ namespace TodoApp.Domain.Sync;
 public sealed record SyncTaskData(string Title, string? Description = null, DateOnly? DueDate = null,
     TaskPriority Priority = TaskPriority.Normal, string? CategoryName = null, bool IsCompleted = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TagSet? Tags = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskParent? Parent = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskParent? Parent = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskPrerequisites? Prerequisites = null);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record SyncMutation(Guid OperationId, Guid TaskId, long BaseRevision, bool Deleted, SyncTaskData? Task);
 public sealed record SyncEntry(Guid TaskId, long Revision, bool Deleted, SyncTaskData? Task);

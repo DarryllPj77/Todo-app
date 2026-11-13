@@ -49,9 +49,11 @@ public sealed class InMemoryTaskService : ITaskService
             Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
             var id = Guid.NewGuid();
             TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, request.Parent?.Id);
+            TaskDependencies.ValidateChange(Nodes().Append(new(id, TaskPrerequisites.Empty, false)), id, request.Prerequisites ?? TaskPrerequisites.Empty, request.IsCompleted);
             var category = ResolveCategory(request.CategoryName);
             var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
             if (request.Parent is { } parent) task.SetParent(parent);
+            task.SetPrerequisites(request.Prerequisites ?? TaskPrerequisites.Empty);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             tasks.Add(task.Id, task);
@@ -70,11 +72,14 @@ public sealed class InMemoryTaskService : ITaskService
                 return Task.FromResult<TaskResponse?>(null);
             }
 
+            var prerequisites = request.Prerequisites ?? task.Prerequisites;
+            TaskDependencies.ValidateChange(Nodes(), id, prerequisites, request.IsCompleted && (!task.IsCompleted || !task.Prerequisites.Equals(prerequisites)));
             if (request.Parent is { } requestedParent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, requestedParent.Id);
             var category = ResolveCategory(request.CategoryName);
             task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
             task.SetCategory(category);
             if (request.Parent is { } parent) task.SetParent(parent);
+            task.SetPrerequisites(prerequisites);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
@@ -92,11 +97,24 @@ public sealed class InMemoryTaskService : ITaskService
         }
     }
 
+    private IEnumerable<DependencyNode> Nodes() => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted));
+    public Task<TaskResponse?> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
+            TaskDependencies.ValidateChange(Nodes(), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
+            task.SetPrerequisites(prerequisites); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
+        }
+    }
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         lock (gate)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            TaskDependencies.ValidateDelete(Nodes(), id);
             TaskHierarchy.ValidateDelete(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id);
             if (!tasks.Remove(id, out var task))
             {

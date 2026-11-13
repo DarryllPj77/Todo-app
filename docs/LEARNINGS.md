@@ -541,3 +541,15 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Related writes need ordering, while concurrent invalid structure needs review rather than an endless blind retry.
 
 **Short example:** Upload a new parent before its child link and delete children before the parent. If another replica makes a move cyclic, keep its local fields as a conflict. Confirm a valid new parent against the displayed revision, then queue a fresh operation. See HIERARCHY.md.
+
+## Completion gates versus permanent invariants
+
+**Definition:** A transition gate checks whether an action may happen now; a permanent invariant would need to remain true after every related change.
+
+**Short example:** Complete B only when its prerequisites are complete. Reopening A later leaves completed B unchanged. Reopen B explicitly and its next completion is checked again. This avoids an implicit state cascade.
+
+## Dependency graphs and storage boundaries
+
+**Definition:** Multiple outgoing prerequisites form a directed graph, independently of a tree's one optional parent. Iterative active/finished traversal detects cycles while permitting shared prerequisites.
+
+**Short example:** A and B may both require C; D may require both A and B. Same-workspace membership and cycles are validated in the write transaction. JSON text stores a bounded immutable set but cannot provide per-ID foreign keys, so service validation/locking and administrative SQL discipline remain essential. Dependency-only operations preserve unrelated fields; null means preserve and [] means clear. See DEPENDENCIES.md.

@@ -1,5 +1,6 @@
 using TodoApp.Api.Contracts;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Api.Services;
 
@@ -10,5 +11,6 @@ public interface ITaskService
     Task<TaskResponse> CreateAsync(TaskWriteRequest request, CancellationToken cancellationToken);
     Task<TaskResponse?> UpdateAsync(Guid id, TaskWriteRequest request, CancellationToken cancellationToken);
     Task<TaskResponse?> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken);
+    Task<TaskResponse?> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }

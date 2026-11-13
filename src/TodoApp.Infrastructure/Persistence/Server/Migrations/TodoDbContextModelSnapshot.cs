@@ -78,6 +78,12 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<Guid?>("ParentTaskId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Prerequisites")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValueSql("'[]'");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 

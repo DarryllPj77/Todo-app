@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 12C.1 parent hierarchy/subtasks are implemented across device storage, API/PostgreSQL, offline sync, and a dedicated hierarchy screen. Upgrade using HIERARCHY.md and complete native acceptance. Next is 12C.2 dependencies, a separate graph with its own rules; the remaining Phase 12 increments stay open.
+Proceed one phase at a time after review. Phase 12C.2 dependencies are implemented separately from hierarchy, with same-workspace/account and cycle rules, explicit completion/deletion policy, protocol-4 sync, migration, and a dependency screen. Upgrade using DEPENDENCIES.md and complete native acceptance. Next is 12D urgency/importance; remaining Phase 12 increments stay open.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -213,7 +213,7 @@ Proceed one phase at a time after review. Phase 12C.1 parent hierarchy/subtasks 
 
 **Completion checklist:**
 
-- [ ] Parent hierarchy and dependencies are separately modeled and validated.
+- [x] Parent hierarchy and dependencies are separately modeled and validated; native acceptance remains in HIERARCHY.md/DEPENDENCIES.md.
 - [ ] Evaluate Hangfire versus another scheduler only when recurrence requires server jobs.
 - [ ] Each selected feature and adaptive layout has its own completion review.
 
@@ -223,13 +223,13 @@ Proceed one phase at a time after review. Phase 12C.1 parent hierarchy/subtasks 
 - [ ] **12A native acceptance:** follow SAVED_VIEWS.md for actual layout, picker, scrolling, restart, source navigation, and multi-window interaction. Portable tests and Windows compilation are separate checks.
 - [x] **12B - Tags:** immutable normalized tag sets, device version-2 upgrade, AddTaskTags server migration, API arrays, sync protocol-2 capability/legacy receipt handling, editors, summaries, and saved-view rules implemented; 25 added cases pass. Native acceptance remains in TAGS.md.
 - [x] **12C.1 - Parent hierarchy/subtasks:** optional parent, same-workspace/account validation, cycle/16-level checks, restricted parent deletion, additive migrations, protocol-3 ordering/conflicts, and hierarchy screen implemented. Native acceptance remains in HIERARCHY.md.
-- [ ] **12C.2 - Dependencies:** define a separate dependency graph with blocking/completion, cycle/ownership/delete/sync-conflict policies and its own UI review.
+- [x] **12C.2 - Dependencies:** separate immutable prerequisite graph, same-account/workspace and cycle checks, completion gate/reopen policy, incoming-delete restriction, transactional migration, protocol-4 ordering/conflicts, and dependency screen implemented. Native acceptance remains in DEPENDENCIES.md.
 - [ ] **12D - Urgency/importance:** add Eisenhower semantics through a reviewed model/storage/UI increment.
 - [ ] **12E - Recurrence:** define calendar/time-zone, completion, idempotency, and scheduling policy before choosing a server scheduler such as Hangfire.
 - [ ] **12F - Focus/time history:** add Pomodoro, TimeSpent, and durable history with explicit timer/lifecycle behavior.
 - [ ] **12G - Adaptive workspace:** desktop categories/tasks/details panes and mobile navigation after each feature's data/UI boundaries are stable.
 
-A saved view remains a device-local query definition. Tags remain separate from categories, and parent hierarchy remains separate from blocking dependencies. Dependencies, recurrence, and server subscriptions remain later work. Phase 12 remains open until the selected later increments and acceptance reviews are completed.
+A saved view remains a device-local query definition. Tags remain separate from categories; parent hierarchy and dependencies have separate models/screens. Urgency/importance, recurrence, focus history, adaptive layout, and server subscriptions remain later work. Phase 12 remains open until selected later increments and acceptance reviews are complete.
 
 ## Phase 13 — Calendar integration
 

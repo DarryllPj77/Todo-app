@@ -26,7 +26,7 @@ public sealed class SyncController(SyncService sync) : ControllerBase
         if (input.Task is { } data)
         {
             var write = new TaskWriteRequest { Title = data.Title, Description = data.Description,
-                DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName, IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent };
+                DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName, IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent, Prerequisites = data.Prerequisites };
             if (!Validator.TryValidateObject(write, new ValidationContext(write), new List<ValidationResult>(), true)) return BadRequest();
         }
         var result = await sync.ApplyAsync(input, cancellationToken);

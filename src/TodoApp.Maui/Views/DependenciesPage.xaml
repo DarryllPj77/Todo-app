@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" x:Class="TodoApp.Maui.Views.DependenciesPage" x:DataType="vm:DependenciesViewModel" Title="Dependencies" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Task prerequisites" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="Prerequisites block completion while unfinished. Reopening one does not undo completed dependents. Parent nesting is managed separately in Task hierarchy." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Button Text="Refresh dependencies" Command="{Binding RefreshCommand}" />
+  <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <CollectionView HeightRequest="280" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
+   <CollectionView.EmptyView><Label Text="Create tasks or sign in and sync first, then Refresh." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:DependencyTaskRow">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="4">
+     <Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Status}" />
+    </VerticalStackLayout></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
+   <Label Text="This task requires these prerequisites. Changes apply only after Save. Remove incoming links before deleting a prerequisite; no automatic completion or deletion cascade." Style="{StaticResource TaskMuted}" />
+   <Picker Title="Add prerequisite" ItemsSource="{Binding Choices}" ItemDisplayBinding="{Binding Label, x:DataType=vm:DependencyChoice}" SelectedItem="{Binding Candidate, Mode=TwoWay}" />
+   <Button Text="Add selected prerequisite" Command="{Binding AddCommand}" />
+   <CollectionView HeightRequest="150" ItemsSource="{Binding Draft}" SelectedItem="{Binding SelectedLink, Mode=TwoWay}" SelectionMode="Single">
+    <CollectionView.EmptyView><Label Text="No prerequisites. This task can be completed independently." /></CollectionView.EmptyView>
+    <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:DependencyChoice"><Label Text="{Binding Label}" Padding="8" /></DataTemplate></CollectionView.ItemTemplate>
+   </CollectionView>
+   <Button Text="Remove selected link" Command="{Binding RemoveCommand}" /><Button Text="Clear all prerequisites" Command="{Binding ClearCommand}" />
+   <Button Text="Save prerequisites" Command="{Binding SaveCommand}" />
+   <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="Review both complete versions. Keeping local fields queues the whole local task with the chosen prerequisites and may conflict again." Style="{StaticResource TaskError}" />
+    <Label Text="{Binding SelectedTask.LocalDetails}" /><Label Text="{Binding SelectedTask.ServerDetails}" />
+    <Button Text="Keep local fields &amp; save prerequisites" Command="{Binding KeepLocalCommand}" />
+    <Button Text="Use server (discard local intent)" Command="{Binding UseServerCommand}" />
+   </VerticalStackLayout>
+  </VerticalStackLayout></Border>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

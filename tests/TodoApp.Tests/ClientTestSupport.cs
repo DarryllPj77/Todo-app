@@ -103,6 +103,9 @@ internal sealed class ClientHarness : IDisposable
 internal sealed class ClientNavigation : ITaskNavigation
 {
     public bool Confirm { get; set; }
+    public Task OpenDependenciesAsync() => Task.CompletedTask;
+    public Func<Task<bool>>? DependencyConfirmation { get; set; }
+    public Task<bool> ConfirmDependencyConflictAsync(string title) => DependencyConfirmation?.Invoke() ?? Task.FromResult(Confirm);
     public Task OpenHierarchyAsync() => Task.CompletedTask;
     public Task<bool> ConfirmHierarchyConflictAsync(string title) => Task.FromResult(false);
     public Task OpenTaskViewsAsync() => Task.CompletedTask;

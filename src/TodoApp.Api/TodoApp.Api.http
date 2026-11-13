@@ -79,6 +79,13 @@ Content-Type: application/json
 
 {"id":null}
 
-### Delete a disposable test task; move/delete its children first
+### Replace prerequisites only; [] clears, otherwise supply same-account task GUIDs
+PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/prerequisites
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+[]
+
+### Delete a disposable task; move/delete children and remove incoming dependency links first
 DELETE {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
 Authorization: Bearer {{accessToken}}

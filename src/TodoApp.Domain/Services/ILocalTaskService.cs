@@ -1,5 +1,6 @@
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Domain.Services;
 
@@ -14,5 +15,6 @@ public interface ILocalTaskService
     Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken cancellationToken = default);
     Task<bool> SetCompletedAsync(Guid id, bool isCompleted, CancellationToken cancellationToken = default);
     Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default);
+    Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

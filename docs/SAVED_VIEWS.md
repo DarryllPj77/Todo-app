@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Phase 12B adds tags and tag rules. Phase 12C.1 adds a separate hierarchy screen (HIERARCHY.md); saved-view results stay flat. Dependencies, urgency/importance, recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work.
+Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Phase 12B adds tags and tag rules. Phase 12C.1 adds a separate hierarchy screen (HIERARCHY.md); saved-view results stay flat. Phase 12C.2 adds a separate Dependencies screen (DEPENDENCIES.md); saved views do not add dependency predicates. Urgency/importance, recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work.
 
 Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** from the main task-list toolbar. This page provides a read-only explorer plus navigation to the normal task editor/workspace. Existing task-list filters and sync/reminder screens stay available.
 

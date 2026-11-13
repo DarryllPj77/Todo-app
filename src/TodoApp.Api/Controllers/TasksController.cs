@@ -61,6 +61,13 @@ public sealed class TasksController : ControllerBase
         return task is null ? NotFound() : Ok(task);
     }
 
+    [HttpPut("{id:guid}/prerequisites")]
+    public async Task<ActionResult<TaskResponse>> SetPrerequisites(Guid id, TaskPrerequisites request, CancellationToken cancellationToken)
+    {
+        var task = await tasks.SetPrerequisitesAsync(id, request, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
         await tasks.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();

@@ -11,11 +11,13 @@ public sealed record SavedSession(string Origin, string AccessToken, DateTimeOff
 public sealed record ApiTaskWrite(string Title, string? Description = null, DateOnly? DueDate = null,
     TaskPriority Priority = TaskPriority.Normal, string? CategoryName = null, bool IsCompleted = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TagSet? Tags = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskParent? Parent = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskParent? Parent = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TaskPrerequisites? Prerequisites = null);
 public sealed record ApiTask(Guid Id, string Title, string? Description, bool IsCompleted, DateOnly? DueDate,
-    TaskPriority Priority, Guid? CategoryId, string? CategoryName, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, TagSet? Tags = null, Guid? ParentTaskId = null)
+    TaskPriority Priority, Guid? CategoryId, string? CategoryName, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, TagSet? Tags = null, Guid? ParentTaskId = null, TaskPrerequisites? Prerequisites = null)
 {
     public string Summary => $"{(IsCompleted ? "Completed" : "Pending")} · {Priority} · " +
         (DueDate is { } date ? $"Due {date:d}" : "No due date") +
-        (string.IsNullOrWhiteSpace(CategoryName) ? "" : $" · {CategoryName}");
+        (string.IsNullOrWhiteSpace(CategoryName) ? "" : $" · {CategoryName}") +
+        (Prerequisites is { Count: > 0 } ? $" | Prerequisites: {Prerequisites.Count}" : "");
 }

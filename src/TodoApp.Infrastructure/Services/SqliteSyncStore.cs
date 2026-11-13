@@ -42,10 +42,17 @@ public sealed class SqliteSyncStore(string path)
         if (expectedRevision is { } expected && ((row.Remote?.Revision ?? 0) != expected || row.Local != expectedLocal))
             throw new ArgumentException("This cached task changed while you were editing. Copy your draft, then reload and review it before saving.");
         if (row.Conflict) throw new InvalidOperationException("Resolve this task's conflict before editing it.");
-        if (data is null) TaskHierarchy.ValidateDelete(Links(state), id);
+        if (data is null)
+        {
+            TaskDependencies.ValidateDelete(DependencyNodes(state), id);
+            TaskHierarchy.ValidateDelete(Links(state), id);
+        }
         else
         {
-            data = data with { Parent = data.Parent ?? row.Local?.Parent };
+            data = data with { Parent = data.Parent ?? row.Local?.Parent, Prerequisites = data.Prerequisites ?? row.Local?.Prerequisites };
+            var prerequisites = data.Prerequisites ?? TaskPrerequisites.Empty;
+            TaskDependencies.ValidateChange(DependencyNodes(state).Where(t => t.Id != id).Append(new(id, TaskPrerequisites.Empty, false)), id, prerequisites,
+                data.IsCompleted && (row.Local?.IsCompleted != true || !(row.Local.Prerequisites ?? TaskPrerequisites.Empty).Equals(prerequisites)));
             if (data.Parent is { } placement) TaskHierarchy.ValidateMove(Links(state).Where(t => t.Id != id).Append(new TaskLink(id, null)), id, placement.Id);
         }
         row.Local = data;
@@ -57,6 +64,27 @@ public sealed class SqliteSyncStore(string path)
     private static IEnumerable<TaskLink> Links(ReplicaState state) => state.Rows.Values.Where(r => r.Local is not null)
         .Select(r => new TaskLink(r.Id, r.Local!.Parent?.Id));
 
+    private static IEnumerable<DependencyNode> DependencyNodes(ReplicaState state) => state.Rows.Values.Where(r => r.Local is not null)
+        .Select(r => new DependencyNode(r.Id, r.Local!.Prerequisites ?? TaskPrerequisites.Empty, r.Local.IsCompleted));
+
+    public Task SetPrerequisitesAsync(string partition, Guid id, TaskPrerequisites prerequisites, long expectedRevision,
+        SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
+    {
+        if (!state.Rows.TryGetValue(id, out var row) || row.Local is null || row.Local != expectedLocal || (row.Remote?.Revision ?? 0) != expectedRevision)
+            throw new TaskDependencyException("This task changed. Refresh and review before changing dependencies.");
+        if (row.Conflict && !keepLocalConflict) throw new TaskDependencyException("Review and confirm the conflict before keeping local fields.");
+        var previous = row.Local.Prerequisites ?? TaskPrerequisites.Empty;
+        TaskDependencies.ValidateChange(DependencyNodes(state), id, prerequisites, row.Local.IsCompleted && !previous.Equals(prerequisites));
+        row.Local = row.Local with { Prerequisites = prerequisites };
+        if (row.Conflict)
+        {
+            row.Conflict = false; row.ConflictReason = null; row.Pending = Mutation(row);
+            row.Attempts = 0; row.RetryAt = default;
+        }
+        else row.Pending ??= Mutation(row);
+        return true;
+    });
+
     public Task ReparentAsync(string partition, Guid id, Guid? parentId, long expectedRevision,
         SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
     {
@@ -64,6 +92,8 @@ public sealed class SqliteSyncStore(string path)
         if (row.Local is null || row.Local != expectedLocal || (row.Remote?.Revision ?? 0) != expectedRevision)
             throw new TaskHierarchyException("This task changed. Refresh and review the hierarchy before moving it.");
         if (row.Conflict && !keepLocalConflict) throw new TaskHierarchyException("Review the conflict before choosing Keep local fields with a new parent.");
+        TaskDependencies.ValidateChange(DependencyNodes(state), id, row.Local.Prerequisites ?? TaskPrerequisites.Empty,
+            row.Local.IsCompleted && row.Remote?.Task?.IsCompleted != true);
         TaskHierarchy.ValidateMove(Links(state), id, parentId);
         row.Local = row.Local with { Parent = new TaskParent(parentId) };
         if (row.Conflict)
@@ -121,7 +151,7 @@ public sealed class SqliteSyncStore(string path)
     {
         if (state.Cursor != fromCursor) throw new InvalidOperationException("The download cursor changed; retry sync.");
         if (page.Cursor < fromCursor || page.Changes.Any(e => e.Revision <= fromCursor || e.Revision > page.Cursor ||
-            e.TaskId == Guid.Empty || e.Task?.Parent?.Id == Guid.Empty || e.Task?.Parent?.Id == e.TaskId || e.Deleted != (e.Task is null)) ||
+            e.TaskId == Guid.Empty || e.Task?.Parent?.Id == Guid.Empty || e.Task?.Parent?.Id == e.TaskId || (e.Task?.Prerequisites?.Contains(e.TaskId) ?? false) || e.Deleted != (e.Task is null)) ||
             page.Changes.Select(e => e.Revision).Distinct().Count() != page.Changes.Length ||
             (page.Changes.Length > 0 && page.Changes.Max(e => e.Revision) != page.Cursor) ||
             (page.Changes.Length == 0 && (page.Cursor != fromCursor || page.HasMore)))
@@ -163,8 +193,8 @@ public sealed class SqliteSyncStore(string path)
             command.Transaction = transaction;
             command.CommandText = "PRAGMA user_version;";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version > 3) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=3;";
+            if (version > 4) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=4;";
             command.ExecuteNonQuery();
             command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
             command.Parameters.AddWithValue("$partition", partition);

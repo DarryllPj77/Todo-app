@@ -10,4 +10,4 @@ public sealed record TaskDetails(
     string? Description = null,
     DateOnly? DueDate = null,
     TaskPriority Priority = TaskPriority.Normal,
-    Category? Category = null, TagSet? Tags = null, TaskParent? Parent = null);
+    Category? Category = null, TagSet? Tags = null, TaskParent? Parent = null, TaskPrerequisites? Prerequisites = null);

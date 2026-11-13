@@ -99,7 +99,7 @@ public sealed partial class PostgresAuthenticationTests
             """);
         await db.Database.MigrateAsync(); var restored = await db.Tasks.AsNoTracking().SingleAsync();
         Assert.Null(restored.ParentTaskId); Assert.Equal(TagSet.Parse("work"), restored.Tags); Assert.Equal(now, restored.UpdatedAt); Assert.Equal(now, restored.CreatedAt);
-        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(6, (await db.Database.GetAppliedMigrationsAsync()).Count());
         As(account); var child = await HierarchyCreate("Child", id);
         await Assert.ThrowsAsync<Npgsql.PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"Tasks\" WHERE \"Id\"={id}"));
         Assert.NotEqual(Guid.Empty, child.Id);

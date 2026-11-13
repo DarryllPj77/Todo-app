@@ -10,6 +10,7 @@ public sealed class TaskItem
 
     public TagSet Tags { get; private set; } = TagSet.Empty;
     public Guid? ParentTaskId { get; private set; }
+    public TaskPrerequisites Prerequisites { get; private set; } = TaskPrerequisites.Empty;
     public Guid Id { get; private set; } = Guid.NewGuid();
     public string Title { get; private set; }
     public string? Description { get; private set; }
@@ -56,7 +57,7 @@ public sealed class TaskItem
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null)
     {
         if (id == Guid.Empty)
         {
@@ -64,16 +65,17 @@ public sealed class TaskItem
         }
 
         return new TaskItem(id, title, description, dueDate, priority, category,
-            isCompleted, createdAt, updatedAt, tags, parentTaskId);
+            isCompleted, createdAt, updatedAt, tags, parentTaskId, prerequisites);
     }
 
     private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null)
         : this(title, description, dueDate, priority, category, tags)
     {
         Id = id;
         SetParent(new TaskParent(parentTaskId));
+        SetPrerequisites(prerequisites ?? TaskPrerequisites.Empty);
         IsCompleted = isCompleted;
         CreatedAt = createdAt.ToUniversalTime();
         UpdatedAt = updatedAt.ToUniversalTime();
@@ -105,6 +107,14 @@ public sealed class TaskItem
         if (parent.Id == Guid.Empty || parent.Id == Id) throw new TaskHierarchyException("A task cannot be its own parent or use an empty ID.");
         if (ParentTaskId == parent.Id) return;
         ParentTaskId = parent.Id; UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetPrerequisites(TaskPrerequisites prerequisites)
+    {
+        ArgumentNullException.ThrowIfNull(prerequisites);
+        if (prerequisites.Contains(Id)) throw new TaskDependencyException("A task cannot depend on itself.");
+        if (Prerequisites.Equals(prerequisites)) return;
+        Prerequisites = prerequisites; UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void SetTags(TagSet tags)

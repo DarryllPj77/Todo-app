@@ -32,7 +32,7 @@ public sealed partial class PostgresAuthenticationTests
         using var own = await client.PostAsJsonAsync("/api/tasks", new { title = "Bob", tags = new[] { "work" } }); Assert.Equal(HttpStatusCode.Created, own.StatusCode);
         As(alice); using var cleared = await client.PutAsJsonAsync($"/api/tasks/{id}", new { title = "Cleared", tags = Array.Empty<string>() });
         Assert.Empty((await cleared.Content.ReadFromJsonAsync<TaskResponse>(ClientHarness.JsonOptions))!.Tags!);
-        var page = await Download(); Assert.Equal(3, page.ProtocolVersion);
+        var page = await Download(); Assert.Equal(4, page.ProtocolVersion);
         Assert.Empty(Assert.Single(page.Changes).Task!.Tags!);
     }
     [PostgresFact]
@@ -68,7 +68,7 @@ public sealed partial class PostgresAuthenticationTests
             var task = await database.Tasks.AsNoTracking().SingleAsync();
             Assert.Equal(id, task.Id); Assert.Equal("Keep", task.Description); Assert.True(task.IsCompleted); Assert.Empty(task.Tags);
             Assert.Equal(now, task.CreatedAt); Assert.Equal(now, task.UpdatedAt); Assert.Equal(new DateOnly(2026,11,20), task.DueDate);
-            Assert.False(database.Database.HasPendingModelChanges()); Assert.Equal(5, (await database.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.False(database.Database.HasPendingModelChanges()); Assert.Equal(6, (await database.Database.GetAppliedMigrationsAsync()).Count());
         }
         As(account); Assert.Empty(Assert.Single((await Download()).Changes).Task!.Tags!);
     }

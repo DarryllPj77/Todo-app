@@ -4,7 +4,7 @@
  x:Class="TodoApp.Maui.Views.HierarchyPage" x:DataType="vm:HierarchyViewModel" Title="Task hierarchy" Style="{StaticResource TaskPage}">
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Parents &amp; subtasks" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
-  <Label Text="Create tasks in the normal editor first, then move them here. Parents organize tasks; they do not block work or automatically complete children. Dependencies are a later feature." Style="{StaticResource TaskMuted}" />
+  <Label Text="Create tasks in the normal editor first, then move them here. Parents organize tasks; they do not block work or automatically complete children. Manage prerequisites on the Dependencies screen." Style="{StaticResource TaskMuted}" />
   <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
   <Label Text="Sign in and sync first for account tasks. Device tasks remain separate; this screen does not upload them." Style="{StaticResource TaskMuted}" />
   <Button Text="Refresh hierarchy" Command="{Binding RefreshCommand}" />

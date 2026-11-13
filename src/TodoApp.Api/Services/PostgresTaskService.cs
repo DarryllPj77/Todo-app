@@ -49,15 +49,17 @@ public sealed class PostgresTaskService : ITaskService
         var journal = new SyncJournal(database, currentUser);
         await journal.LockAsync(cancellationToken);
         await ValidateParentAsync(id, request.Parent?.Id, creating: true, cancellationToken);
+        await ValidateDependenciesAsync(id, request.Prerequisites ?? TaskPrerequisites.Empty, request.IsCompleted, creating: true, cancellationToken);
         var category = await ResolveCategoryAsync(request.CategoryName, cancellationToken);
         var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
         if (request.Parent is { } parent) task.SetParent(parent);
+        task.SetPrerequisites(request.Prerequisites ?? TaskPrerequisites.Empty);
         task.SetCompleted(request.IsCompleted);
         database.Tasks.Add(task);
         database.Entry(task).Property<Guid?>("OwnerId").CurrentValue = currentUser.UserId;
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId)), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -73,15 +75,18 @@ public sealed class PostgresTaskService : ITaskService
             .SingleOrDefaultAsync(task => task.Id == id, cancellationToken);
         if (task is null) return null;
 
+        var prerequisites = request.Prerequisites ?? task.Prerequisites;
+        await ValidateDependenciesAsync(id, prerequisites, request.IsCompleted && (!task.IsCompleted || !task.Prerequisites.Equals(prerequisites)), creating: false, cancellationToken);
         if (request.Parent is { } requestedParent) await ValidateParentAsync(id, requestedParent.Id, creating: false, cancellationToken);
         var category = await ResolveCategoryAsync(request.CategoryName, cancellationToken);
         task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
         task.SetCategory(category);
         if (request.Parent is { } parent) task.SetParent(parent);
+        task.SetPrerequisites(prerequisites);
         task.SetCompleted(request.IsCompleted);
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId)), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -96,7 +101,33 @@ public sealed class PostgresTaskService : ITaskService
         await ValidateParentAsync(id, parentId, creating: false, cancellationToken);
         task.SetParent(new TaskParent(parentId)); await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(id, new(task.Title, task.Description, task.DueDate, task.Priority, task.Category?.Name,
-            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId)), cancellationToken);
+            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return TaskResponse.FromEntity(task);
+    }
+
+    private async Task<List<DependencyNode>> DependencyNodesAsync(CancellationToken token)
+    {
+        var tasks = await OwnedTasks().AsNoTracking().ToListAsync(token);
+        return tasks.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted)).ToList();
+    }
+    private async Task ValidateDependenciesAsync(Guid id, TaskPrerequisites prerequisites, bool completing, bool creating, CancellationToken token)
+    {
+        var nodes = await DependencyNodesAsync(token);
+        if (creating) nodes.Add(new(id, TaskPrerequisites.Empty, false));
+        TaskDependencies.ValidateChange(nodes, id, prerequisites, completing);
+    }
+    public async Task<TaskResponse?> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        var journal = new SyncJournal(database, currentUser); await journal.LockAsync(cancellationToken);
+        var task = await OwnedTasks().Include(t => t.Category).SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (task is null) return null;
+        await ValidateDependenciesAsync(id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites), false, cancellationToken);
+        task.SetPrerequisites(prerequisites); await database.SaveChangesAsync(cancellationToken);
+        await journal.RecordAsync(id, new(task.Title, task.Description, task.DueDate, task.Priority, task.Category?.Name,
+            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -114,6 +145,7 @@ public sealed class PostgresTaskService : ITaskService
             ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
         var journal = new SyncJournal(database, currentUser);
         await journal.LockAsync(cancellationToken);
+        TaskDependencies.ValidateDelete(await DependencyNodesAsync(cancellationToken), id);
         if (await OwnedTasks().AnyAsync(t => t.ParentTaskId == id, cancellationToken))
             throw new TaskHierarchyException("Move or delete this task's children before deleting the parent.");
         var deleted = await OwnedTasks().Where(task => task.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;

@@ -1,6 +1,7 @@
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Services;
+using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Services;
 
 namespace TodoApp.Maui.Services;
@@ -19,6 +20,8 @@ public sealed class ReminderAwareTaskService(SqliteLocalTaskService tasks, Remin
     { var result = await tasks.SetCompletedAsync(id, completed, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken token = default)
     { var result = await tasks.SetParentAsync(id, parentId, token); await reminders.RefreshSafelyAsync(); return result; }
+    public async Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken token = default)
+    { var result = await tasks.SetPrerequisitesAsync(id, prerequisites, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> DeleteAsync(Guid id, CancellationToken token = default)
     { var result = await tasks.DeleteAsync(id, token); await reminders.RefreshSafelyAsync(); return result; }
 }

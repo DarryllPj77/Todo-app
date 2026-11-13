@@ -2,7 +2,7 @@
 
 ## Current state
 
-Device tasks use todoapp.db3 schema **3** with tag JSON and nullable ParentTaskId. The API has five migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, and AddTaskHierarchy. The last adds an indexed nullable self FK with restricted deletion and a non-self check. sync.db3 uses schema **3**, views.db3 remains **2**, and reminders.db3 stays at **1**. Existing tasks become roots; fields, ownership, queues, receipts, and saved definitions are retained. Verification used isolated test databases, not your development database. Follow HIERARCHY.md to upgrade the API and client together.
+Device tasks use todoapp.db3 schema **4** with tags, nullable parent, and prerequisite GUID-array JSON. The API has six migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, and AddTaskDependencies. The last adds required Tasks.Prerequisites text defaulting to []. sync.db3 uses schema **4**, views.db3 remains **2**, and reminders.db3 stays **1**. Existing tasks receive empty prerequisites; fields, owners, parents, timestamps, queues, receipts, and definitions remain. Only generated test databases were migrated. Follow DEPENDENCIES.md for coordinated API/client upgrade.
 
 ## Initial entities and relationship
 
@@ -30,7 +30,7 @@ SQLite configures and tests category deletion with ON DELETE SET NULL, preservin
 
 ## SQLite: local device storage
 
-The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 3 when absent (initial creation followed by explicit tag/parent upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 4 when absent (initial creation followed by explicit tag/parent/dependency upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
 
 The editor keeps title/description/category/date/priority fields separate from loaded entities until Save. It matches an entered category name case-insensitively against categories visible among existing tasks; new names create a new category on save. Blank category clears the association. Empty stored categories have no browsing/management UI yet. Cancel/Back discards fields without a write. Completion is changed from the list separately, and deleting a task requires a native confirmation.
 
@@ -55,9 +55,9 @@ Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](http
 
 ### Schema version and upgrade strategy
 
-`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2) and parent (2-to-3) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 3 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
+`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2), parent (2-to-3), and prerequisite (3-to-4) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 4 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
 
-Initialization and both incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
+Initialization and all three incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
 
@@ -166,7 +166,7 @@ Phase 10 introduces the separate synced cache described above; Phase 9's direct 
 
 Desired choices and cancellations persist before native side effects. A failed notification call does not roll back or misreport an already committed task/sync write. Windows saves its one-attempt marker before showing an alert, so an uncertain delivery/crash is not automatically retried. This is best effort, not a distributed transaction with the OS.
 
-Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all five migrations including Phase 12C.1 AddTaskHierarchy.
+Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all six migrations including Phase 12C.2 AddTaskDependencies.
 
 ## Saved-view metadata (Phase 12A)
 
@@ -185,3 +185,9 @@ sync.db3 and views.db3 advance from version 1 to 2 for the extended task/definit
 AddTaskHierarchy adds nullable Tasks.ParentTaskId uuid, an index, a non-self check, and a self FK with ON DELETE RESTRICT. The device's transactional 2-to-3 upgrade adds the equivalent nullable TEXT column/index/FK/check. Existing rows become roots with all tags/timestamps retained. Services enforce same-workspace/account parents, cycles, and the 16-level limit inside the write transaction; direct SQL must preserve these rules too.
 
 sync.db3 advances to schema 3 without rewriting old pending JSON on read. Parent is an optional change wrapper: omitted/null outer Parent preserves placement, explicit Id=null moves to root. Legacy receipt bytes remain stable through null-property omission. Views remain schema 2 and reminders remain schema 1. HIERARCHY.md contains upgrade/compatibility/repair rules; migration Down loses parent relationships and is not a safe active-data downgrade.
+
+## Prerequisite storage (Phase 12C.2)
+
+The 3-to-4 device upgrade and sixth AddTaskDependencies server migration add required Prerequisites TEXT DEFAULT '[]'. TaskPrerequisites provides canonical immutable value equality/JSON conversion and EF comparison. Existing task parents/tags/times/ownership remain. sync.db3 advances to 4 without rewriting old pending payloads on read; saved views stay 2 and reminders 1.
+
+These bounded outgoing sets are a separate dependency graph from ParentTaskId. JSON membership has no per-ID database FK. Services enforce live same-owner/workspace membership, cycles, incoming-delete restrictions, and completion transitions inside transactions; server per-owner advisory locking serializes graph edits. Direct SQL must preserve these rules. A normalized edge table/query index is deferred until graph scale warrants it. See DEPENDENCIES.md for policy, upgrade, compatibility, recovery, and native checks.

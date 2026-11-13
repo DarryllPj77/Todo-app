@@ -48,11 +48,14 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         {
             ArgumentNullException.ThrowIfNull(details);
             var id = Guid.NewGuid();
-            var links = LoadTasks(connection, transaction, token).Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null));
+            var existing = LoadTasks(connection, transaction, token);
+            TaskDependencies.ValidateChange(Nodes(existing).Append(new(id, TaskPrerequisites.Empty, false)), id, details.Prerequisites ?? TaskPrerequisites.Empty);
+            var links = existing.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null));
             TaskHierarchy.ValidateMove(links, id, details.Parent?.Id);
             var category = ResolveCategory(connection, transaction, details.Category);
             var task = TaskItem.CreateWithId(id, details.Title, details.Description, details.DueDate, details.Priority, category, details.Tags);
             task.SetParent(details.Parent ?? new TaskParent(null));
+            task.SetPrerequisites(details.Prerequisites ?? TaskPrerequisites.Empty);
             SaveCategory(connection, transaction, category);
             SaveTask(connection, transaction, task, insert: true);
             return task;
@@ -70,6 +73,11 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 return false;
             }
 
+            if (details.Prerequisites is { } prerequisites)
+            {
+                TaskDependencies.ValidateChange(Nodes(tasks), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
+                task.SetPrerequisites(prerequisites);
+            }
             if (details.Parent is { } parent)
             {
                 TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parent.Id);
@@ -96,6 +104,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 return false;
             }
 
+            if (isCompleted && !task.IsCompleted) TaskDependencies.ValidateChange(Nodes(tasks), id, task.Prerequisites, true);
             task.SetCompleted(isCompleted);
             SaveTask(connection, transaction, task, insert: false);
             return true;
@@ -111,11 +120,24 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
             task.SetParent(new TaskParent(parentId)); SaveTask(connection, transaction, task, insert: false); return true;
         }, cancellationToken);
 
+    private static IEnumerable<DependencyNode> Nodes(Dictionary<Guid, TaskItem> tasks) => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted));
+
+    public Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default) =>
+        ExecuteAsync((connection, transaction, token) =>
+        {
+            var tasks = LoadTasks(connection, transaction, token);
+            if (!tasks.TryGetValue(id, out var task)) return false;
+            TaskDependencies.ValidateChange(Nodes(tasks), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
+            task.SetPrerequisites(prerequisites); SaveTask(connection, transaction, task, insert: false); return true;
+        }, cancellationToken);
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return ExecuteAsync((connection, transaction, token) =>
         {
-            TaskHierarchy.ValidateDelete(LoadTasks(connection, transaction, token).Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id);
+            var tasks = LoadTasks(connection, transaction, token);
+            TaskDependencies.ValidateDelete(Nodes(tasks), id);
+            TaskHierarchy.ValidateDelete(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id);
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "DELETE FROM TaskItems WHERE Id = $id;";
@@ -160,7 +182,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
 
         var tasks = new Dictionary<Guid, TaskItem>();
         command.CommandText = """
-            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId
+            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites
             FROM TaskItems;
             """;
         using var taskReader = command.ExecuteReader();
@@ -175,7 +197,8 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 DateTimeOffset.ParseExact(taskReader.GetString(7), "O", CultureInfo.InvariantCulture),
                 DateTimeOffset.ParseExact(taskReader.GetString(8), "O", CultureInfo.InvariantCulture),
                 JsonSerializer.Deserialize<TagSet>(taskReader.GetString(9)) ?? throw new InvalidDataException("Unreadable task tags."),
-                taskReader.IsDBNull(10) ? null : Guid.Parse(taskReader.GetString(10)));
+                taskReader.IsDBNull(10) ? null : Guid.Parse(taskReader.GetString(10)),
+                JsonSerializer.Deserialize<TaskPrerequisites>(taskReader.GetString(11)) ?? throw new InvalidDataException("Unreadable prerequisites."));
             tasks.Add(task.Id, task);
         }
 
@@ -219,16 +242,17 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         command.Transaction = transaction;
         command.CommandText = insert
             ? """
-                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId)
-                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated, $tags, $parent);
+                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites)
+                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated, $tags, $parent, $prerequisites);
                 """
             : """
                 UPDATE TaskItems SET Title = $title, Description = $description, IsCompleted = $completed,
-                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated, Tags = $tags, ParentTaskId = $parent
+                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated, Tags = $tags, ParentTaskId = $parent, Prerequisites = $prerequisites
                 WHERE Id = $id;
                 """;
         command.Parameters.AddWithValue("$id", task.Id.ToString());
         command.Parameters.AddWithValue("$parent", (object?)task.ParentTaskId?.ToString() ?? DBNull.Value);
+        command.Parameters.AddWithValue("$prerequisites", JsonSerializer.Serialize(task.Prerequisites));
         command.Parameters.AddWithValue("$tags", JsonSerializer.Serialize(task.Tags));
         command.Parameters.AddWithValue("$title", task.Title);
         command.Parameters.AddWithValue("$description", (object?)task.Description ?? DBNull.Value);

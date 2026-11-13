@@ -85,7 +85,7 @@ public sealed class TagTests : IDisposable
         Assert.Equal(id, task.Id); Assert.Equal("Keep description", task.Description); Assert.True(task.IsCompleted);
         Assert.Equal(TaskPriority.High, task.Priority); Assert.Equal(new DateOnly(2026,11,20), task.DueDate); Assert.Empty(task.Tags);
         using var check = new SqliteConnection($"Data Source={path};Pooling=False"); check.Open(); using var query = check.CreateCommand();
-        query.CommandText = "PRAGMA user_version;"; Assert.Equal(3L, query.ExecuteScalar());
+        query.CommandText = "PRAGMA user_version;"; Assert.Equal(4L, query.ExecuteScalar());
     }
     [Fact]
     public void LegacyMutationSerialization_OmitsNullTagsAndMatchesOldReceiptBytes()

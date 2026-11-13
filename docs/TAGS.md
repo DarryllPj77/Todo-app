@@ -29,7 +29,7 @@ Task responses include `tags` as a JSON string array. POST/PUT and sync Task dat
 
 **Omitted or null tags preserve existing tags on updates. An explicit `[]` clears them.** Creates with omitted/null tags start empty. This is a deliberate backward-compatible exception to the other PUT fields' existing full-replacement/defaulting behavior. Include the other editable fields you want to retain, as before. New editors send an explicit set; toggling completion retains the current set. Old local TaskDetails callers that omit Tags also preserve them on update.
 
-Phase 12B introduced protocol 2; Phase 12C.1 now advertises `ProtocolVersion=3` for hierarchy (HIERARCHY.md). Before sending a tag-aware operation, SyncEngine probes the authenticated download endpoint and requires at least version 2; parent-aware operations require 3. An older server causes a visible upgrade message and a retained, blocked outgoing operation. After upgrading, **Retry now** retries the same operation ID. Legacy operations with Tags/Parent absent remain absent when serialized, preserving original receipt request bytes.
+Phase 12B introduced protocol 2; Phase 12C.1 introduced protocol 3 for hierarchy; Phase 12C.2 now advertises `ProtocolVersion=4` for dependencies (HIERARCHY.md). Before sending a tag-aware operation, SyncEngine probes the authenticated download endpoint and requires at least version 2; parent-aware operations require 3 and prerequisite-aware operations require 4. An older server causes a visible upgrade message and a retained, blocked outgoing operation. After upgrading, **Retry now** retries the same operation ID. Legacy operations with Tags/Parent absent remain absent when serialized, preserving original receipt request bytes.
 
 TagSet's deep equality matters for acknowledgement: a freshly deserialized set with the same labels equals the saved local intent, so it does not produce another upload indefinitely. A later offline change, including an explicit empty set, stays separate from the immutable in-flight operation and becomes its own next operation after acknowledgement. Old receipt responses may omit tags; the existing revision ordering prevents an older receipt from overriding a newer downloaded state.
 
@@ -41,14 +41,14 @@ TagSet is stored as a bounded JSON array in a text column on each task, rather t
 
 PostgreSQL migration **20261113092317_AddTaskTags** adds required Tasks.Tags text with default `[]`. Existing task IDs, owners, categories, dates, completion, and timestamps are retained. EF uses explicit JSON conversion and immutable value comparison ([EF conversion guidance](https://learn.microsoft.com/en-us/ef/core/modeling/value-conversions), [value-comparer guidance](https://learn.microsoft.com/en-us/ef/core/modeling/value-comparers)). Domain remains independent of EF/MAUI. The JSON array shape is handled by an explicit converter ([System.Text.Json guidance](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/converters-how-to)). No package version was added or changed.
 
-The Phase 12B tag upgrade atomically advances device `todoapp.db3` from 1 to **2** by adding required Tags text defaulting to `[]`; it also introduced schema 2 for sync/views. Phase 12C.1 now advances device/sync to **3** for hierarchy; views stays **2** and reminders **1** (HIERARCHY.md). Unknown newer versions are rejected without reset. Task/tag writes share the existing transaction; upgrades retain replica/outbox/definition IDs and payloads without rewriting old requests on read. Do not downgrade active client data.
+The Phase 12B tag upgrade atomically advances device `todoapp.db3` from 1 to **2** by adding required Tags text defaulting to `[]`; it also introduced schema 2 for sync/views. Hierarchy introduced device/sync schema 3; Phase 12C.2 now advances those files to **4** for prerequisites; views stays **2** and reminders **1** (HIERARCHY.md). Unknown newer versions are rejected without reset. Task/tag writes share the existing transaction; upgrades retain replica/outbox/definition IDs and payloads without rewriting old requests on read. Do not downgrade active client data.
 
 Reminder behavior is unchanged: tag-only edits do not cancel an existing reminder; due-date/completion/deletion changes still do. Generic notification payloads contain no tag labels. Tag labels/filter metadata are ordinary unencrypted local task data, like existing caches, and are never bearer tokens.
 
 For your configured Development environment:
 
 1. Stop the development API and close older client builds. Keep existing databases/caches/outboxes; do not delete them to upgrade.
-2. From the repository root, apply all five current server migrations using your existing secrets (including AddTaskHierarchy; see HIERARCHY.md):
+2. From the repository root, apply all six current server migrations using your existing secrets (including AddTaskDependencies; see DEPENDENCIES.md):
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 using TodoApp.Domain.Services;
 using TodoApp.Infrastructure.Services;
@@ -55,6 +55,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(FileSystem.AppDataDirectory, "views.db3")));
+        builder.Services.AddScoped<DependenciesViewModel>();
+        builder.Services.AddTransient<DependenciesPage>();
         builder.Services.AddScoped<HierarchyViewModel>();
         builder.Services.AddTransient<HierarchyPage>();
         builder.Services.AddScoped<TaskViewsViewModel>();

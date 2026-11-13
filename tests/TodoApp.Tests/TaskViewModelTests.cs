@@ -269,7 +269,9 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
-        public Task OpenHierarchyAsync() => Task.CompletedTask;
+        public Task OpenDependenciesAsync() => Task.CompletedTask;
+    public Task<bool> ConfirmDependencyConflictAsync(string title) => Task.FromResult(false);
+    public Task OpenHierarchyAsync() => Task.CompletedTask;
         public Task<bool> ConfirmHierarchyConflictAsync(string title) => Task.FromResult(false);
         public Task OpenTaskViewsAsync() => Task.CompletedTask;
         public Task<bool> ConfirmDeleteViewAsync(string name) => Task.FromResult(ConfirmDelete);
@@ -307,6 +309,7 @@ public sealed class TaskViewModelTests
         }
         public Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken cancellationToken = default) => inner.UpdateAsync(id, details, cancellationToken);
         public Task<bool> SetCompletedAsync(Guid id, bool isCompleted, CancellationToken cancellationToken = default) => inner.SetCompletedAsync(id, isCompleted, cancellationToken);
+        public Task<bool> SetPrerequisitesAsync(Guid id, TodoApp.Domain.Relationships.TaskPrerequisites prerequisites, CancellationToken token = default) => Task.FromResult(false);
         public Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => inner.DeleteAsync(id, cancellationToken);
     }
