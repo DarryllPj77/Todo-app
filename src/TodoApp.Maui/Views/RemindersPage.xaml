@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Domain.Reminders;assembly=TodoApp.Domain"
+ x:Class="TodoApp.Maui.Views.RemindersPage" x:DataType="vm:RemindersViewModel" Title="Reminders" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="800" HorizontalOptions="Fill">
+  <Label Text="Task reminders" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="Choose an explicit reminder for this device. Due dates alone do not send alerts. Reminder choices are not uploaded to other devices." Style="{StaticResource TaskMuted}" />
+  <Label Text="{Binding PlatformInfo}" />
+  <Label Text="{Binding Status}" />
+  <Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <Button Text="Allow / check notification permission" Command="{Binding PermissionCommand}" />
+  <Label Text="If permission is denied, enable notifications in your system settings, then Retry scheduling. No permission prompt runs automatically." Style="{StaticResource TaskMuted}" />
+  <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+   <Button Text="Refresh tasks &amp; reminders" Command="{Binding RefreshCommand}" />
+   <Button Grid.Column="1" Text="Retry scheduling / cancellation" Command="{Binding RetryCommand}" />
+  </Grid>
+  <Border Style="{StaticResource TaskCard}"><VerticalStackLayout Spacing="10" IsEnabled="{Binding IsIdle}">
+   <Picker Title="Choose an incomplete task" ItemsSource="{Binding Tasks}" ItemDisplayBinding="{Binding Label, x:DataType=models:ReminderTask}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" />
+   <Label Text="{Binding Zone}" Style="{StaticResource TaskMuted}" />
+   <DatePicker Date="{Binding Date, Mode=TwoWay}" />
+   <TimePicker Time="{Binding Time, Mode=TwoWay}" />
+   <Label Text="Choose a time 1 minute to 365 days ahead. Skipped/repeated daylight-saving times are rejected. Travel keeps the same instant; changing a task's due date cancels the reminder for review." Style="{StaticResource TaskMuted}" />
+   <Button Text="Save / replace reminder" Command="{Binding SaveCommand}" />
+  </VerticalStackLayout></Border>
+  <Label Text="Saved reminders" FontAttributes="Bold" />
+  <Label Text="Only this device's tasks and the active account's cached tasks are shown. Alert text contains no task titles or account details. OS settings can suppress delivery." Style="{StaticResource TaskMuted}" />
+  <CollectionView HeightRequest="300" ItemsSource="{Binding Reminders}" SelectedItem="{Binding SelectedReminder, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding IsIdle}">
+   <CollectionView.EmptyView><Label Text="No reminders saved for these tasks." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="models:ReminderRecord">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><Label Text="{Binding Summary}" /></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Button Text="Cancel selected reminder" Command="{Binding CancelCommand}" />
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

@@ -27,6 +27,10 @@
     <Compile Include="..\..\src\TodoApp.Maui\Services\IClientSettings.cs" Link="Client\IClientSettings.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ApiClientException.cs" Link="Client\ApiClientException.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ClientSession.cs" Link="Client\ClientSession.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\IReminderPlatform.cs" Link="Client\IReminderPlatform.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\ReminderTaskCatalog.cs" Link="Client\ReminderTaskCatalog.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\ReminderService.cs" Link="Client\ReminderService.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\ReminderAwareTaskService.cs" Link="Client\ReminderAwareTaskService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\SyncEngine.cs" Link="Client\SyncEngine.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\TodoApiClient.cs" Link="Client\TodoApiClient.cs" />
   </ItemGroup>

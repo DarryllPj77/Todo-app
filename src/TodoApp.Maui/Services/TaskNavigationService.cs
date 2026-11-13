@@ -25,6 +25,8 @@ public sealed class TaskNavigationService : ITaskNavigation
 
     public async Task CloseEditorAsync() => await GetRoot().Navigation.PopAsync();
 
+    public Task OpenRemindersAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<RemindersPage>());
+
     public Task OpenSyncAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<SyncPage>());
 
     public Task OpenAccountAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<AccountPage>());

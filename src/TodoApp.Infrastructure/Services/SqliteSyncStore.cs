@@ -28,6 +28,7 @@ public sealed class ReplicaState
 // replica + immutable outgoing operation + download cursor as one unit.
 public sealed class SqliteSyncStore(string path)
 {
+    public event Func<Task>? Written;
     public static string Partition(string origin, Guid user) => origin + "|" + user.ToString("N");
     public Task<ReplicaState> ReadAsync(string partition) => ExecuteAsync(partition, state => state, false);
 
@@ -118,34 +119,41 @@ public sealed class SqliteSyncStore(string path)
             throw new ArgumentException("Category must be at most 100 characters.");
     }
 
-    private Task<T> ExecuteAsync<T>(string partition, Func<ReplicaState, T> action, bool write = true) => Task.Run(() =>
+    private async Task<T> ExecuteAsync<T>(string partition, Func<ReplicaState, T> action, bool write = true)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(partition);
-        var fullPath = Path.GetFullPath(path);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = fullPath, Pooling = false }.ToString());
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "PRAGMA user_version;";
-        var version = Convert.ToInt32(command.ExecuteScalar());
-        if (version > 1) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-        command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=1;";
-        command.ExecuteNonQuery();
-        command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
-        command.Parameters.AddWithValue("$partition", partition);
-        var json = command.ExecuteScalar() as string;
-        var state = json is null ? new ReplicaState() : JsonSerializer.Deserialize<ReplicaState>(json)
-            ?? throw new InvalidDataException("Unreadable sync cache. No data was reset.");
-        var result = action(state);
-        if (write)
+        var result = await Task.Run(() =>
         {
-            command.CommandText = "INSERT INTO ReplicaPartitions (Partition, State) VALUES ($partition, $state) ON CONFLICT(Partition) DO UPDATE SET State=$state;";
-            command.Parameters.AddWithValue("$state", JsonSerializer.Serialize(state));
+            ArgumentException.ThrowIfNullOrWhiteSpace(partition);
+            var fullPath = Path.GetFullPath(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = fullPath, Pooling = false }.ToString());
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "PRAGMA user_version;";
+            var version = Convert.ToInt32(command.ExecuteScalar());
+            if (version > 1) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=1;";
             command.ExecuteNonQuery();
-        }
-        transaction.Commit();
+            command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
+            command.Parameters.AddWithValue("$partition", partition);
+            var json = command.ExecuteScalar() as string;
+            var state = json is null ? new ReplicaState() : JsonSerializer.Deserialize<ReplicaState>(json)
+                ?? throw new InvalidDataException("Unreadable sync cache. No data was reset.");
+            var operationResult = action(state);
+            if (write)
+            {
+                command.CommandText = "INSERT INTO ReplicaPartitions (Partition, State) VALUES ($partition, $state) ON CONFLICT(Partition) DO UPDATE SET State=$state;";
+                command.Parameters.AddWithValue("$state", JsonSerializer.Serialize(state));
+                command.ExecuteNonQuery();
+            }
+            transaction.Commit();
+            return operationResult;
+        });
+        if (write && Written is { } handlers)
+            foreach (Func<Task> handler in handlers.GetInvocationList())
+                try { await handler(); } catch (Exception) { /* A committed write stays successful; reminder UI provides recovery. */ }
         return result;
-    });
+    }
 }

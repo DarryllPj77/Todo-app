@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 10 - Offline account synchronization implemented; native acceptance pending.** Synced tasks provides a separate account/origin SQLite cache, transactional outgoing operations, idempotent uploads, revision cursors, retained tombstones, bounded retries, and explicit conflicts. The final full suite passed **190 tests, 0 failed, 0 skipped**, including 27 PostgreSQL facts. The final Windows-targeted solution build passed with **0 warnings, 0 errors**. Apply AddTaskSynchronization to your own development database before restarting the API. Original device-only tasks remain separate. Native HTTPS/storage/connectivity/timer/restart and two-device UI acceptance remain pending; see SYNCHRONIZATION.md.
+**Phase 11 - Device-local reminders implemented with platform limits; native acceptance pending.** The Reminders page supports explicit date/time/zone choices, permission handling, stable native IDs, saved scheduling status, and task/account cancellation. All **216 tests passed, 0 failed, 0 skipped**, including the existing 27 PostgreSQL facts. Final Windows-targeted solution/XAML build has **0 warnings/errors**. The unpackaged Windows build requires the app to remain running; Android/Apple OS-scheduling adapters are supplied but not compiled/device-tested here. Actual native delivery/permission/reboot behavior is pending NOTIFICATIONS.md acceptance. No new package, server migration, task/sync schema, or sync payload change was added.
 
 ## Completed work
 
@@ -75,16 +75,28 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Final verification passed 190 tests with no skips after the conflict-choice guard. Two generated databases from the earlier interrupted sandbox run were removed by exact name; the final run left no test databases. The isolated cluster was stopped and the installed PostgreSQL service remains running.
 - Added SYNCHRONIZATION.md with protocol, design decisions, limits, migration upgrade, and manual acceptance steps; updated the existing six documentation files.
 
+- Added Domain/Reminders models and deterministic date/time-to-UTC rules: explicit opt-in, original zone/wall-time retention, fixed instant on travel, 1-minute/365-day bounds, and rejection of skipped/repeated DST times.
+- Added independent SqliteReminderStore (reminders.db3, schema version 1) with transactional stable IDs, durable desired/canceled/attempted state, diagnostic status, and rejection of corrupt/newer data without reset.
+- Added ReminderTaskCatalog/ReminderService/IReminderPlatform with active-scope isolation, nearest-32 future policy, permission checks without automatic prompts, replacement/cancellation, task completion/deletion/due-date review, and generic payloads.
+- Added ReminderAwareTaskService after successful device writes and an awaited, exception-isolated SqliteSyncStore.Written callback after committed cached writes/downloads. Notification/UI errors cannot turn a committed task create into a failed save.
+- Added ReminderRuntime startup/resume/account reconciliation and a 15-second running-app timer. Windows saves a one-attempt marker before native show, allows five-minute catch-up, and avoids repeated attempts after uncertainty/clock rollback. No closed-app Windows service was added.
+- Added Windows AppNotificationManager adapter; Android permission/channel/inexact-alarm/receiver/boot-restoration source and icon/manifest permissions; Apple local-request/foreground-delegate source. Only Windows is compiled here. No exact-alarm permission, notification plugin, remote push, or recurrence was introduced.
+- Added RemindersViewModel, RemindersPage, scoped registration, toolbar navigation, explicit permission/save/cancel/retry/status UI. Choices are per-device and do not change server/sync task payloads.
+- Added 26 portable policy/storage/ViewModel cases covering UTC/DST, permission denial, replacement, title changes, task/account cancellation, one-cancel failure isolation, scheduling/sign-out races, stable IDs, caps, missed/uncertain attempts, corrupt schema/state, and failure-safe task/sync hooks.
+- Full final suite passed 216 tests with no skips; Windows solution/XAML build passed with zero warnings/errors in .tools/phase11-native, without stopping/overwriting the older running app. Fake notification adapters do not prove actual native delivery, permissions, or mobile compilation.
+- Isolated PostgreSQL cleanup verified zero generated databases, then stopped the test cluster; the installed PostgreSQL 18 service remains running.
+- Added NOTIFICATIONS.md and updated README/architecture/database/learnings/roadmap/progress plus the sync integration note. No user credentials or development databases were changed.
+
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| Full CLI suite using TODOAPP_TEST_POSTGRES and the script's isolated artifacts path | Passed: 190 tests, 0 failed, 0 skipped (final normal-access CLI run with the same isolated test connection/artifacts path) |
+| Full CLI suite using TODOAPP_TEST_POSTGRES and the script's isolated artifacts path | Passed: 216 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection/artifacts path) |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Final Phase 10 native build output | Passed: isolated .tools/phase10-native, all five projects, 0 warnings/errors; old app was not stopped |
-| Final test result | .tools/phase10-results/phase10-final.trx: 190 passed, 0 failed, 0 skipped |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Twenty-seven PostgreSQL facts are explicitly skipped (163 portable cases); portable REST tests use explicit memory/auth substitutes |
+| Final Phase 11 native build output | Passed: isolated .tools/phase11-native, all five projects, 0 warnings/errors; old app was not stopped |
+| Final test result | .tools/phase11-results/phase11.trx: 216 passed, 0 failed, 0 skipped |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Twenty-seven PostgreSQL facts are explicitly skipped (189 portable cases); portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -110,20 +122,21 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 ## Work in progress / pending verification
 
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
-- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows has been compiled/launched in this run.
+- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 11; the newer reminder UI/native delivery has not been launched/verified here. The older app was left running.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
 - Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all three migrations. No user credentials or persistent app connection were invented during this run.
 - Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
-- Review Phase 10 and complete the SYNCHRONIZATION.md native acceptance checklist before notifications. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Review Phase 11 and complete NOTIFICATIONS.md and SYNCHRONIZATION.md native acceptance checklists before further features. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Verify Reminders native permission/display/cancellation/time/account behavior using NOTIFICATIONS.md. Android/Apple adapters need compilation/device checks, and Windows closed-app delivery remains outside this unpackaged implementation.
 - Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device-only SQLite schema is unchanged; sync.db3 is a separate version-1 cache.
 - API DueToday currently follows the server's local date; define a per-user time-zone policy before release; sync dates are calendar values. Production deployment remains later work.
 
 ## Uncommitted changes
 
-Phase 10 changes are uncommitted; no commit or push was performed for this phase. Phase 9 was committed/pushed as `079753a` in the preceding turn. The user-added untracked `.vscode/` directory remains outside scope. Portable tools, logs, test-cluster files, and build output stay ignored.
+Phase 11 changes are uncommitted; no commit or push was performed for this phase. Phase 10 is recorded in local commit `2a7fe54`, verified at the start of this phase. The user-added untracked `.vscode/` directory remains outside scope. Portable tools, logs, test-cluster files, and build output remain ignored.
 
-- New: Domain/Sync contracts; SyncController/SyncJournal/SyncService; server SyncRecords and AddTaskSynchronization migration/designer; SqliteSyncStore; SyncEngine/SyncWorkspaceViewModel/SyncPage; SyncStoreTests/SyncEngineTests/PostgresSyncTests; docs/SYNCHRONIZATION.md.
-- Modified: server DI/task transactions/model snapshot, TaskItem identity factory, MAUI client/DI/navigation/toolbar, test links/fakes/migration count, README and all five existing docs.
+- New: Domain/Reminders models/time rules; SqliteReminderStore; reminder platform/catalog/service/decorator/runtime; Windows/Android/Apple notification adapters, Android icon; RemindersViewModel/RemindersPage; ReminderTests; docs/NOTIFICATIONS.md.
+- Modified: sync store post-commit callback, MAUI app/DI/navigation/toolbar/Android manifest, test navigation fakes/source links, README and docs.
 - Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
@@ -152,12 +165,13 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - 5810242 — Implement Phase 7 PostgreSQL and EF Core persistence: verified in local Git history at the start of Phase 8.
 - `c0fae61` ? `Implement Phase 8 authentication and user ownership`: verified in local Git history during Phase 9.
 - `079753a` - `Implement Phase 9 MAUI account and API integration`: committed and pushed to origin/main in the preceding user-authorized turn.
-- Phase 10 has no committed milestone yet. No merge or force-push has been performed.
+- `2a7fe54` - `Implement Phase 10 offline account synchronization`: verified in local Git history at the start of Phase 11.
+- Phase 11 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Apply AddTaskSynchronization to your configured development database, rebuild the client after closing the older app, and follow SYNCHRONIZATION.md's offline/restart/two-device/conflict checklist. Review Phase 10 before Phase 11 notifications. No notification scheduler starts automatically. Native/mobile acceptance, cache encryption/access policy, retention, server-restore/reset reconciliation, and production deployment remain open release gates.
+Close the older app, rebuild with scripts/Run-Windows.ps1, and follow NOTIFICATIONS.md's permission/display/cancellation/time/account checklist. Windows currently needs the app running; durable closed-app delivery is a platform milestone. Android/Apple adapters need native compilation and device acceptance with their toolchains. Review Phase 11 before starting Phase 12 advanced tasks/adaptive UI in small increments. No advanced relationship, recurrence, or timer-productivity feature starts automatically.
 
 ## What to learn now
 
-Trace Save locally & queue through one SQLite transaction, then follow its immutable operation ID to a server receipt. Learn why a timeout cannot prove failure, why stale receipts cannot override newer downloads, and why revisions/tombstones/cursors are different concepts. Compare explicit Keep mine / Use server with silently choosing by device timestamps. See LEARNINGS and SYNCHRONIZATION.md for examples.
+Distinguish a DateOnly deadline from an explicit UTC reminder instant. Trace saving a reminder through durable intent, current task/account checks, native capabilities, and visible best-effort status. Learn why notification failure must not turn a committed task save into a duplicate retry, why permission does not guarantee delivery, and why fake-platform tests do not prove OS behavior. See LEARNINGS.md and NOTIFICATIONS.md.

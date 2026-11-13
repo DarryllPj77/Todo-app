@@ -19,7 +19,10 @@ public partial class App : Application
         var navigation = new NavigationPage(page);
         scope.ServiceProvider.GetRequiredService<Services.TaskNavigationService>().Attach(navigation);
         var window = new Window(navigation);
-        window.Destroying += (_, _) => scope.Dispose();
+        var reminders = services.GetRequiredService<Services.ReminderRuntime>();
+        window.Created += async (_, _) => await reminders.AttachAsync(window.Dispatcher);
+        window.Resumed += async (_, _) => await reminders.ResumeAsync();
+        window.Destroying += (_, _) => { reminders.Detach(); scope.Dispose(); };
         return window;
 	}
 }

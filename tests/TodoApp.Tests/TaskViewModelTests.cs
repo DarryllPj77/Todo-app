@@ -269,6 +269,7 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenRemindersAsync() => Task.CompletedTask;
         public Task OpenSyncAsync() => Task.CompletedTask;
         public Task OpenAccountAsync() => Task.CompletedTask;
         public Guid? EditedId { get; private set; }

@@ -4,6 +4,8 @@
 
 Local tasks still use SQLite. The API uses PostgreSQL with three migrations: InitialCreate, AddAuthenticationOwnership, and AddTaskSynchronization. Phase 8 adds Users and owner-scoped server tasks/categories. Phase 10 adds server sync state plus a separate account/origin-partitioned SQLite sync cache. Existing device-only SQLite schema/data remains unchanged. See DEVELOPMENT_PROGRESS.md for final verification. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply all three migrations before running the API.
 
+Phase 11 adds only an independent device-local reminders.db3 file. Server migrations, todoapp.db3 version 1, sync.db3 version 1, and the sync wire payload are unchanged. It introduces no new database credentials or notification server. See NOTIFICATIONS.md.
+
 ## Initial entities and relationship
 
 ```text
@@ -159,3 +161,11 @@ The protected session envelope contains API origin, bearer token, expiry, and pu
 The historical Phase 9 run passed 163 tests with no skips, including 19 real PostgreSQL facts. The added client integration fact uses real API/JWT/database behavior with in-memory HTTP transport and a fake platform token store; actual native HTTPS and SecureStorage are separate checks. The isolated cluster was stopped after cleanup; the existing PostgreSQL Windows service was left running.
 
 Phase 10 introduces the separate synced cache described above; Phase 9's direct online workspace remains available. The test suite now includes PostgreSQL idempotency/concurrency, REST journal participation, validation/isolation, paged cursors, tombstones/resurrection, rollback, pre-sync owned-task bootstrap, and two real SQLite replicas converging through the authenticated API. Final counts are in DEVELOPMENT_PROGRESS.md.
+
+## Reminder storage (Phase 11)
+
+`reminders.db3` uses its own schema version 1, with a single ReminderSettings row containing local reminder records and the next native numeric ID. Each scope/task key retains its stable ID, UTC fire instant, original wall time/zone, captured due date, caption, enabled/attempted state, and diagnostic status. Device and account scopes cannot share native IDs by accident; ID allocation/replacement and state writes use SQLite transactions. Newer/corrupt state is rejected without reset.
+
+Desired choices and cancellations persist before native side effects. A failed notification call does not roll back or misreport an already committed task/sync write. Windows saves its one-attempt marker before showing an alert, so an uncertain delivery/crash is not automatically retried. This is best effort, not a distributed transaction with the OS.
+
+Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; existing API users still need all three Phase 10 migrations.

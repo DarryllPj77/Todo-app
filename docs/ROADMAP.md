@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 10 synchronization is implemented with separate account caches, durable queued operations, idempotency, revision cursors, tombstones, and explicit conflicts. Apply the third server migration and complete the native acceptance checklist in SYNCHRONIZATION.md. Phase 11 is notifications; no reminder scheduler is introduced here.
+Proceed one phase at a time after review. Phase 11 reminders are implemented with explicit device-local time/zone choices, permission/error handling, and task/account cancellation. All 216 tests pass and Windows compilation has zero warnings/errors. Current Windows delivery requires the app to remain running; mobile adapters and actual native delivery need acceptance in NOTIFICATIONS.md. Next is Phase 12's advanced task/adaptive UI increments.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -193,7 +193,13 @@ Proceed one phase at a time after review. Phase 10 synchronization is implemente
 
 **Completion checklist:**
 
-- [ ] Scheduling, cancellation, time changes, and permission denial verified on devices.
+- [x] Explicit opt-in reminder time, fixed UTC instant/original zone, DST gap/repeat rejection, and durable per-device settings.
+- [x] Generic notification payloads, stable IDs, permission-denial recovery, replacement/cancellation, completion/deletion/due-date/account handling, and nearest-32 policy.
+- [x] Windows running-app notification adapter, Android inexact alarm/channel/permission/boot receiver, and Apple local-request/delegate adapters supplied without new packages.
+- [x] Twenty-six policy/storage/ViewModel regression cases pass; complete suite is 216 passed, 0 skipped; Windows/XAML build has 0 warnings/errors.
+- [ ] Actual native scheduling/display/cancellation, time changes, permission denial, restart, and account switching verified on Windows/mobile devices.
+- [ ] Compile and validate Android/iOS/Mac Catalyst adapters with their native toolchains.
+- [ ] Durable Windows closed-app delivery/packaging remains a platform milestone; current development build explicitly requires the app running.
 
 ## Phase 12 — Advanced tasks and adaptive desktop UI
 

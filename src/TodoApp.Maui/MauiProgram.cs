@@ -27,9 +27,8 @@ public static class MauiProgram
         builder.Services.AddScoped<TaskListPage>();
         builder.Services.AddTransient<TaskEditorViewModel>();
         builder.Services.AddTransient<TaskEditorPage>();
-        builder.Services.AddSingleton<ILocalTaskService>(_ =>
-            new SqliteLocalTaskService(
-                Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
+        builder.Services.AddSingleton(_ => new SqliteLocalTaskService(Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
+        builder.Services.AddSingleton<ILocalTaskService, ReminderAwareTaskService>();
         builder.Services.AddSingleton<ISecureTokenStore, SecureTokenStore>();
         builder.Services.AddSingleton<IClientSettings, ClientSettings>();
         builder.Services.AddSingleton<ClientSession>();
@@ -38,7 +37,25 @@ public static class MauiProgram
             Timeout = TimeSpan.FromSeconds(15)
         });
         builder.Services.AddSingleton<TodoApiClient>();
-        builder.Services.AddSingleton(_ => new SqliteSyncStore(Path.Combine(FileSystem.AppDataDirectory, "sync.db3")));
+        builder.Services.AddSingleton(provider =>
+        {
+            var store = new SqliteSyncStore(Path.Combine(FileSystem.AppDataDirectory, "sync.db3"));
+            store.Written += () => provider.GetRequiredService<ReminderService>().RefreshSafelyAsync();
+            return store;
+        });
+        builder.Services.AddSingleton(_ => new SqliteReminderStore(Path.Combine(FileSystem.AppDataDirectory, "reminders.db3")));
+        builder.Services.AddSingleton<ReminderTaskCatalog>();
+        builder.Services.AddSingleton<ReminderService>();
+        builder.Services.AddSingleton<ReminderRuntime>();
+#if WINDOWS
+        builder.Services.AddSingleton<IReminderPlatform, Platforms.Windows.WindowsReminderPlatform>();
+#elif ANDROID
+        builder.Services.AddSingleton<IReminderPlatform, Platforms.Android.AndroidReminderPlatform>();
+#elif IOS || MACCATALYST
+        builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
+#endif
+        builder.Services.AddScoped<RemindersViewModel>();
+        builder.Services.AddTransient<RemindersPage>();
         builder.Services.AddSingleton<SyncEngine>();
         builder.Services.AddScoped<SyncWorkspaceViewModel>();
         builder.Services.AddTransient<SyncPage>();

@@ -7,4 +7,5 @@ public interface ITaskNavigation
     Task<bool> ConfirmDeleteAsync(string title);
     Task OpenAccountAsync();
     Task OpenSyncAsync();
+    Task OpenRemindersAsync();
 }

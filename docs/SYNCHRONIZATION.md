@@ -63,3 +63,7 @@ Automatic sync does not clear unsubmitted editor drafts. If the cached row chang
 8. Check expiry, invalid HTTPS, narrow/light/dark layouts, screen readers, native storage/restart, and mobile suspension/resumption. These remain manual acceptance gates.
 
 Automated checks cover actual client services/ViewModels, temporary SQLite files, real JWT/API middleware/PostgreSQL, receipt replay, conflicts, transaction rollback, pagination, and two replica convergence. The request test host uses in-memory HTTP transport and fake platform token storage. Native TLS, SecureStorage, connectivity events/timer lifecycle, and multi-device UI acceptance are not proved by those tests.
+
+## Reminder integration (Phase 11)
+
+Reminder settings stay device-local and do not alter SyncTaskData, operation receipts, server revisions, or migrations. After a committed sync-store write, MAUI's Written callback reconciles reminders against the latest cached task state. Completion/deletion/due-date changes cancel alerts when the change reaches this device. A reminder failure cannot fail or roll back a committed upload acknowledgement/download; no remote push cancellation is claimed. See [NOTIFICATIONS.md](NOTIFICATIONS.md).

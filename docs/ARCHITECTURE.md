@@ -97,7 +97,7 @@ Tests ------------> API, Domain, Infrastructure
 
 Domain contains TaskItem, Category, TaskPriority, TaskFilter, the ILocalTaskService/TaskDetails contract, and shared TaskQueries rules without package dependencies. Infrastructure references Domain and contains SQLite services plus server EF mappings/migrations. Neither library references MAUI or ASP.NET Core. MAUI registers local SQLite persistence; API registers its PostgreSQL context/service. They use separate databases. Host-specific infrastructure assemblies can be split later if platform/deployment requirements justify it.
 
-Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI supplies the task ViewModels/pages, per-window navigation, and singleton SqliteLocalTaskService using FileSystem.AppDataDirectory/todoapp.db3. ASP.NET Core independently registers controllers through AddControllers. No second repository interface is needed.
+Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI supplies task ViewModels/pages, per-window navigation, and singleton ReminderAwareTaskService over the concrete SqliteLocalTaskService at FileSystem.AppDataDirectory/todoapp.db3. ASP.NET Core independently registers controllers through AddControllers. No second repository interface is needed.
 
 ## Intended algorithm and main features
 
@@ -153,7 +153,7 @@ For this small dataset, reads and task edits load the current graph, and both st
 
 Assigning a category saves its ID/name if new. Reusing an existing ID uses the stored name instead of overwriting it from a stale caller object. Inputs are not attached or mutated, including on failed writes. Category rename/delete operations remain outside ILocalTaskService. Task deletion retains the category row; SQLite's category FK uses ON DELETE SET NULL for any future category deletion operation.
 
-The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication and the separate online client workspace are implemented; the separate synced account workspace now reconciles offline changes. Notifications and advanced task relationships remain later work.
+The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication and the separate online client workspace are implemented; the separate synced account workspace now reconciles offline changes. Device-local reminders are implemented in Phase 11; advanced task relationships remain later work.
 
 ## Offline account synchronization (Phase 10)
 
@@ -168,6 +168,16 @@ BaseRevision implements optimistic concurrency. A mismatch preserves local and s
 The singleton engine prevents overlapping sync across windows and captures account/origin/version for each pass. It uploads up to 100 queued operations and downloads up to 100 pages, retains failed operations, and persists exponential retry backoff. The page requests sync on demand, opening, connectivity hints, and a 30-second visible-page timer. It stops scheduling when hidden; it is not an OS background service. Native connectivity is a hint rather than proof of API access. Unsaved drafts are preserved during automatic sync, and a stale editor must be reviewed before saving.
 
 Tokens stay in SecureStorage; cached task content is unencrypted SQLite. Sign-out/account switches clear visible rows/drafts without deleting another account's queue. Selecting a cache needs a current saved session; expired session re-entry requires reauthentication. See [SYNCHRONIZATION.md](SYNCHRONIZATION.md) for protocol details, limitations, recovery boundaries, and manual native acceptance.
+
+## Device-local reminders (Phase 11)
+
+The API and sync contracts do not change. Reminder time is not inferred from DateOnly DueDate or copied from another device. Domain/Reminders defines ReminderTask, ReminderRecord, and a deterministic local-time-to-UTC rule that rejects invalid/ambiguous DST choices and requires a time one minute to 365 days ahead.
+
+`RemindersPage -> RemindersViewModel -> ReminderService -> SqliteReminderStore (reminders.db3)` persists explicit per-device choices. ReminderTaskCatalog reads device SQLite and the active account's cached rows. The service uses IReminderPlatform for permission checks, scheduling, display, and removal; no native APIs live in the ViewModel. Due-date changes/completion/deletion disable reminders for review, title edits retain the instant, and account changes suspend inactive scopes. Payloads contain generic text and a numeric identifier, without task/account details.
+
+ReminderAwareTaskService decorates ILocalTaskService and reconciles after successful writes, while the catalog reads the concrete service to avoid recursion. SqliteSyncStore's exception-isolated Written callback runs after commit, allowing reconciliation of cached writes/downloads/conflicts without reporting committed writes as failures. ReminderRuntime reconciles on window creation/resume, session changes, and a 15-second app timer; native failure status remains visible and retryable.
+
+Windows uses AppNotificationManager with running-app evaluation rather than claiming closed-app scheduling for the unpackaged build. Android uses inexact alarms, explicit permission/channel checks, and receivers that revalidate persisted choices/task state and restore future alarms after boot. Apple uses local notification requests and a retained foreground delegate. Only Windows source/XAML is compiled here; actual OS delivery and mobile builds remain manual acceptance gates. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for semantics, limitations, failure ordering, and test steps.
 
 ## Build boundaries
 

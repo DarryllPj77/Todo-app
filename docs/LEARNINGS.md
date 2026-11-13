@@ -433,3 +433,33 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Keep both versions until the user chooses a policy, and space failed requests instead of looping continuously.
 
 **Short example:** Keep mine creates a new operation against the displayed server revision; Use server discards the saved local intent. Failed uploads retain their operation IDs and retry from 4 seconds up to 5 minutes. Connectivity is a hint; a real request determines reachability. The full protocol and native acceptance steps are in SYNCHRONIZATION.md.
+
+## Calendar dates versus reminder instants
+
+**Definition:** A due date identifies a calendar day. A reminder needs an explicit instant and a policy for translating a local wall clock into UTC.
+
+**Short example:** ReminderTime.Resolve rejects skipped/repeated DST times and stores a fixed UTC instant plus the original time zone. Traveling changes its local display, not when it fires. A due date by itself never schedules an alert.
+
+## Permission and platform capabilities
+
+**Definition:** Permission to notify and the ability to schedule while closed are separate platform capabilities. Neither guarantees the user saw a notification.
+
+**Short example:** IReminderPlatform separates permission, scheduling, showing, and canceling. The unpackaged Windows build evaluates reminders while running; Android/Apple adapters schedule with their OS. Permission prompts happen only from the explicit Reminders button.
+
+## Persisting intent before side effects
+
+**Definition:** Save what the user requested before making an external/native call, and expose failures without confusing them with task persistence.
+
+**Short example:** A reminder's cancellation is durable even if native removal fails, so reconciliation can retry it. Windows records its delivery attempt before showing to avoid duplicate alerts after an uncertain crash. Task writes remain successful when notification operations fail.
+
+## Post-commit reconciliation
+
+**Definition:** Update dependent local behavior after a successful write while keeping its failure boundary separate from the original transaction.
+
+**Short example:** ReminderAwareTaskService decorates local writes, and SqliteSyncStore.Written notifies after commit. The reminder catalog reads concrete stores without triggering another write callback. A callback failure cannot make a committed create look unsaved.
+
+## Native acceptance versus portable tests
+
+**Definition:** Tests using a fake OS adapter can verify scheduling decisions and failure policies without proving actual permissions, timers, or system delivery.
+
+**Short example:** The reminder suite verifies UTC/DST, durable IDs, caps, cancellation races, permission denial, and uncertain attempts. Windows compilation checks API/XAML references; NOTIFICATIONS.md separately tracks Windows display and Android/Apple native build/device acceptance.
