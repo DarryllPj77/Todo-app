@@ -54,6 +54,9 @@ public static class MauiProgram
 #elif IOS || MACCATALYST
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
+        builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(FileSystem.AppDataDirectory, "views.db3")));
+        builder.Services.AddScoped<TaskViewsViewModel>();
+        builder.Services.AddTransient<TaskViewsPage>();
         builder.Services.AddScoped<RemindersViewModel>();
         builder.Services.AddTransient<RemindersPage>();
         builder.Services.AddSingleton<SyncEngine>();

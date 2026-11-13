@@ -29,6 +29,7 @@ public sealed class TaskListViewModel : ObservableViewModel
     public AsyncCommand EditCommand { get; }
     public AsyncCommand ToggleCommand { get; }
     public AsyncCommand DeleteCommand { get; }
+    public AsyncCommand TaskViewsCommand { get; }
     public AsyncCommand RemindersCommand { get; }
     public AsyncCommand SyncCommand { get; }
     public AsyncCommand AccountCommand { get; }
@@ -81,6 +82,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         EditCommand = Command(() => navigation.EditTaskAsync(SelectedTask!.Id), needsSelection: true);
         ToggleCommand = Command(ToggleAsync, needsSelection: true);
         DeleteCommand = Command(DeleteAsync, needsSelection: true);
+        TaskViewsCommand = Command(navigation.OpenTaskViewsAsync);
         RemindersCommand = Command(navigation.OpenRemindersAsync);
         SyncCommand = Command(navigation.OpenSyncAsync);
         AccountCommand = Command(navigation.OpenAccountAsync);
@@ -168,5 +170,6 @@ public sealed class TaskListViewModel : ObservableViewModel
         AccountCommand.NotifyCanExecuteChanged();
         SyncCommand.NotifyCanExecuteChanged();
         RemindersCommand.NotifyCanExecuteChanged();
+        TaskViewsCommand.NotifyCanExecuteChanged();
     }
 }

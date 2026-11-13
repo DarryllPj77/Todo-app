@@ -169,3 +169,9 @@ Phase 10 introduces the separate synced cache described above; Phase 9's direct 
 Desired choices and cancellations persist before native side effects. A failed notification call does not roll back or misreport an already committed task/sync write. Windows saves its one-attempt marker before showing an alert, so an uncertain delivery/crash is not automatically retried. This is best effort, not a distributed transaction with the OS.
 
 Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; existing API users still need all three Phase 10 migrations.
+
+## Saved-view metadata (Phase 12A)
+
+`views.db3` initializes its independent schema version 1 with SavedTaskViews (ID, scope, name, invariant-uppercase name key, local revision, JSON rule definition) and unique scope/name key. Device definitions use the device scope; cached-account definitions use canonical API origin plus account ID. Parameterized SQL and one SQLite transaction cover duplicate/quota/revision checks and each write. Definitions are capped at 50 per scope; stale updates/deletes and corrupt/newer metadata fail without a reset.
+
+The stored JSON contains validated existing-field query rules, not task snapshots or tokens. Names/search/category rules are ordinary unencrypted local metadata and are not automatically synchronized. Deleting a definition never deletes tasks, categories, queued operations, conflicts, or reminders. All existing task/sync/reminder schemas, server migrations, and API/sync payloads remain unchanged. No Phase 12A EF database update is needed. See SAVED_VIEWS.md for scope/date semantics and manual acceptance.

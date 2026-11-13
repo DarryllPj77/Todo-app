@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Maui.Models"
+ xmlns:domain="clr-namespace:TodoApp.Domain.Views;assembly=TodoApp.Domain"
+ x:Class="TodoApp.Maui.Views.TaskViewsPage" x:DataType="vm:TaskViewsViewModel" Title="Saved views" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Find your next task" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="Combine filters, then Apply. Save named rules to reuse them here. Editing filter fields or selecting a saved view does not change results until Apply." Style="{StaticResource TaskMuted}" />
+  <Label Text="Device tasks and each API/account have separate saved views. Sign in through Account &amp; server and sync first to browse an account's cached tasks." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Device or synced account workspace" />
+  <Label Text="{Binding Status}" />
+  <Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <Button Text="Refresh saved views &amp; current results" Command="{Binding RefreshCommand}" />
+  <Border Style="{StaticResource TaskCard}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="Filter rules" FontAttributes="Bold" />
+   <Label Text="Search title, description, or category (literal text)" />
+   <Entry Text="{Binding Search}" MaxLength="200" Placeholder="For example, review" SemanticProperties.Description="Search title description or category" />
+   <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+    <VerticalStackLayout><Label Text="Completion" /><Picker ItemsSource="{Binding Completions}" SelectedItem="{Binding Completion}" /></VerticalStackLayout>
+    <VerticalStackLayout Grid.Column="1"><Label Text="Priority" /><Picker ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}" /></VerticalStackLayout>
+   </Grid>
+   <Label Text="Category rule" /><Picker ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" />
+   <Entry Text="{Binding CategoryName}" MaxLength="100" Placeholder="Exact category name when Named is selected" />
+   <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+    <VerticalStackLayout><Label Text="Due date rule" /><Picker ItemsSource="{Binding DueOptions}" SelectedItem="{Binding Due}" /></VerticalStackLayout>
+    <VerticalStackLayout Grid.Column="1"><Label Text="Sort by" /><Picker ItemsSource="{Binding SortOptions}" SelectedItem="{Binding Sort}" /></VerticalStackLayout>
+   </Grid>
+   <Label Text="{Binding TodayText}" Style="{StaticResource TaskMuted}" />
+   <Label Text="Due rules include completed tasks unless Completion is Pending. DueDate sort places undated tasks last; Priority sort places High first." Style="{StaticResource TaskMuted}" />
+   <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+    <Button Text="Apply filters" Command="{Binding ApplyCommand}" />
+    <Button Grid.Column="1" Text="Reset to all tasks" Command="{Binding ResetCommand}" />
+   </Grid>
+  </VerticalStackLayout></Border>
+  <Border Style="{StaticResource TaskCard}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="Named views on this device" FontAttributes="Bold" />
+   <Picker Title="Choose a saved view, then Apply" ItemsSource="{Binding SavedViews}" ItemDisplayBinding="{Binding Name, x:DataType=domain:SavedTaskView}" SelectedItem="{Binding SelectedView}" />
+   <Entry Text="{Binding ViewName}" MaxLength="60" Placeholder="View name (1-60 characters)" />
+   <Button Text="Save as new view &amp; apply" Command="{Binding CreateCommand}" />
+   <Button Text="Update / rename selected view &amp; apply" Command="{Binding UpdateCommand}" />
+   <Button Text="Delete selected view (keep tasks)" Command="{Binding DeleteCommand}" />
+  </VerticalStackLayout></Border>
+  <Label Text="Matching tasks" FontAttributes="Bold" />
+  <Label Text="These are current device records or cached account records. Sync from Synced tasks to fetch server changes. This page does not change tasks, queues, conflicts, or reminders." Style="{StaticResource TaskMuted}" />
+  <CollectionView HeightRequest="300" ItemsSource="{Binding Results}" SelectedItem="{Binding SelectedTask}" SelectionMode="Single" IsEnabled="{Binding Available}">
+   <CollectionView.EmptyView><Label Text="No matches. Apply different filters, reset, or sync the account cache." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="models:TaskViewRow">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="5"><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Summary}" Style="{StaticResource TaskMuted}" /></VerticalStackLayout></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8">
+   <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
+   <Label Text="{Binding SelectedTask.Description}" />
+   <Button Text="{Binding OpenText}" Command="{Binding OpenCommand}" />
+  </VerticalStackLayout></Border>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

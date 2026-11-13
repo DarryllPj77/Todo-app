@@ -179,6 +179,16 @@ ReminderAwareTaskService decorates ILocalTaskService and reconciles after succes
 
 Windows uses AppNotificationManager with running-app evaluation rather than claiming closed-app scheduling for the unpackaged build. Android uses inexact alarms, explicit permission/channel checks, and receivers that revalidate persisted choices/task state and restore future alarms after boot. Apple uses local notification requests and a retained foreground delegate. Only Windows source/XAML is compiled here; actual OS delivery and mobile builds remain manual acceptance gates. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for semantics, limitations, failure ordering, and test steps.
 
+## Custom filters and saved views (Phase 12A)
+
+The server and sync contracts stay unchanged. Domain/Views defines immutable filter/candidate/saved-definition records plus pure normalization and LINQ query rules. Search is literal and ordinal case-insensitive across title/description/category; combined filters use AND. Relative dates use the device day at load time. Ordering is deterministic, with task-ID tie-breakers and undated-last due ordering.
+
+`TaskViewsPage -> TaskViewsViewModel -> SqliteTaskViewStore (views.db3)` manages named definitions. Results read ILocalTaskService or only the active API/account's SqliteSyncStore partition. Applying a view projects existing snapshots; it never writes task, outbox, conflict, or reminder state. Device rows navigate to the existing editor; cached rows explicitly open the Synced tasks workspace. Global queue/conflict counts remain visible outside result filters.
+
+Editable filter controls and applied rules are separate. Selecting a definition fills the draft; Apply or an explicit successful save changes applied results. Source generations/session versions reject stale asynchronous results, and account changes clear account names/drafts/rows. Device-only views remain independent of server login. Saved-definition revisions reject stale edits/deletes from other windows; deletion rechecks the scope after native confirmation and leaves tasks unchanged.
+
+The independent views.db3 version-1 schema stores ID/scope/name key/revision/JSON definition. Transactions protect duplicate names, a 50-view scope quota, revision checks, and writes. Metadata stays local and unencrypted; no package, server migration, or existing task schema changes. See [SAVED_VIEWS.md](SAVED_VIEWS.md). Tags and the remaining Phase 12 model/layout work are deliberately not implemented in this increment.
+
 ## Build boundaries
 
 `TodoApp.slnx` includes every project. `TodoApp.Core.slnf` selects the four SDK-only projects from that same solution for machines without mobile workloads. It is an explicit partial validation path. A passing core build cannot validate XAML, platform manifests, device deployment, or themes. See development progress for actual results.

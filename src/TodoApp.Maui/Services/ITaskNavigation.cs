@@ -8,4 +8,6 @@ public interface ITaskNavigation
     Task OpenAccountAsync();
     Task OpenSyncAsync();
     Task OpenRemindersAsync();
+    Task OpenTaskViewsAsync();
+    Task<bool> ConfirmDeleteViewAsync(string name);
 }

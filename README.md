@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-13): Phase 11 reminders implemented; native acceptance pending.** **Reminders** adds explicit device-local date/time choices, UTC/time-zone rules, permission handling, task/account cancellation, and visible scheduling status. All **216 tests passed, none skipped**, and the Windows build has **0 warnings/errors**. The current Windows development build requires the app to stay running for alerts; Android/Apple OS-scheduling adapters are supplied but not yet compiled/device-tested here. See [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for platform limits and hands-on checks. Phase 11 adds no server migration or sync payload change.
+**Current status (2026-11-13): Phase 12A custom filters and saved views implemented; native acceptance pending.** **Saved views** combines literal search, completion, priority, exact category, date rules, and three sort orders, with named definitions stored separately for device tasks and each API/account cache. Phase 12 continues in small increments; tags and the other advanced features are still pending. No server migration, sync payload, or task/reminder schema change is needed. All **251 tests passed with no skips**, and the Windows build has **0 warnings/errors**. See [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for behavior and hands-on checks and [DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md) for verification. Windows reminders still require the app running; mobile notification acceptance remains pending.
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Twenty-seven PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 11 run passed **216 tests, 0 skipped** (default mode without PostgreSQL: 189 portable cases, 27 database cases skipped). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Twenty-seven PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 12A suite passed **251 tests, 0 skipped** (224 portable cases; 27 PostgreSQL facts are skipped only when the test connection is absent). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -186,6 +186,12 @@ Follow the [two-device and interrupted-sync checklist](docs/SYNCHRONIZATION.md#r
 Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Reminders** in the main toolbar. Click **Allow / check notification permission**, choose an incomplete device task or active account's cached task, and save an explicit date/time at least one minute ahead. Refresh and inspect its scheduling status. A due date alone does not create an alert.
 
 **On this unpackaged Windows build, keep the app running.** It evaluates reminders every 15 seconds and attempts a recent due alert once; it does not promise closed-app delivery. Follow [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for replacement/cancellation, permission denial, time changes, and mobile acceptance. Complete/delete a task or change its due date to cancel its reminder. Title changes retain the instant. Sign-out suspends account reminders; device-only reminders continue. Choices stay on this device, and notification text omits task/account details.
+
+### Check custom filters and saved views
+
+Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** in the main toolbar. Choose Device or SyncedAccount, combine search/completion/priority/category/due rules, and click **Apply filters**. Enter a name and **Save as new view & apply** to reuse those rules later. Update/rename and confirmed deletion affect only the definition.
+
+Device views read device tasks; account views read only that API/account's current cache, so sync first to fetch server changes. Date rules use this device's day and recalculate on Apply/Refresh. Named views are local preferences, not task copies or cross-device subscriptions. Applying/deleting one does not change tasks, queues, conflicts, or reminders. Follow [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for the full checklist. Next increment: **Phase 12B tags**; the rest of Phase 12 remains open.
 
 ## Database setup
 

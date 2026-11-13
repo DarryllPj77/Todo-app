@@ -463,3 +463,33 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Tests using a fake OS adapter can verify scheduling decisions and failure policies without proving actual permissions, timers, or system delivery.
 
 **Short example:** The reminder suite verifies UTC/DST, durable IDs, caps, cancellation races, permission denial, and uncertain attempts. Windows compilation checks API/XAML references; NOTIFICATIONS.md separately tracks Windows display and Android/Apple native build/device acceptance.
+
+## Query definitions versus task copies
+
+**Definition:** A saved view stores rules that select current records, rather than copying the records that matched when the view was created.
+
+**Short example:** Saving Pending + High + Today retains that rule in views.db3. Reapplying tomorrow recomputes the device's Today against current device/cache rows. Removing the view does not remove any matching task.
+
+## Composable predicates and deterministic order
+
+**Definition:** Independent predicates can combine with AND, while explicit sort/tie-break rules keep results stable.
+
+**Short example:** TaskViewQueries combines literal search (OR across title/description/category) with completion, priority, category, and due rules. DueDate sorts undated tasks last, then title and ID break ties. No regex, SQL predicate text, or mutable task graph is needed.
+
+## Editable draft versus applied query
+
+**Definition:** Changing controls does not need to immediately change the result set. Keeping both states explicit avoids surprising partial filters.
+
+**Short example:** Selecting a saved view fills the draft controls. Apply or a successful explicit save updates results. Refresh recomputes the applied rule, and validation/conflict failures retain the unfinished draft.
+
+## Local revisions for settings
+
+**Definition:** Optimistic concurrency is useful for shared local preferences as well as server task edits.
+
+**Short example:** Two windows can load the same saved definition. Its ID/revision must still match when updating or deleting; otherwise the user refreshes/reviews instead of silently replacing another window's changes.
+
+## Incremental feature boundaries
+
+**Definition:** A large roadmap phase can consist of independently reviewable model/storage/UI increments.
+
+**Short example:** Phase 12A adds saved rules over existing task fields. Tags, hierarchy, dependency cycles, recurrence, focus history, and desktop panes each still need their own design and validation; category text is not used to pretend tags already exist.

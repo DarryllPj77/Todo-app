@@ -269,6 +269,8 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenTaskViewsAsync() => Task.CompletedTask;
+        public Task<bool> ConfirmDeleteViewAsync(string name) => Task.FromResult(ConfirmDelete);
         public Task OpenRemindersAsync() => Task.CompletedTask;
         public Task OpenSyncAsync() => Task.CompletedTask;
         public Task OpenAccountAsync() => Task.CompletedTask;
