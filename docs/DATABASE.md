@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 2 implemented TaskItem, Category, and TaskPriority in Domain. Phase 3 adds ILocalTaskService and InMemoryLocalTaskService with CRUD and LINQ filters. The dictionary is temporary process memory, not a database; a new service instance starts empty. There are still no persistence packages, connection strings, DbContext, databases, or migrations. Entity/service rules are implemented; database mapping and setup remain planned.
+Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, with CRUD, completion, and the same LINQ filters as the earlier in-memory implementation. Reopening tests verify persistence. MAUI registers the service using its app-data directory; the welcome page does not call it yet. The API/PostgreSQL database, EF DbContext, and server migrations are still future work.
 
 ## Initial entities and relationship
 
@@ -13,7 +13,7 @@ TaskItem.CategoryId is optional: uncategorized tasks are valid.
 
 TaskItem fields: client-generated `Guid Id`, required trimmed `Title`, optional `Description`, `bool IsCompleted`, optional `DateOnly DueDate`, enum `Priority`, optional `Guid CategoryId`, and UTC `DateTimeOffset CreatedAt/UpdatedAt`. Date-only due dates avoid changing the intended day across time zones. Reminders with a time will need a separate design.
 
-Category has a generated `Guid Id`, required trimmed `Name`, and a read-only task navigation collection. TaskItem.SetCategory keeps both sides consistent and supports clearing the category. CategoryId is currently computed from the in-memory reference, not an independently persisted foreign key. Before persistence, introduce explicit mapping/loading support (including scalar FK storage as needed) and test round trips; these plain classes are not claimed to be ready-made EF/SQLite mappings.
+Category has a generated `Guid Id`, required trimmed `Name`, and a read-only task navigation collection. TaskItem.SetCategory keeps both sides consistent and supports clearing the category. CategoryId is computed from the in-memory reference. SQLite stores CategoryId as a nullable foreign key; loading restores a shared category object per ID and attaches its tasks. Internal domain Restore factories preserve saved IDs and timestamps. Infrastructure receives access with InternalsVisibleTo, rather than public identity setters or storage attributes in Domain.
 
 Implemented rules:
 
@@ -24,17 +24,38 @@ Implemented rules:
 - UpdateDetails validates before mutation. IDs/CreatedAt stay fixed, and effective task edits update UpdatedAt with DateTimeOffset.UtcNow. Equivalent normalized edits are no-ops.
 - DueDate can be absent or in the past. It represents a calendar day, not a time zone or scheduled reminder.
 
-These timestamps describe local in-memory edits, not server revision ordering. The database/service phases must define materialization of persisted IDs/timestamps without creating replacement identities, and server timestamp ownership for incoming DTOs. No persistence constructors or mapping attributes are added speculatively.
+These timestamps describe local edits, not server revision ordering. SQLite materialization restores them without recording a new edit. Server timestamp ownership for incoming DTOs remains future work.
 
-Deleting a category should preserve its tasks and clear their category reference. Confirm the behavior with tests and explicit FK configuration when implementing persistence. Parent tasks, dependencies, recurrence, users, and synchronization metadata are excluded from this initial schema.
+SQLite configures and tests category deletion with ON DELETE SET NULL, preserving tasks. There is no category delete/rename service or UI yet. Parent tasks, dependencies, recurrence, users, and synchronization metadata are excluded from this initial schema.
 
 ## SQLite: local device storage
 
-Choose a maintained .NET 10-compatible SQLite library during Phase 4. Implement the existing ILocalTaskService contract using SQLite and store the database under MAUI's application data directory, not in the checkout. Keep local mapping, initialization, transactions, and upgrade logic separate from ViewModels. Do not assume a server EF migration can be reused against a different local persistence library.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. The first operation creates the directory/file and initializes schema version 1. SQLite data/journal files are ignored by Git. Native packaging on MAUI platforms still needs validation after workload installation.
 
-Preserve the Phase 3 contract: null/false for missing tasks, domain validation, explicit completion changes, full detail replacement, optional category assignment, cancellation, and the five filters with local-day semantics. GetTasksAsync returns materialized read-only membership; the temporary store returns live entities, so persistence tests must explicitly define loading and save semantics rather than assuming automatic tracking. Persisted category IDs and task identity/timestamps need deliberate materialization support. Category deletion remains future work; deleting a task currently clears its in-memory category link.
+The Phase 3 contract is preserved: null/false for missing tasks, domain validation, explicit completion changes, full detail replacement, optional category assignment, cancellation checks, and the five filters with local-day semantics. Both stores now share TaskQueries for filtering/ordering. SQLite returns detached entities with read-only collection membership. Only explicit service writes save changes; refresh to see new state. Old snapshots are not changed by subsequent writes/deletions. Category input objects are not mutated or tracked.
 
-Test that tasks survive restart and that failed writes do not silently lose UI changes. Define a local schema version and an incremental upgrade path before changing an existing user's database. Never reset user data as a normal upgrade strategy.
+### Version-1 schema and mapping
+
+| Table | Stored columns |
+| --- | --- |
+| Categories | Id TEXT primary key, Name TEXT required (1–100 trimmed characters) |
+| TaskItems | Id TEXT primary key, Title TEXT required (1–200 trimmed characters), Description nullable TEXT (up to 4000), IsCompleted INTEGER (0/1), DueDate nullable TEXT, Priority INTEGER (0/1/2), CategoryId nullable TEXT FK, CreatedAt/UpdatedAt required TEXT |
+
+IDs use Guid's string representation. DueDate uses invariant `yyyy-MM-dd`; UTC timestamps use round-trip `O` format. CategoryId is indexed, references Categories.Id, and uses ON DELETE SET NULL. Foreign keys are enabled on every connection. Domain validation checks inputs; SQLite constraints provide an additional guard. All caller values go through SQL parameters, not string-built SQL.
+
+Creating or updating a task inserts a new category in the same transaction when needed. Existing category IDs retain their stored names so stale input cannot overwrite them. Updating a category's name through a detached object is not persisted; category management needs a separate future operation. Deleting a task does not delete an otherwise empty category.
+
+### Transactions, cancellation, and failure behavior
+
+Each service call opens/disposes a connection, checks the schema, and runs its operation in a transaction. Writes commit only after all statements succeed and a final cancellation check passes. Failure rolls back category/task changes together and propagates to the caller. No optimistic UI mutation is performed inside the storage service. Separate-instance concurrent creation and forced SQL failure/rollback are covered by file-based tests.
+
+Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/async)). Task.Run moves each short operation off the future UI thread. Cancellation is cooperative before opening, between loaded rows, and before commits; it cannot instantly interrupt native statements or busy waits. Default busy timeout is five seconds. Read/modify/write transactions serialize local operations; they do not implement synchronization conflicts.
+
+### Schema version and upgrade strategy
+
+`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates both tables/index and changes it to 1 in one transaction. Version 1 is reopened without recreating tables or deleting data. A version above 1 is rejected with a clear exception, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
+
+Only initialization to version 1 exists today. Before any schema change, add an explicit incremental migration for that old version, update the supported version, and test it using a database created by the earlier schema with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
 

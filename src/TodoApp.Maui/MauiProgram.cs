@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 
+using TodoApp.Domain.Services;
+using TodoApp.Infrastructure.Services;
+
 namespace TodoApp.Maui;
 
 public static class MauiProgram
@@ -17,6 +20,9 @@ public static class MauiProgram
 
         builder.Services.AddTransient<ViewModels.WelcomeViewModel>();
         builder.Services.AddTransient<Views.WelcomePage>();
+        builder.Services.AddSingleton<ILocalTaskService>(_ =>
+            new SqliteLocalTaskService(
+                Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
 
 #if DEBUG
 		builder.Logging.AddDebug();

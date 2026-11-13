@@ -5,6 +5,8 @@ namespace TodoApp.Domain.Services;
 
 public interface ILocalTaskService
 {
+    // Treat returned entities as read models. Save changes through this service;
+    // persistent implementations return detached snapshots, not tracked objects.
     Task<IReadOnlyList<TaskItem>> GetTasksAsync(TaskFilter filter = TaskFilter.All,
         CancellationToken cancellationToken = default);
     Task<TaskItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);

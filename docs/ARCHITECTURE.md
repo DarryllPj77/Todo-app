@@ -45,15 +45,15 @@ API --------------> Domain
 Tests ------------> API, Domain, Infrastructure
 ```
 
-Domain contains TaskItem, Category, TaskPriority, TaskFilter, and the ILocalTaskService/TaskDetails contract without package dependencies. Infrastructure references Domain and implements InMemoryLocalTaskService. Neither library references MAUI or ASP.NET Core. Both hosts may use Infrastructure, but client and server registrations will select their own persistence implementation; future platform-specific packages can be split if that becomes necessary. No EF/SQLite packages are being shared prematurely.
+Domain contains TaskItem, Category, TaskPriority, TaskFilter, the ILocalTaskService/TaskDetails contract, and shared TaskQueries rules without package dependencies. Infrastructure references Domain and implements both the SQLite service and the earlier in-memory learning service. Neither library references MAUI or ASP.NET Core. Infrastructure now depends on Microsoft.Data.Sqlite 10.0.15; only MAUI registers local persistence. The API does not use the local database. Server EF/Npgsql registration remains a future phase; split assemblies if host-specific dependencies later warrant it.
 
-Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI registers the welcome ViewModel/page as transient to support separate windows; ASP.NET Core registers controllers through `AddControllers`. ILocalTaskService is now a real boundary exercised by tests. Neither host registers the temporary in-memory implementation: the welcome page does not need task operations yet. Register the persistent implementation with task ViewModels when the UI phase arrives; avoid creating an extra empty repository abstraction.
+Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI registers the welcome ViewModel/page as transient to support separate windows; ASP.NET Core registers controllers through `AddControllers`. MAUI now registers ILocalTaskService as a singleton SqliteLocalTaskService using FileSystem.AppDataDirectory/todoapp.db3. The service opens a new connection per operation, so singleton lifetime does not mean one permanently open connection. The welcome page still has no task operations; task ViewModels will consume this registration in Phase 5. No second repository interface is needed.
 
 ## Intended algorithm and main features
 
 The current task logic lives in plain domain methods. Construction validates and trims title/description, validates the priority enum, generates an ID, and captures UTC timestamps. UpdateDetails validates all inputs before assigning any fields, so rejected edits leave the task unchanged. Equivalent edits and repeated SetCompleted/SetCategory requests are no-ops. Real edits update UpdatedAt while preserving identity and CreatedAt.
 
-TaskItem.SetCategory removes the task from its previous category and adds it to the new one. Category exposes a read-only collection so callers cannot bypass that relationship logic. CategoryId currently derives from the category reference; persistence mapping and ID-only loading will be designed when storage arrives. No category deletion operation exists yet. Category rename preserves its ID and tasks.
+TaskItem.SetCategory removes the task from its previous category and adds it to the new one. Category exposes a read-only collection so callers cannot bypass that relationship logic. CategoryId derives from the category reference; SQLite stores a scalar FK and rebuilds references when reading. Internal Restore factories preserve saved identities/timestamps without public setters. Domain grants Infrastructure access through InternalsVisibleTo; neither UI nor API receives public hydration methods. No category deletion service exists yet. Category rename preserves its ID and tasks in memory; category rename persistence is not part of the task-service contract.
 
 Past due dates remain valid so overdue tasks can be represented. DueDate is DateOnly? because a deadline day is different from a notification time. Priority has explicit stable values: Low = 0, Normal = 1, High = 2. Domain methods use exceptions for invalid programmer/service input; future ViewModels and API validation will translate failures into useful messages. The domain has no UI change-notification or service dependencies.
 
@@ -81,7 +81,27 @@ GetTasksAsync applies these LINQ predicates, then sorts titles case-insensitivel
 
 Undated tasks do not match DueToday; yesterday/tomorrow are excluded. TimeProvider.System supplies local time by default. Tests supply a small TimeProvider subclass to exercise UTC+8/UTC-8 and advancing past midnight without waiting or depending on the test machine's time zone. Today is recomputed on each query.
 
-The contract returns Task<T> so SQLite can perform real asynchronous I/O later. The in-memory version has no I/O: Task.FromResult supplies completed results without Task.Run, fake delays, or unnecessary async/await. Results have read-only, materialized collection membership, but the TaskItem objects are live references. Callers must use service methods for writes and keep unsaved editor fields separately; these are not detached database snapshots. The temporary service is intended for sequential local use, is not thread-safe, and must not be reused as a concurrent server/sync store. SQLite will define transactions, loading/identity, and ownership at the persistence boundary.
+The contract returns Task<T>. The in-memory version has no I/O: Task.FromResult supplies completed results without fake delays. Its results have read-only, materialized membership but live TaskItem references. Treat all service outputs as read models and use service methods for writes; UI editor fields should be separate. The temporary in-memory service is sequential-use and not thread-safe.
+
+## SQLite persistence (Phase 4)
+
+```text
+MAUI DI -> ILocalTaskService -> SqliteLocalTaskService
+                                  -> SqliteTaskDatabase (schema/version)
+                                  -> parameterized SQL -> app-data/todoapp.db3
+```
+
+Microsoft.Data.Sqlite 10.0.15 was checked for .NET compatibility and restored successfully. It bundles native SQLite; desktop tests verify Windows behavior, not native packaging for every MAUI target. EF Core remains reserved for the PostgreSQL server phase so local SQL and schema responsibilities stay visible while learning.
+
+SQLite's provider executes its async ADO.NET methods synchronously ([official limitation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/async)). This implementation uses Task.Run once per short database operation to keep blocking work off the future UI thread. It opens/disposes a connection and transaction inside that worker and never shares them between threads. This is a deliberate SQLite adapter choice, not guidance to wrap future HTTP/PostgreSQL async I/O in Task.Run.
+
+Each call initializes/checks the schema version, then uses a transaction for its operation. Category insertion and task insertion/update commit together. Disposing an uncommitted transaction rolls back changes on validation, SQL errors, or cancellation observed before commit. Failures propagate to callers. Tokens are checked before opening, while loading rows, and immediately before commits; a running native statement or lock wait cannot be instantly canceled. The connection has a five-second busy timeout. Cancellation arriving after commit cannot undo a successful write.
+
+Reads load categories and tasks into a fresh graph, restoring IDs, UTC timestamps, and shared category references. Returned entities are detached snapshots: later writes do not update them, and editing them does not save data. Refresh after a write. Create returns only the created task and its category reference; use a read query for a complete category/task graph. No live object cache is maintained.
+
+For this small dataset, reads and task edits load the current graph, and both stores use TaskQueries for identical LINQ filter/order behavior. Transactions serialize read-modify-write operations, avoiding lost writes from separate service instances; this is not user-visible conflict handling or distributed sync. SQL-level paging and narrower queries can be introduced if real data volume warrants them.
+
+Assigning a category saves its ID/name if new. Reusing an existing ID uses the stored name instead of overwriting it from a stale caller object. Inputs are not attached or mutated, including on failed writes. Category rename/delete operations remain outside ILocalTaskService. Task deletion retains the category row; SQLite's category FK uses ON DELETE SET NULL for any future category deletion operation.
 
 The MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Notification scheduling, authentication, network synchronization, and advanced task relationships are later work.
 
@@ -95,7 +115,7 @@ MAUI ViewModel -> local task service -> SQLite
                                 HTTP DTOs -> API -> EF Core -> PostgreSQL
 ```
 
-SQLite will be the client's immediate read/write source, so the app remains usable without a server. ILocalTaskService already separates callers from the temporary store; the SQLite implementation will replace it. ViewModels should not depend on network availability.
+SQLite is implemented as the client's persistent read/write source; Phase 5 will expose it through task screens. ILocalTaskService separates callers from storage. ViewModels should not depend on network availability.
 
 Later, write a task change and an outbox entry in one local transaction. Queue creates/edits/deletions, retain deletion tombstones until acknowledged, preserve client-generated IDs, and use idempotent uploads plus a server change cursor for downloads. Connectivity events can trigger attempts, but successful requests determine reachability. Add cancellation, retry/backoff, and sync status at that phase.
 

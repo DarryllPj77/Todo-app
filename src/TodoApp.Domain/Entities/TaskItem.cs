@@ -36,6 +36,30 @@ public sealed class TaskItem
         category?.AttachTask(this);
     }
 
+    internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
+        TaskPriority priority, Category? category, bool isCompleted,
+        DateTimeOffset createdAt, DateTimeOffset updatedAt)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("A stored task must have an ID.", nameof(id));
+        }
+
+        return new TaskItem(id, title, description, dueDate, priority, category,
+            isCompleted, createdAt, updatedAt);
+    }
+
+    private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
+        TaskPriority priority, Category? category, bool isCompleted,
+        DateTimeOffset createdAt, DateTimeOffset updatedAt)
+        : this(title, description, dueDate, priority, category)
+    {
+        Id = id;
+        IsCompleted = isCompleted;
+        CreatedAt = createdAt.ToUniversalTime();
+        UpdatedAt = updatedAt.ToUniversalTime();
+    }
+
     public void UpdateDetails(string title, string? description, DateOnly? dueDate, TaskPriority priority)
     {
         // Validate everything first: a rejected edit must not partially change the task.

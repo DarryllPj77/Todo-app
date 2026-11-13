@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 3 local CRUD/filtering is implemented and tested; Phase 1 MAUI verification remains pending because no workloads are installed.
+Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 4 SQLite persistence is implemented and tested on Windows; Phase 1 MAUI/native verification remains pending because no workloads are installed.
 
 ## Phase 1 — Solution foundation (client verification pending)
 
@@ -51,11 +51,11 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 - [x] Filter tests cover all five selections, local-date boundaries, midnight changes, and missing due dates.
 - [x] Missing IDs, rejected edits, category cleanup, cancellation, and result ordering are covered; 36 tests pass across the solution's core projects.
 
-## Phase 4 — SQLite persistence
+## Phase 4 — SQLite persistence (implemented; native MAUI verification pending)
 
 **Goal:** Retain tasks without a network connection.
 
-**Concepts learned:** Local tables, asynchronous I/O, transactions, schema upgrades.
+**Concepts learned:** Local tables, provider I/O limitations, worker tasks, transactions, schema versioning, and detached loading.
 
 **Tasks:** Select compatible SQLite package, map tasks/categories, initialize app-data storage, implement the local service, and verify restart persistence.
 
@@ -63,8 +63,11 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 
 **Completion checklist:**
 
-- [ ] CRUD/relationships and upgrade behavior pass repository tests.
-- [ ] Database errors are surfaced without silently losing edits.
+- [x] File-based CRUD, relationships, identity/timestamp round trips, and reopening tests pass.
+- [x] Schema version 1 initializes transactionally and reopens without data reset; unknown newer versions are rejected.
+- [x] Database errors propagate; forced failed writes roll back category/task changes together.
+- [x] MAUI registers the persistent service using its app-data path (not yet consumed by a task screen).
+- [ ] Verify native SQLite packaging and persistent storage on target MAUI devices after installing workloads.
 
 ## Phase 5 — MVVM task UI (local MVP)
 

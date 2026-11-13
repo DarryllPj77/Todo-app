@@ -1,6 +1,6 @@
 # Learnings
 
-Only concepts used in this project are recorded here. Add async database and UI collection entries when their implementations arrive.
+Only concepts used in this project are recorded here. Add UI collection/command entries when task screens arrive.
 
 ## Solution and project reference
 
@@ -138,22 +138,64 @@ Only concepts used in this project are recorded here. Add async database and UI 
 
 **Definition:** ToList executes a sequence query and stores its current membership. It does not clone the objects inside the list.
 
-**Short example:** A GetTasksAsync result keeps its membership after another task is added, but its TaskItem instances are still live objects. An editor should keep unsaved fields separately and use service methods to save them.
+**Short example:** In-memory GetTasksAsync keeps its membership after another task is added, but its TaskItem instances are live objects. SQLite instead rebuilds detached objects on every read. An editor should keep unsaved fields separately and use service methods to save them in either case.
 
 ## Completed tasks versus asynchronous I/O
 
 **Definition:** A Task<T> can already have a result. An in-memory operation need not occupy a background thread or pretend to perform I/O just to match an asynchronous contract.
 
-**Short example:** `Task.FromResult(result)` returns the local query result; a future SQLite implementation can await actual database work behind the same interface.
+**Short example:** `Task.FromResult(result)` returns the in-memory query result. Microsoft.Data.Sqlite has synchronous native I/O even behind its async methods, so this adapter uses Task.Run to move short database operations off the UI thread.
 
 ## CancellationToken
 
 **Definition:** A token lets a caller request that work stop cooperatively. Code must observe the token to honor it.
 
-**Short example:** `cancellationToken.ThrowIfCancellationRequested()` runs before the in-memory service reads or changes data. SQLite will pass the token through supported asynchronous operations.
+**Short example:** `cancellationToken.ThrowIfCancellationRequested()` runs before operations and before SQLite commits. Cancellation rolls back work when observed before commit; it cannot instantly stop a native SQLite statement.
 
 ## TimeProvider and deterministic date tests
 
 **Definition:** TimeProvider supplies time and local time-zone information. A test-specific implementation makes calendar behavior predictable.
 
 **Short example:** `DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime)` computes Due Today. Tests use fixed UTC instants with UTC+8/UTC-8 to verify that local dates, rather than UTC dates, drive the filter.
+
+## Connection and parameterized SQL
+
+**Definition:** A database connection accesses a database. SQL parameters carry values separately from SQL syntax, protecting quotes and user text from being interpreted as commands.
+
+**Short example:** `command.Parameters.AddWithValue("$title", task.Title)` supplies the value used by `$title` in INSERT/UPDATE. Even SQL-looking task titles are stored as data.
+
+## Transaction and rollback
+
+**Definition:** A transaction commits a group of changes together. Disposing it without committing rolls those changes back.
+
+**Short example:** Inserting a new category and its task happens in one transaction. A test forces the task INSERT to fail and verifies that neither row remains.
+
+## Foreign key and delete behavior
+
+**Definition:** A foreign key links a row to a valid row in another table. Delete behavior defines what happens to the link when the referenced row is removed.
+
+**Short example:** TaskItems.CategoryId references Categories.Id with ON DELETE SET NULL. Removing a category at the database level preserves its tasks as uncategorized.
+
+## Hydration and internal access
+
+**Definition:** Hydration rebuilds objects from stored values while retaining identity. Internal members can be shared with a specific assembly using InternalsVisibleTo.
+
+**Short example:** Infrastructure calls `TaskItem.Restore(...)` when reading saved IDs/timestamps. Public callers still cannot set task identity or creation time.
+
+## Schema versioning
+
+**Definition:** A schema version identifies the database layout. Version-specific migrations let future code upgrade existing data deliberately.
+
+**Short example:** `PRAGMA user_version = 1` records the initial schema inside its creation transaction. The app rejects newer unknown versions instead of deleting their data.
+
+## Invariant storage formats
+
+**Definition:** An invariant representation stays the same regardless of the device's display language or date conventions.
+
+**Short example:** DueDate is written as `yyyy-MM-dd` with CultureInfo.InvariantCulture; DateTimeOffset uses round-trip `O` formatting to retain timestamp precision and offset.
+
+## Detached snapshots
+
+**Definition:** A detached object represents a read result without automatic change tracking or save behavior.
+
+**Short example:** Changing a task returned by SqliteLocalTaskService does not update the database. Call UpdateAsync with TaskDetails, then query again to refresh the UI.

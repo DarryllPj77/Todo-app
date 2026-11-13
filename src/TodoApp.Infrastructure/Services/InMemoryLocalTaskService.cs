@@ -1,5 +1,6 @@
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Rules;
 using TodoApp.Domain.Services;
 
 namespace TodoApp.Infrastructure.Services;
@@ -22,21 +23,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         cancellationToken.ThrowIfCancellationRequested();
         var today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
 
-        IEnumerable<TaskItem> filteredTasks = filter switch
-        {
-            TaskFilter.All => tasks.Values,
-            TaskFilter.Pending => tasks.Values.Where(task => !task.IsCompleted),
-            TaskFilter.Completed => tasks.Values.Where(task => task.IsCompleted),
-            TaskFilter.DueToday => tasks.Values.Where(task => task.DueDate == today),
-            TaskFilter.HighPriority => tasks.Values.Where(task => task.Priority == TaskPriority.High),
-            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Choose a defined task filter.")
-        };
-
-        IReadOnlyList<TaskItem> result = filteredTasks
-            .OrderBy(task => task.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(task => task.Id)
-            .ToList()
-            .AsReadOnly();
+        var result = TaskQueries.ApplyFilter(tasks.Values, filter, today);
 
         return Task.FromResult(result);
     }

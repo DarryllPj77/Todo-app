@@ -15,6 +15,21 @@ public sealed class Category
         Name = NormalizeName(name);
     }
 
+    internal static Category Restore(Guid id, string name)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("A stored category must have an ID.", nameof(id));
+        }
+
+        return new Category(id, name);
+    }
+
+    private Category(Guid id, string name) : this(name)
+    {
+        Id = id;
+    }
+
     public void Rename(string name)
     {
         Name = NormalizeName(name);

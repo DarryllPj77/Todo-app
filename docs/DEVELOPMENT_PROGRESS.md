@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 3 — Local CRUD and basic filters implemented.** ILocalTaskService and its temporary in-memory implementation support task creation, lookup/listing, full detail edits, completion/reopening, deletion, and five LINQ filters. The service is exercised by tests; it is not yet used by the MAUI welcome screen or API. Phase 1 client compilation and visual/runtime verification remain pending. Phase 4 SQLite persistence has not started.
+**Phase 4 — SQLite persistence implemented and file-tested on Windows.** SqliteLocalTaskService implements the existing local contract with task/category tables, schema version 1, parameterized SQL, and transactional writes. MAUI registers it using its app-data path, but the welcome page does not consume it yet. Phase 1/4 MAUI compilation, native packaging, and device verification remain pending because no workloads are installed. Phase 5 task screens have not started.
 
 ## Completed work
 
@@ -24,34 +24,42 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Added full editable-field replacement, null/false missing-task results, domain validation before mutation, task/category cleanup on deletion, and cancellation checks.
 - Implemented All/Pending/Completed/Due Today/High Priority using LINQ, with case-insensitive ordinal title sorting and ID tie-breaking. Due Today/High Priority include completed tasks.
 - Added 14 service test cases covering CRUD, failed writes, missing tasks, optional-field clearing, filters, local time-zone/midnight behavior, materialized result membership, cancellation, and invalid inputs.
+- Added Microsoft.Data.Sqlite 10.0.15, checked against the package's published compatibility and successfully restored against the installed .NET 10 SDK.
+- Added versioned SQLite initialization, task/category FK mapping, parameterized SQL, worker-thread execution, and per-operation connections/transactions.
+- Added internal hydration factories to preserve stored identity/timestamps and shared TaskQueries to keep filter/order behavior identical across implementations.
+- Registered SQLite in MAUI at FileSystem.AppDataDirectory/todoapp.db3; added Git ignores for database/journal files.
+- Added 19 real-file integration test cases for reopen retention, detached objects, full CRUD/filter behavior, schema/version safety, forced-write rollback, FK behavior, cancellation, parameter handling, and separate-instance concurrent writes.
 
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
-| `dotnet build TodoApp.Core.slnf --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| `dotnet test TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 36 tests, 0 failed, 0 skipped; core projects rebuilt |
-| `dotnet build TodoApp.slnx --nologo -m:1` (Phase 1 check) | Blocked: NETSDK1147, missing maui-android workload; workload list is still empty in Phase 2 |
+| `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
+| `dotnet test TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 55 tests, 0 failed, 0 skipped; core projects rebuilt |
+| Windows-only MAUI build with `-p:TargetFrameworks=net10.0-windows10.0.19041.0` | Blocked: NETSDK1147; no workloads installed (resolver names maui-tizen in this environment, despite a Windows-only target; the app has no Tizen target) |
+| Full solution build (historical Phase 1 check) | Blocked: NETSDK1147, missing maui-android workload |
 | MAUI launch, theme switching, native device verification | Not run; workloads are absent |
-| PostgreSQL/SQLite verification | Not applicable; persistence is not implemented |
+| SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
+| PostgreSQL verification | Not applicable; server persistence is not implemented |
 
 Initial sandbox build attempts returned no diagnostics; normal SDK access produced the definitive results above. NuGet restore succeeded for the core projects. The in-memory API integration test verifies actual startup, routing, controller DI, status, and JSON; it does not test a deployed HTTPS listener/certificate.
 
-Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions restored for net10.0. MVC.Testing 10.0.15 matches the installed ASP.NET runtime line. EF/Npgsql/SQLite/JWT packages are intentionally deferred.
+Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions restored for net10.0. MVC.Testing 10.0.15 matches the installed ASP.NET runtime line. Microsoft.Data.Sqlite 10.0.15 supplies local SQLite/native dependencies; its synchronous native calls are offloaded once per operation rather than falsely treated as nonblocking ADO.NET async I/O. EF/Npgsql/JWT packages remain deferred.
 
 ## Work in progress / pending verification
 
 - Install a target MAUI workload and its native prerequisites using README instructions.
 - Build/run that target; verify welcome content, resizing, and system light/dark theme changes.
-- Review the Phase 3 service contract before implementing SQLite persistence. The temporary store is sequential-use process memory with live entity references, not durable/thread-safe storage. Full client compilation is not claimed.
+- Verify native SQLite packaging and the app-data path on the chosen MAUI target after workload setup. The persistent service has passed Windows test-host checks only; client compilation is not claimed.
+- Review Phase 4 before adding Phase 5 task screens. No SQLite version-2 migration is needed yet; future schema changes require explicit incremental migration tests.
 
 ## Uncommitted changes
 
-Phase 3 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 2 recorded in local commit `0e50592`. Use `git status` for live state. Local template downloads and build output remain ignored.
+Phase 4 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 3 recorded in local commit `337e418`. Use `git status` for live state. Local database files, template downloads, and build output remain ignored.
 
-- New: `src/TodoApp.Domain/Enums/TaskFilter.cs`, `Services/TaskDetails.cs`, `Services/ILocalTaskService.cs`; `src/TodoApp.Infrastructure/Services/InMemoryLocalTaskService.cs`; `tests/TodoApp.Tests/LocalTaskServiceTests.cs`.
-- Removed: `.gitkeep` from the now-populated Infrastructure/Services folder.
-- Modified: README and all five documentation files to reflect the service contract, temporary limits, and next task.
+- New: Domain/Properties/AssemblyInfo.cs, Domain/Rules/TaskQueries.cs, Infrastructure/Persistence/SqliteTaskDatabase.cs, Infrastructure/Services/SqliteLocalTaskService.cs, and tests/TodoApp.Tests/SqliteLocalTaskServiceTests.cs.
+- Removed: `.gitkeep` from now-populated Domain/Rules and Infrastructure/Persistence.
+- Modified: TaskItem/Category (internal restoration), ILocalTaskService comments, the in-memory filter implementation, Infrastructure project package reference, MauiProgram DI, .gitignore, README, and all five docs.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
 
@@ -65,19 +73,20 @@ Foundation file groups (historical):
 - Tests: project file and `ApiStartupTests.cs`.
 - Docs: README plus ROADMAP, ARCHITECTURE, DATABASE, LEARNINGS, and this progress file.
 
-Phase 3 preserves the existing entities, API, and MAUI source. `.tools`, `bin`, and `obj` are local generated artifacts excluded from the intended Git scope.
+Phase 4 preserves the API and existing MAUI welcome screen. `.tools`, `bin`, `obj`, and SQLite files/journals are local artifacts excluded from the intended Git scope.
 
 ## Committed milestones
 
 - `2b24e81` — `Create Todo App Phase 1 foundation`: all 69 foundation files committed after reviewing staging scope and rerunning the core integration test (1 passed).
 - `00ee06a` — `docs: record initial foundation milestone`: foundation publication verified against GitHub on main in the preceding run.
 - `0e50592` — `Implement Phase 2 domain models and business rules`: verified in local Git history at the start of Phase 3.
-- Phase 3 has no committed milestone yet. No merge or force-push has been performed.
+- `337e418` — `Implement Phase 3 local CRUD service and LINQ filters`: verified in local Git history at the start of Phase 4.
+- Phase 4 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Review Phase 3, then implement ILocalTaskService with SQLite in Phase 4: choose a compatible library, define loading/identity and category mapping, persist under app data, plan schema upgrades, and test restart retention. Before client UI work, finish the MAUI workload setup and outstanding Phase 1 client verification. The task UI remains Phase 5. Do not proceed automatically to either phase.
+Review Phase 4, finish target MAUI tooling setup, then build Phase 5: task-list/editor ViewModels, observable collections and commands, create/edit/delete/toggle/filter controls, category input, empty/error states, and responsive light/dark screens. Verify actual app restart retention and native behavior on the target device; file reopen tests do not replace that check. Do not begin Phase 5 automatically.
 
 ## What to learn now
 
-Read ILocalTaskService, then trace its implementation alongside LocalTaskServiceTests. Learn how interfaces separate a caller from storage, how LINQ filters and materializes a sequence, why Task.FromResult is appropriate for memory-only work, and how cancellation is observed. Compare local-day versus UTC-day filtering and distinguish read-only collection membership from immutable entity objects. See LEARNINGS for short examples.
+Read SqliteTaskDatabase's initialization and SqliteLocalTaskService's create/read/update paths alongside SqliteLocalTaskServiceTests. Learn parameterized SQL, connection/transaction disposal, rollback, foreign keys, schema versions, detached hydration, and invariant date formats. Compare the provider's synchronous I/O with the task-returning service boundary, and understand why cancellation is cooperative. See LEARNINGS for short examples.

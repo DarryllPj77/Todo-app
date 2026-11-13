@@ -483,3 +483,13 @@ $RECYCLE.BIN/
 
 # Local template downloads and isolated template engine
 .tools/
+
+# Local SQLite data and journal files
+*.db
+*.db-*
+*.db3
+*.db3-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
