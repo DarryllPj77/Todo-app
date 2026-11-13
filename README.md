@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 4 SQLite persistence implemented and tested on Windows; MAUI/native build and runtime verification still await workload setup.** SqliteLocalTaskService saves task/category data through ILocalTaskService. File-reopening tests verify retained data. The MAUI host registers this service, but its welcome screen does not use it yet. Task screens are Phase 5; server databases, authentication, and synchronization remain later work. See [development progress](docs/DEVELOPMENT_PROGRESS.md) for verified results and the next task.
+**Current status (2026-11-13): Phase 5 offline task screens implemented; Windows build and native launch verified.** The app now opens a task list connected to SQLite, with add/edit, completion/reopening, delete confirmation, filters, and optional due date/category. All 71 core/presentation tests pass. The Windows empty state and editor were inspected in dark mode; the full manual acceptance checklist, light-mode switching, and mobile device checks remain pending. Server task endpoints, authentication, and synchronization are later work. See [development progress](docs/DEVELOPMENT_PROGRESS.md).
 
 ## Technology and prerequisites
 
@@ -26,7 +26,8 @@ src/
   TodoApp.Infrastructure/   SQLite schema/service; in-memory learning implementation
   TodoApp.Api/              Controllers, Services, Data, Configuration
   TodoApp.Maui/             Views, ViewModels, Models, Services, Resources, Platforms
-tests/TodoApp.Tests/        Domain, CRUD/filter, SQLite file, and API startup tests
+tests/TodoApp.Tests/        Domain, storage, ViewModel behavior, and API startup tests
+scripts/Run-Windows.ps1     Windows build/run launcher (PowerShell 5.1 compatible)
 docs/                      Roadmap, architecture, database plan, learnings, progress
 ```
 
@@ -59,27 +60,52 @@ This endpoint checks application liveness only. No task endpoints, database read
 
 ## Build and run MAUI
 
-Install the workloads using the platform tooling described in the [official MAUI setup guide](https://learn.microsoft.com/en-us/dotnet/maui/get-started/installation?view=net-maui-10.0). For a Windows-first setup, an elevated terminal may be needed:
+On this checkout, a portable SDK and Windows MAUI workload are installed under the ignored `.tools/dotnet` folder. The machine-wide installer was canceled at elevation; the local installation succeeded without changing the global SDK. From the solution root:
+
+```powershell
+.\scripts\Run-Windows.ps1
+# Build without launching:
+.\scripts\Run-Windows.ps1 -BuildOnly
+```
+
+The launcher prefers that local SDK when present, otherwise uses `dotnet` from PATH. Its build-only mode was verified. Windows compilation and direct launch of the resulting executable were verified separately. It restores/builds only the MAUI Windows target using the project-specific `TodoAppTargetFrameworks` property. Do not use a global `TargetFrameworks` override: that also retargets referenced net10.0 libraries and can cause NETSDK1005. Windows App SDK files are bundled with the unpackaged app, so its runtime does not need a separate administrator installation. This is a development build, not a signed release installer.
+
+On a fresh clone, `.tools` is absent. Install the matching .NET SDK and the platform workload using the [official setup guide](https://learn.microsoft.com/en-us/dotnet/maui/get-started/installation?view=net-maui-10.0), then use the same launcher:
 
 ```powershell
 dotnet workload install maui-windows
-dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -p:TargetFrameworks=net10.0-windows10.0.19041.0
-dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TargetFrameworks=net10.0-windows10.0.19041.0
+.\scripts\Run-Windows.ps1
 ```
 
-Overriding `TargetFrameworks` limits restore and build to Windows, avoiding unrelated Android/Apple tooling requirements. The Windows template uses unpackaged deployment. Expect a welcome page with system light/dark theme colors; task management comes later.
+If PowerShell reports that script execution is restricted, use the equivalent CLI commands through an installed SDK rather than changing system policy:
+
+```powershell
+dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TodoAppTargetFrameworks=net10.0-windows10.0.19041.0
+```
 
 For Android, install `maui-android` plus its SDK/JDK, select a device/emulator, and use:
 
 ```powershell
-dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TargetFrameworks=net10.0-android
+dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TodoAppTargetFrameworks=net10.0-android
 ```
 
-To provision the broader workload set, `dotnet workload install maui` is available. A full `dotnet build TodoApp.slnx` evaluates all configured target frameworks and requires the corresponding tooling/remote Apple setup. Prefer a single-platform build while learning. No MAUI workloads were installed automatically during this run.
+To provision the broader workload set, `dotnet workload install maui` is available. A full `dotnet build TodoApp.slnx` evaluates all configured targets and requires corresponding tooling/remote Apple setup. Only Windows was compiled/launched in Phase 5; Android/iOS/Mac Catalyst remain unverified.
+
+## Check the app yourself
+
+1. Click **New task**, enter a title, description, priority, optional due date, and optional category. **Clear** removes a due date.
+2. Click **Save task**. Select the task in the list to show **Edit**, **Complete/Reopen**, and **Delete** actions.
+3. Edit fields and save; then edit again and cancel to confirm unsaved fields are discarded.
+4. Check All, Pending, Completed, Due today, and High priority. The last two include completed tasks if their date/priority matches.
+5. Delete a disposable test task and check both Cancel and Delete in the confirmation dialog.
+6. Close and reopen the app. Confirm remaining tasks, categories, due dates, and completion state persist.
+7. Check light/dark system themes and a narrow window. Phone layout/device behavior still needs native testing.
+
+Use an existing category name to reuse a category visible among stored tasks, or enter a new name to create/assign one. Changing the name in a task editor reassigns that task; it does not rename a category globally. Category management and empty-category browsing are later work. Tasks are local to this device; no API or login is needed.
 
 ## Database setup
 
-**No database server or manual SQLite installation is required.** Package restore supplies the SQLite library. The MAUI registration chooses `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`; the first service operation creates the directory, database, and version-1 schema. Since the welcome page does not query tasks, launching it alone does not create the file yet.
+**No database server or manual SQLite installation is required.** Package restore supplies the SQLite library. The MAUI registration chooses `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`; opening the task list queries the service and creates the directory, database, and version-1 schema when absent. Do not delete this file if you want to keep your tasks.
 
 Tests create temporary database files and remove them after verification. There is no EF DbContext, PostgreSQL configuration, or EF migration yet. SQLite upgrades use `PRAGMA user_version`; unknown newer versions are rejected without resetting data. [DATABASE.md](docs/DATABASE.md) explains mapping, transactions, category behavior, and the future server setup. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
 
@@ -96,7 +122,7 @@ await tasks.SetCompletedAsync(task.Id, true);
 var completed = await tasks.GetTasksAsync(TaskFilter.Completed);
 ```
 
-Create another SqliteLocalTaskService with the same path to read the saved data again. Phase 5 will inject ILocalTaskService into task ViewModels. Changes to returned objects alone are not saved: call UpdateAsync/SetCompletedAsync/DeleteAsync explicitly. InMemoryLocalTaskService remains a temporary learning implementation and still loses data when recreated.
+Create another SqliteLocalTaskService with the same path to read saved data again. Task ViewModels now receive ILocalTaskService through DI. Changes to returned objects alone are not saved: call UpdateAsync/SetCompletedAsync/DeleteAsync explicitly. InMemoryLocalTaskService remains a learning implementation and loses data when recreated.
 
 ## Learning path and Git
 

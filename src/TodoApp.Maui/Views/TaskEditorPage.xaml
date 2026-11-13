@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
+             x:Class="TodoApp.Maui.Views.TaskEditorPage"
+             x:DataType="vm:TaskEditorViewModel"
+             Title="{Binding Heading}" Style="{StaticResource TaskPage}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16" MaximumWidthRequest="720" HorizontalOptions="Fill">
+            <Label Text="{Binding Heading}" Style="{StaticResource TaskHeading}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="One clear next step." Style="{StaticResource TaskMuted}" />
+            <Border Style="{StaticResource TaskCard}">
+                <VerticalStackLayout Spacing="12" IsEnabled="{Binding IsIdle}">
+                    <Label Text="Title" FontAttributes="Bold" />
+                    <Entry Text="{Binding Title}" Placeholder="What needs to get done?" MaxLength="200"
+                           SemanticProperties.Description="Task title, required" />
+                    <Label Text="Description" FontAttributes="Bold" />
+                    <Editor Text="{Binding Description}" Placeholder="Add a few details (optional)"
+                            AutoSize="TextChanges" MinimumHeightRequest="100" MaxLength="4000"
+                            SemanticProperties.Description="Task description, optional" />
+                    <Label Text="Priority" FontAttributes="Bold" />
+                    <Picker ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority, Mode=TwoWay}"
+                            Title="Priority" SemanticProperties.Description="Task priority" />
+                    <Label Text="Due date (optional)" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <DatePicker Date="{Binding DueDate, Mode=TwoWay}" Format="ddd, dd MMM yyyy"
+                                    SemanticProperties.Description="Optional due date" />
+                        <Button Grid.Column="1" Text="Clear" Command="{Binding ClearDueDateCommand}"
+                                Style="{StaticResource TaskAction}" />
+                    </Grid>
+                    <Label Text="Category (optional)" FontAttributes="Bold" />
+                    <Entry Text="{Binding CategoryName}" MaxLength="100" Placeholder="For example, Work or Personal"
+                           SemanticProperties.Description="Optional category name" />
+                    <Label Text="Use an existing name to reuse its category, or enter a new one."
+                           Style="{StaticResource TaskMuted}" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Style="{StaticResource TaskError}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
+                <Button Grid.Column="1" Text="Save task" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

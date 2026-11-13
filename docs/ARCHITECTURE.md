@@ -25,14 +25,21 @@ MAUI provides native Windows, Android, iOS, and macOS (Mac Catalyst) application
 The current flow is:
 
 ```text
-MauiProgram: register WelcomePage and WelcomeViewModel
-  -> App.CreateWindow: resolve a fresh page for each window
-     -> NavigationPage -> WelcomePage -> bound WelcomeViewModel properties
+MauiProgram: register storage, navigation, pages, and ViewModels
+  -> App.CreateWindow: create a DI scope for each window
+     -> NavigationPage -> TaskListPage -> TaskListViewModel -> SQLite
+          -> TaskEditorPage -> TaskEditorViewModel -> SQLite
 ```
 
-The immutable welcome properties need no change notifications. When task editing arrives, use `INotifyPropertyChanged` for mutable state, commands for actions, and `ObservableCollection<T>` for UI-bound task collections. Do not put database logic in page event handlers. System light/dark theme resources and `AppThemeBinding` supply initial theme behavior; visual verification is pending.
+ObservableViewModel implements INotifyPropertyChanged using a readable SetProperty helper. TaskListViewModel exposes ObservableCollection<TaskRow>, selection/filter state, busy/error messages, and commands. TaskEditorViewModel holds separate editable fields so typing or canceling does not mutate stored entities. TaskRow is a read-only display snapshot with a title and status/date/category summary. Refresh rebuilds the rows after writes.
 
-NavigationPage is intentionally sufficient for one screen. Shell routes and the eventual desktop `Categories | Tasks | Task Details` layout can be introduced when navigation/adaptive layout needs them. On phones, list/detail navigation will replace desktop panes.
+AsyncCommand implements ICommand, prevents overlapping execution, updates CanExecute, and catches exceptions at the async event boundary. ViewModels handle validation and operation errors without clearing edits on a failed save. A successful create is marked saved before returning to the list, preventing a navigation failure from creating duplicates on retry. Delete requests require confirmation; a missing task is reported and the list is refreshed. Busy state disables conflicting controls. Validation errors explain title/description/category limits and invalid priorities.
+
+Views contain bindings and presentation events only: appearing refreshes the list, and a picker change requests its refresh command. TaskNavigationService implements a small ITaskNavigation boundary for pushing/popping editor pages and showing native delete confirmation. Tests replace that boundary without starting a device. No database logic lives in code-behind.
+
+Each window owns a DI scope for its navigation service and list ViewModel/page; the scope is disposed when its Window is destroyed. Editor pages/ViewModels are transient within that scope. The SQLite service is shared as a singleton and opens an independent connection/transaction per call. This prevents one window's navigation from targeting another window.
+
+NavigationPage provides normal list/editor navigation on both desktop and phone layouts. Maximum content widths and a scrollable editor keep the first UI modest; final desktop `Categories | Tasks | Task Details` panes remain future work. AppThemeBinding styles support both system themes. The native Windows dark empty state and editor have been inspected; light/narrow/mobile acceptance checks remain pending. The .NET 10 nullable DatePicker binds to DateTime? and converts to DateOnly? on save; Clear restores null.
 
 ## Project references and responsibility
 
@@ -47,7 +54,7 @@ Tests ------------> API, Domain, Infrastructure
 
 Domain contains TaskItem, Category, TaskPriority, TaskFilter, the ILocalTaskService/TaskDetails contract, and shared TaskQueries rules without package dependencies. Infrastructure references Domain and implements both the SQLite service and the earlier in-memory learning service. Neither library references MAUI or ASP.NET Core. Infrastructure now depends on Microsoft.Data.Sqlite 10.0.15; only MAUI registers local persistence. The API does not use the local database. Server EF/Npgsql registration remains a future phase; split assemblies if host-specific dependencies later warrant it.
 
-Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI registers the welcome ViewModel/page as transient to support separate windows; ASP.NET Core registers controllers through `AddControllers`. MAUI now registers ILocalTaskService as a singleton SqliteLocalTaskService using FileSystem.AppDataDirectory/todoapp.db3. The service opens a new connection per operation, so singleton lifetime does not mean one permanently open connection. The welcome page still has no task operations; task ViewModels will consume this registration in Phase 5. No second repository interface is needed.
+Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI supplies the task ViewModels/pages, per-window navigation, and singleton SqliteLocalTaskService using FileSystem.AppDataDirectory/todoapp.db3. ASP.NET Core independently registers controllers through AddControllers. No second repository interface is needed.
 
 ## Intended algorithm and main features
 
@@ -91,7 +98,7 @@ MAUI DI -> ILocalTaskService -> SqliteLocalTaskService
                                   -> parameterized SQL -> app-data/todoapp.db3
 ```
 
-Microsoft.Data.Sqlite 10.0.15 was checked for .NET compatibility and restored successfully. It bundles native SQLite; desktop tests verify Windows behavior, not native packaging for every MAUI target. EF Core remains reserved for the PostgreSQL server phase so local SQL and schema responsibilities stay visible while learning.
+Microsoft.Data.Sqlite 10.0.15 was checked for .NET compatibility and restored successfully. It bundles native SQLite. The Windows MAUI app now builds and opens the SQLite-backed task list; other native platform packages remain unverified. EF Core remains reserved for the PostgreSQL server phase so local SQL and schema responsibilities stay visible while learning.
 
 SQLite's provider executes its async ADO.NET methods synchronously ([official limitation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/async)). This implementation uses Task.Run once per short database operation to keep blocking work off the future UI thread. It opens/disposes a connection and transaction inside that worker and never shares them between threads. This is a deliberate SQLite adapter choice, not guidance to wrap future HTTP/PostgreSQL async I/O in Task.Run.
 
@@ -115,7 +122,7 @@ MAUI ViewModel -> local task service -> SQLite
                                 HTTP DTOs -> API -> EF Core -> PostgreSQL
 ```
 
-SQLite is implemented as the client's persistent read/write source; Phase 5 will expose it through task screens. ILocalTaskService separates callers from storage. ViewModels should not depend on network availability.
+SQLite is the task screens' persistent read/write source. ILocalTaskService separates ViewModels from storage, and no task operation requires network availability.
 
 Later, write a task change and an outbox entry in one local transaction. Queue creates/edits/deletions, retain deletion tombstones until acknowledged, preserve client-generated IDs, and use idempotent uploads plus a server change cursor for downloads. Connectivity events can trigger attempts, but successful requests determine reachability. Add cancellation, retry/backoff, and sync status at that phase.
 
@@ -126,3 +133,7 @@ No synchronization stubs, background jobs, or outbox tables exist in Phase 1. Pa
 ## Build boundaries
 
 `TodoApp.slnx` includes every project. `TodoApp.Core.slnf` selects the four SDK-only projects from that same solution for machines without mobile workloads. It is an explicit partial validation path. A passing core build cannot validate XAML, platform manifests, device deployment, or themes. See development progress for actual results.
+
+The tests link the actual portable ViewModel/model/interface source files from the MAUI project, rather than maintaining test copies. Those classes use only .NET APIs; native pages/navigation are compiled by the Windows MAUI build and checked separately. Sixteen presentation cases test editing, validation, retry, cancellation of edits, confirmation, missing tasks, busy/double-save behavior, filtering, and navigation failures.
+
+This checkout has an ignored portable SDK/workload under .tools/dotnet because the machine-wide install was canceled during elevation. scripts/Run-Windows.ps1 selects it when present. TodoAppTargetFrameworks limits only the client; overriding the generic TargetFrameworks property retargeted referenced libraries and caused NETSDK1005. The Windows build bundles Windows App SDK files using WindowsAppSDKSelfContained for unpackaged development launch ([deployment guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained-deploy/deploy-self-contained-apps)). A fresh clone still needs an SDK/platform workload installation; local tools are not committed.

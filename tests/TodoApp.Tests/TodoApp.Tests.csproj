@@ -18,6 +18,14 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- These presentation types use only .NET APIs. Compile the actual client
+       sources here so behavior tests do not require a native MAUI test host. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\TodoApp.Maui\ViewModels\*.cs" Link="Client\ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TodoApp.Maui\Models\*.cs" Link="Client\Models\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\ITaskNavigation.cs" Link="Client\ITaskNavigation.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\TodoApp.Domain\TodoApp.Domain.csproj" />
     <ProjectReference Include="..\..\src\TodoApp.Infrastructure\TodoApp.Infrastructure.csproj" />

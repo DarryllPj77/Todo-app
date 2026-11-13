@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <Style x:Key="TaskPage" TargetType="ContentPage">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F4F7FB, Dark=#101820}" />
+    </Style>
+    <Style x:Key="TaskCard" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#1B2836}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light=#D7E0EC, Dark=#3B4B5E}" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+    <Style x:Key="TaskHeading" TargetType="Label">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#172B40, Dark=#F0F5FC}" />
+    </Style>
+    <Style x:Key="TaskMuted" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#4C6279, Dark=#BBCBDB}" />
+    </Style>
+    <Style x:Key="TaskError" TargetType="Label">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=#A91B27, Dark=#FFB7BF}" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style x:Key="TaskAction" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#235CC7, Dark=#8CB8FF}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light=White, Dark=#102342}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="MinimumHeightRequest" Value="44" />
+        <Setter Property="Padding" Value="12,8" />
+    </Style>
+</ResourceDictionary>

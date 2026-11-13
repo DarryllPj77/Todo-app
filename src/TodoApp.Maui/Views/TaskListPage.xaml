@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
+             xmlns:models="clr-namespace:TodoApp.Maui.Models"
+             x:Class="TodoApp.Maui.Views.TaskListPage"
+             x:DataType="vm:TaskListViewModel"
+             Title="Todo" Style="{StaticResource TaskPage}">
+    <Grid Padding="16" RowSpacing="12" RowDefinitions="Auto,Auto,Auto,*,Auto"
+          MaximumWidthRequest="1000" HorizontalOptions="Fill">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="My tasks" Style="{StaticResource TaskHeading}"
+                       SemanticProperties.HeadingLevel="Level1" />
+                <Label Text="Saved on this device" Style="{StaticResource TaskMuted}" />
+            </VerticalStackLayout>
+            <Button Grid.Column="1" Text="New task" Command="{Binding AddCommand}"
+                    Style="{StaticResource TaskAction}" VerticalOptions="Center" />
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Picker Title="Filter tasks" ItemsSource="{Binding Filters}" ItemDisplayBinding="{Binding Label, x:DataType=models:FilterOption}"
+                    SelectedItem="{Binding SelectedFilter, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnFilterChanged"
+                    SemanticProperties.Description="Filter tasks" />
+            <Button Grid.Column="1" Text="Refresh" Command="{Binding RefreshCommand}"
+                    Style="{StaticResource TaskAction}" />
+        </Grid>
+        <VerticalStackLayout Grid.Row="2" Spacing="6">
+            <Label Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Style="{StaticResource TaskError}" />
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="{Binding CountText}" Style="{StaticResource TaskMuted}" />
+                <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </Grid>
+        </VerticalStackLayout>
+        <CollectionView Grid.Row="3" ItemsSource="{Binding Tasks}" SelectionMode="Single"
+                        SelectedItem="{Binding SelectedTask, Mode=TwoWay}" IsEnabled="{Binding IsIdle}">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24" Spacing="10" VerticalOptions="Center">
+                    <Label Text="A little room to focus" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="Add a task or choose a different filter." Style="{StaticResource TaskMuted}"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:TaskRow">
+                    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,10">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup Name="CommonStates">
+                                <VisualState Name="Normal" />
+                                <VisualState Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#DFEAFF, Dark=#243D60}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                            <Label Text="{Binding Summary}" Style="{StaticResource TaskMuted}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <Border Grid.Row="4" Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*" RowSpacing="10" ColumnSpacing="8">
+                <Label Grid.ColumnSpan="3" Text="{Binding SelectedTask.Title, StringFormat='Selected: {0}'}"
+                       MaxLines="1" LineBreakMode="TailTruncation" Style="{StaticResource TaskMuted}" />
+                <Button Grid.Row="1" Text="Edit" Command="{Binding EditCommand}" Style="{StaticResource TaskAction}" />
+                <Button Grid.Row="1" Grid.Column="1" Text="{Binding ToggleText}" Command="{Binding ToggleCommand}"
+                        Style="{StaticResource TaskAction}" />
+                <Button Grid.Row="1" Grid.Column="2" Text="Delete" Command="{Binding DeleteCommand}"
+                        Style="{StaticResource TaskAction}" />
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

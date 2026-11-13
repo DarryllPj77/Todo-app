@@ -1,6 +1,6 @@
 # Learnings
 
-Only concepts used in this project are recorded here. Add UI collection/command entries when task screens arrive.
+Only concepts used in this project are recorded here. Examples describe the current implementation rather than future frameworks.
 
 ## Solution and project reference
 
@@ -199,3 +199,45 @@ Only concepts used in this project are recorded here. Add UI collection/command 
 **Definition:** A detached object represents a read result without automatic change tracking or save behavior.
 
 **Short example:** Changing a task returned by SqliteLocalTaskService does not update the database. Call UpdateAsync with TaskDetails, then query again to refresh the UI.
+
+## INotifyPropertyChanged and SetProperty
+
+**Definition:** This interface tells a bound UI that a property's value changed. A helper compares the old/new values before raising the notification.
+
+**Short example:** TaskEditorViewModel.Title calls SetProperty. ErrorMessage also notifies HasError so the error label appears when needed.
+
+## ObservableCollection<T>
+
+**Definition:** A collection that notifies the UI when entries are added or removed. It does not automatically make each object's properties observable.
+
+**Short example:** `ObservableCollection<TaskRow> Tasks = new();` is exposed by TaskListViewModel. Refresh replaces rows with new display snapshots after saved changes.
+
+## ICommand and async command execution
+
+**Definition:** ICommand exposes an action, whether it can run, and an event telling the UI to reevaluate that state. An async command can await work while preventing duplicate execution.
+
+**Short example:** SaveCommand runs SaveAsync once at a time. Its Execute method is an async event boundary with exception handling; operation methods return Task for tests to await.
+
+## Separate editor state
+
+**Definition:** A form holds draft fields independently from saved data, so changing controls is not itself a persistence operation.
+
+**Short example:** Editing TaskEditorViewModel.Description does not alter the task entity. Save constructs TaskDetails; Cancel navigates back without writing.
+
+## Dependency injection scope
+
+**Definition:** A scope defines which registered objects share a lifetime. Different scopes receive different scoped instances.
+
+**Short example:** App.CreateWindow creates one scope per window, giving it its own list/navigation service; editor instances are transient, and the SQLite service remains singleton.
+
+## Nullable date binding
+
+**Definition:** A nullable control value represents an optional input without inventing a sentinel date.
+
+**Short example:** The .NET 10 DatePicker binds DateTime? DueDate. Clear sets it to null, while Save converts a selected value to DateOnly for the domain.
+
+## Presentation boundary and test doubles
+
+**Definition:** A small interface can separate UI-specific interactions from presentation logic so tests can supply predictable behavior.
+
+**Short example:** ITaskNavigation handles editor navigation and delete confirmation. Tests return true/false for confirmation and simulate failed navigation without opening a native window.

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, with CRUD, completion, and the same LINQ filters as the earlier in-memory implementation. Reopening tests verify persistence. MAUI registers the service using its app-data directory; the welcome page does not call it yet. The API/PostgreSQL database, EF DbContext, and server migrations are still future work.
+Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, with CRUD, completion, and shared LINQ filters. Phase 5 task ViewModels now consume this service. Opening the Windows list has been verified, including initial schema access; file-reopening tests verify retained data. Full app restart acceptance remains on the README checklist. The API/PostgreSQL database, EF DbContext, and server migrations are still future work.
 
 ## Initial entities and relationship
 
@@ -30,7 +30,9 @@ SQLite configures and tests category deletion with ON DELETE SET NULL, preservin
 
 ## SQLite: local device storage
 
-The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. The first operation creates the directory/file and initializes schema version 1. SQLite data/journal files are ignored by Git. Native packaging on MAUI platforms still needs validation after workload installation.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list performs the first query, creating the directory/file and schema version 1 when absent. SQLite data/journal files are ignored by Git. Windows native build/initial access passes; mobile packaging remains unverified.
+
+The editor keeps title/description/category/date/priority fields separate from loaded entities until Save. It matches an entered category name case-insensitively against categories visible among existing tasks; new names create a new category on save. Blank category clears the association. Empty stored categories have no browsing/management UI yet. Cancel/Back discards fields without a write. Completion is changed from the list separately, and deleting a task requires a native confirmation.
 
 The Phase 3 contract is preserved: null/false for missing tasks, domain validation, explicit completion changes, full detail replacement, optional category assignment, cancellation checks, and the five filters with local-day semantics. Both stores now share TaskQueries for filtering/ordering. SQLite returns detached entities with read-only collection membership. Only explicit service writes save changes; refresh to see new state. Old snapshots are not changed by subsequent writes/deletions. Category input objects are not mutated or tracked.
 

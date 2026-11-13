@@ -14,6 +14,12 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		return new Window(new NavigationPage(services.GetRequiredService<Views.WelcomePage>()));
+        var scope = services.CreateScope();
+        var page = scope.ServiceProvider.GetRequiredService<Views.TaskListPage>();
+        var navigation = new NavigationPage(page);
+        scope.ServiceProvider.GetRequiredService<Services.TaskNavigationService>().Attach(navigation);
+        var window = new Window(navigation);
+        window.Destroying += (_, _) => scope.Dispose();
+        return window;
 	}
 }
