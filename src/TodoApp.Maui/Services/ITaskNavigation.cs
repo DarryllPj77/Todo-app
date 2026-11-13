@@ -6,4 +6,5 @@ public interface ITaskNavigation
     Task CloseEditorAsync();
     Task<bool> ConfirmDeleteAsync(string title);
     Task OpenAccountAsync();
+    Task OpenSyncAsync();
 }

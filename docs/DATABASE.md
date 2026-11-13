@@ -2,7 +2,7 @@
 
 ## Current state
 
-Local tasks still use SQLite. The API uses PostgreSQL with two migrations: InitialCreate and AddAuthenticationOwnership. Phase 8 adds Users and owner-scoped server tasks/categories. Phase 9 adds the online client without changing either schema. Verification ran 163 tests with 19 PostgreSQL cases, including real client/JWT/isolation checks. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply the migrations before running the API.
+Local tasks still use SQLite. The API uses PostgreSQL with three migrations: InitialCreate, AddAuthenticationOwnership, and AddTaskSynchronization. Phase 8 adds Users and owner-scoped server tasks/categories. Phase 10 adds server sync state plus a separate account/origin-partitioned SQLite sync cache. Existing device-only SQLite schema/data remains unchanged. See DEVELOPMENT_PROGRESS.md for final verification. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply all three migrations before running the API.
 
 ## Initial entities and relationship
 
@@ -116,7 +116,7 @@ After startup, register or log in using the HTTPS auth endpoints, then send the 
 
 ### Migration strategy
 
-The generated migrations are 20261113005745_InitialCreate and 20261113011803_AddAuthenticationOwnership in Persistence/Server/Migrations, with designers and model snapshot. The latter creates Users, adds nullable legacy owners/FKs, and replaces global category-name uniqueness with per-owner uniqueness. Apply pending migrations explicitly with database update; the API does not call EnsureCreated or Migrate during startup.
+The generated migrations are 20261113005745_InitialCreate, 20261113011803_AddAuthenticationOwnership, and 20261113073352_AddTaskSynchronization in Persistence/Server/Migrations, with designers and model snapshot. AddAuthenticationOwnership creates Users, adds nullable legacy owners/FKs, and replaces global category-name uniqueness with per-owner uniqueness. AddTaskSynchronization creates the sync records/receipts described below. Apply pending migrations explicitly with database update; the API does not call EnsureCreated or Migrate during startup.
 
 For future model changes:
 
@@ -129,7 +129,7 @@ Do not regenerate InitialCreate or downgrade the ownership migration against liv
 
 ### Real PostgreSQL tests
 
-Default dotnet test uses explicit in-memory REST/test-auth substitutes and skips 19 database cases unless TODOAPP_TEST_POSTGRES is configured. It does not treat fake authentication as JWT validation. Real auth tests use the normal JWT handler and scoped PostgreSQL service. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
+Default dotnet test uses explicit in-memory REST/test-auth substitutes and skips 27 database cases unless TODOAPP_TEST_POSTGRES is configured. It does not treat fake authentication as JWT validation. Real auth tests use the normal JWT handler and scoped PostgreSQL service. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
 
 ```powershell
 $env:TODOAPP_TEST_POSTGRES = 'Host=localhost;Port=5432;Database=postgres;Username=<test-role>;Password=<test-password>'
@@ -140,11 +140,15 @@ Each database test creates/migrates a unique todoapp_tests_<guid> database and d
 
 This run used PostgreSQL 18 binaries with a separate .tools/pg-tests cluster on 127.0.0.1:55439 and a loopback-only trust-auth test role. This was test infrastructure, not the app's development database configuration or a replacement for your running service. Test databases were cleaned up; the isolated server is stopped after verification. Its local files remain ignored. Your normal API still needs the development connection/migration steps above.
 
-## Future synchronization
+## Synchronization storage (Phase 10)
 
-Local and server stores share logical task/category IDs but do not directly connect to one another. Only the API connects to PostgreSQL. Synchronization will need a transactional local outbox, deletion tombstones, server revisions, incremental download cursors, idempotency, retries, and explicit conflict resolution. UpdatedAt alone is insufficient for conflict ordering. See [ARCHITECTURE.md](ARCHITECTURE.md).
+AddTaskSynchronization creates SyncRecords (composite account/task key, unique account/revision index, latest payload or tombstone) and SyncReceipts (composite account/operation key, immutable request/result). Both have account FKs; tombstones deliberately have no FK to a live task. Task changes, journal revision, and receipt are one transaction. Existing owned rows are bootstrapped lazily under the account lock; anonymous rows are never assigned. The Down migration removes sync history/receipts and is unsafe against active replicas. Review backup/roll-forward recovery before any downgrade; never prune receipts/tombstones without a retention/reset design.
 
-Authentication and server ownership are implemented. Phase 9 introduces no database migration or SQLite schema change. Account-partitioned replicas must be designed before multi-user sync is released. Add each schema change through reviewed server migrations and local upgrades. SQLite files are not automatically encrypted; evaluate device data protection before storing sensitive task content.
+The new `sync.db3` file has independent schema version 1 and ReplicaPartitions rows keyed by canonical API origin/account ID. Each state includes cached local intent, pending operations, latest server revisions, tombstones/conflicts, retry metadata, and cursor. Saving an edit queues its operation atomically. Applying a download commits rows and cursor atomically. Corrupt/newer-version caches fail without a data reset. This compact JSON-per-partition implementation targets the small MVP dataset; normalization/paging is later performance work.
+
+The existing `todoapp.db3` version-1 device-only tables are untouched. Server credentials and signing keys never enter either client file. Task cache content is unencrypted; tokens remain in platform SecureStorage. Logout hides the account cache without deleting queued work. Database restore, raw SQL edits to journaled tasks, and lost server history need explicit reconciliation; do not delete a cache containing pending work to reset its cursor. See [SYNCHRONIZATION.md](SYNCHRONIZATION.md).
+
+To upgrade your development database, stop the API and run the existing `dotnet ef database update --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext` command with your configured Development secrets, then restart HTTPS. No automatic startup migration runs. Verification applies migrations only to generated test databases; your development database was not migrated by this work.
 
 ## Phase 9 client storage boundary
 
@@ -152,4 +156,6 @@ The Account page reaches PostgreSQL only through the authenticated HTTPS API. It
 
 The protected session envelope contains API origin, bearer token, expiry, and public account fields in MAUI SecureStorage. Preferences contains only the API URL and restoration-block flag. Passwords and server database credentials never belong in client persistence. A restored token must pass `/api/auth/me` before the online workspace opens. See README for endpoint/certificate setup and native storage acceptance.
 
-The full Phase 9 run passed 163 tests with no skips, including 19 real PostgreSQL facts. The added client integration fact uses real API/JWT/database behavior with in-memory HTTP transport and a fake platform token store; actual native HTTPS and SecureStorage are separate checks. The isolated cluster was stopped after cleanup; the existing PostgreSQL Windows service was left running.
+The historical Phase 9 run passed 163 tests with no skips, including 19 real PostgreSQL facts. The added client integration fact uses real API/JWT/database behavior with in-memory HTTP transport and a fake platform token store; actual native HTTPS and SecureStorage are separate checks. The isolated cluster was stopped after cleanup; the existing PostgreSQL Windows service was left running.
+
+Phase 10 introduces the separate synced cache described above; Phase 9's direct online workspace remains available. The test suite now includes PostgreSQL idempotency/concurrency, REST journal participation, validation/isolation, paged cursors, tombstones/resurrection, rollback, pre-sync owned-task bootstrap, and two real SQLite replicas converging through the authenticated API. Final counts are in DEVELOPMENT_PROGRESS.md.

@@ -10,7 +10,10 @@ public static class DatabaseConfiguration
     {
         services.AddDbContext<TodoDbContext>((provider, options) => options.UseNpgsql(
             provider.GetRequiredService<IConfiguration>().GetConnectionString("TodoDatabase")));
-        services.AddScoped<ITaskService, PostgresTaskService>();
+        services.AddScoped<PostgresTaskService>();
+        services.AddScoped<ITaskService>(provider => provider.GetRequiredService<PostgresTaskService>());
+        services.AddScoped<SyncJournal>();
+        services.AddScoped<SyncService>();
         return services;
     }
 }

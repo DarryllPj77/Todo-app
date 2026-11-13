@@ -7,6 +7,7 @@
              x:DataType="vm:TaskListViewModel"
              Title="Todo" Style="{StaticResource TaskPage}">
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Synced tasks" Command="{Binding SyncCommand}" />
         <ToolbarItem Text="Account &amp; server" Command="{Binding AccountCommand}" />
     </ContentPage.ToolbarItems>
     <Grid Padding="16" RowSpacing="12" RowDefinitions="Auto,Auto,Auto,*,Auto"

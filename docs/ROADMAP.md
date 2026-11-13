@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 9 client account/API integration is implemented: 163 tests pass with PostgreSQL enabled and the Windows-targeted solution builds without warnings/errors. Native HTTPS and secure-storage acceptance remains pending. Next is Phase 10 synchronization; no sync protocol or background upload is implemented.
+Proceed one phase at a time after review. Phase 10 synchronization is implemented with separate account caches, durable queued operations, idempotency, revision cursors, tombstones, and explicit conflicts. Apply the third server migration and complete the native acceptance checklist in SYNCHRONIZATION.md. Phase 11 is notifications; no reminder scheduler is introduced here.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -173,8 +173,13 @@ Proceed one phase at a time after review. Phase 9 client account/API integration
 
 **Completion checklist:**
 
-- [ ] Offline edits/deletes, repeated uploads, interrupted sync, and conflicts tested.
-- [ ] Sync status and recoverable error paths visible to users.
+- [x] Shared sync contracts, account-scoped revision journal/receipts, migration, cursor paging, and ordinary REST write integration.
+- [x] Separate origin/account SQLite replicas, transactional local intent/outbox/cursor, immutable retries, and deletion tombstones.
+- [x] Offline edits/deletes, duplicate uploads, lost replies, stale receipts, account switches, rollback, pagination, legacy bootstrap, and two-replica conflict/deletion convergence tested.
+- [x] Synced tasks UI exposes cached CRUD, queue/conflict counts, retry/backoff, Keep mine / Use server, and errors without clearing saved work.
+- [x] Page-visible retries and connectivity hints; manual Sync remains available for LAN reachability.
+- [ ] Complete native two-device HTTPS/SecureStorage/connectivity/restart/conflict acceptance in SYNCHRONIZATION.md.
+- [ ] Before release: retention/reset/export recovery, database-restore reconciliation, cache protection, mobile lifecycle, and performance acceptance.
 
 ## Phase 11 — Notifications
 

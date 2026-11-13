@@ -1,8 +1,8 @@
 # Todo App
 
-A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. Synchronization is planned next.
+A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-13): Phase 9 MAUI account and API integration implemented.** The client supports registration/sign-in, protected session restoration, logout, configurable HTTPS endpoints, and a separate online server-task workspace. All **163 tests passed, 0 skipped**, with PostgreSQL enabled; the Windows-targeted solution built with zero warnings/errors. Native device HTTPS and SecureStorage round trips remain manual acceptance checks. Configure the API using [DATABASE.md](docs/DATABASE.md). Synchronization is Phase 10 and is not implemented.
+**Current status (2026-11-13): Phase 10 offline synchronization implemented; native acceptance pending.** **Synced tasks** adds an account/origin-partitioned SQLite cache, durable queued changes, idempotent uploads, revision cursors, deletion tombstones, retries, and explicit conflict resolution. Device-only tasks remain separate. All **190 tests passed with no skips** and the Windows build has **0 warnings/errors**. Remaining device checks are recorded in [DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md). Apply the new **AddTaskSynchronization** migration before using the API. See [SYNCHRONIZATION.md](docs/SYNCHRONIZATION.md) for the protocol and hands-on test steps.
 
 ## Technology and prerequisites
 
@@ -14,7 +14,7 @@ A learning-focused C#/.NET Todo application, built one phase at a time. It inclu
 - Microsoft.Data.Sqlite **10.0.15** for local SQLite storage, including its native SQLite dependency.
 - EF Core/Relational/Design **10.0.15**, local dotnet-ef **10.0.15**, and Npgsql.EntityFrameworkCore.PostgreSQL **10.0.3** for server PostgreSQL storage.
 - Microsoft.AspNetCore.Authentication.JwtBearer **10.0.15**, ASP.NET Core's password hasher, per-IP auth rate limiting, and per-user server ownership.
-- HttpClient, client DTOs, platform SecureStorage, and an online account workspace. Planned next: offline synchronization.
+- HttpClient, client DTOs, platform SecureStorage, and an online account workspace. Account-scoped offline synchronization with a durable SQLite queue.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -49,13 +49,13 @@ dotnet build TodoApp.Core.slnf --no-restore
 dotnet test TodoApp.Core.slnf --no-build --no-restore
 ```
 
-The filter does not convert MAUI into a plain .NET library or claim to validate client code.
+The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Nineteen PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The full Phase 9 run used an isolated PostgreSQL 18 cluster: **163 passed, 0 skipped** (default mode: 144 passed, 19 skipped). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Twenty-seven PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 10 run passed **190 tests, 0 skipped** (default mode without PostgreSQL: 163 portable cases, 27 database cases skipped). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
-First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply both included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
+First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all three included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -64,7 +64,7 @@ dotnet run --project src/TodoApp.Api --launch-profile https
 
 Open `https://localhost:7114/api/health`; expected JSON is `{"status":"healthy"}`. The HTTP listener is `http://localhost:5062`, redirected to HTTPS by the pipeline when the HTTPS profile is used. `src/TodoApp.Api/TodoApp.Api.http` contains the same request. Stop with Ctrl+C.
 
-The health endpoint is public liveness only, not database readiness. Task routes and /api/auth/me require a valid bearer token. Startup requires database/JWT configuration and remains Development-only until deployment hardening/acceptance. The launch profiles set Development automatically. API tasks persist in PostgreSQL and remain separate from MAUI's device-local SQLite tasks; there is no synchronization yet.
+The health endpoint is public liveness only, not database readiness. Task routes and /api/auth/me require a valid bearer token. Startup requires database/JWT configuration and remains Development-only until deployment hardening/acceptance. The launch profiles set Development automatically. API tasks persist in PostgreSQL. Synced tasks caches each server account separately; the original device-only tasks remain unassigned and are never automatically uploaded.
 
 ### Register, log in, and access tasks
 
@@ -158,7 +158,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 
 ### Check account and server tasks
 
-1. Configure PostgreSQL, the JWT secret, and both migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
+1. Configure PostgreSQL, the JWT secret, and all three migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
 2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
 3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
 4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.
@@ -173,6 +173,12 @@ Passwords are cleared after attempts and never saved. Session token, account, ex
 Android emulators default to `https://10.0.2.2:7114/`. A physical phone needs the PC's reachable LAN hostname/address, the same Wi-Fi, an API listener on that interface, a private-network firewall rule, and a certificate trusted by the device whose names match the address. Desktop localhost trust alone does not establish emulator/device trust. Use a properly trusted development certificate or HTTPS tunnel; the client has **no certificate-validation bypass**. Only root HTTPS base URLs are accepted, and redirects are not automatically followed. See [Microsoft's local web-service guidance](https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/local-web-services?view=net-maui-10.0) and [SecureStorage platform requirements](https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/storage/secure-storage?view=net-maui-10.0).
 
 Windows compilation and the local task-list toolbar were verified. Native Account layout, socket HTTPS authentication, actual SecureStorage restart/logout, light/narrow layouts, and mobile acceptance remain pending. Automated client/API/PostgreSQL tests use WebApplicationFactory's in-memory HTTPS transport and a fake platform store, so they do not prove those device checks.
+
+### Check offline synchronization
+
+Close the older running app before rebuilding with `scripts/Run-Windows.ps1`. Sign in through **Account & server**, then open **Synced tasks** from the main toolbar. Save locally to queue changes; Sync sends them and downloads server changes. Cached CRUD works while the API is unavailable. Explicit **Retry now** overrides persisted retry backoff. Keep mine / Use server resolves conflicts while preserving both versions until you choose.
+
+Follow the [two-device and interrupted-sync checklist](docs/SYNCHRONIZATION.md#run-and-manually-verify). Signing out hides this cache but retains pending work for the same account/API. Cached content is ordinary SQLite, not encrypted. Expired saved sessions require sign-in again before selecting the cache; no offline login is provided. Sync retries run only while the page is open, with connectivity treated as a hint. Existing device-only tasks are not imported. Native acceptance remains pending.
 
 ## Database setup
 

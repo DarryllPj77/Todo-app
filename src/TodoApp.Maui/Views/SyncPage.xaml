@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+ xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
+ xmlns:storage="clr-namespace:TodoApp.Infrastructure.Services;assembly=TodoApp.Infrastructure"
+ x:Class="TodoApp.Maui.Views.SyncPage" x:DataType="vm:SyncWorkspaceViewModel" Title="Synced tasks" Style="{StaticResource TaskPage}">
+ <ScrollView>
+  <VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="800" HorizontalOptions="Fill">
+   <Label Text="Synced account tasks" Style="{StaticResource TaskHeading}" />
+   <Label Text="Edits save to this account's cache, then sync. Device-only tasks stay separate. Cached task content is stored on this device without database encryption." Style="{StaticResource TaskMuted}" />
+   <Label Text="{Binding Status}" />
+   <Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+   <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+    <Button Text="Reload cache" Command="{Binding ReloadCommand}" />
+    <Button Grid.Column="1" Text="Sync" Command="{Binding SyncCommand}" />
+    <Button Grid.Column="2" Text="Retry now" Command="{Binding RetryCommand}" />
+   </Grid>
+   <Label Text="Sync tries again while this page is open and a network is reported. Network status is a hint; requests verify reachability. Signing out hides the cache and keeps queued edits for the same account." Style="{StaticResource TaskMuted}" />
+   <CollectionView HeightRequest="260" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding IsIdle}">
+    <CollectionView.EmptyView><Label Text="No account tasks cached. Sign in through Account &amp; server, then Sync or create a task here." /></CollectionView.EmptyView>
+    <CollectionView.ItemTemplate><DataTemplate x:DataType="storage:ReplicaRow">
+     <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Summary}" /></VerticalStackLayout></Border>
+    </DataTemplate></CollectionView.ItemTemplate>
+   </CollectionView>
+   <Button Text="New synced task" Command="{Binding NewCommand}" />
+   <VerticalStackLayout IsEnabled="{Binding CanEdit}" Spacing="8">
+    <Entry Placeholder="Title" Text="{Binding Title}" MaxLength="200" />
+    <Editor Placeholder="Description" Text="{Binding Description}" MaxLength="4000" AutoSize="TextChanges" MinimumHeightRequest="90" />
+    <Entry Placeholder="Category" Text="{Binding CategoryName}" MaxLength="100" />
+    <Picker Title="Priority" ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}" />
+    <DatePicker Date="{Binding DueDate, Mode=TwoWay}" />
+    <Button Text="Clear date" Command="{Binding ClearDateCommand}" />
+    <HorizontalStackLayout><CheckBox IsChecked="{Binding IsCompleted}" /><Label Text="Completed" VerticalOptions="Center" /></HorizontalStackLayout>
+    <Button Text="Save locally &amp; queue" Command="{Binding SaveCommand}" />
+    <Button Text="Queue deletion" Command="{Binding DeleteCommand}" />
+   </VerticalStackLayout>
+   <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="Both sides changed. Your saved local version is retained above; resolve this conflict before editing it." Style="{StaticResource TaskError}" />
+    <Label Text="{Binding LocalVersion}" />
+    <Label Text="{Binding ServerVersion}" />
+    <Button Text="Keep mine (queue against server revision)" Command="{Binding KeepMineCommand}" />
+    <Button Text="Use server (discard saved local change)" Command="{Binding UseServerCommand}" />
+   </VerticalStackLayout>
+  </VerticalStackLayout>
+ </ScrollView>
+</ContentPage>

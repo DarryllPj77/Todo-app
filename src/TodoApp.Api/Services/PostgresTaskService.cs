@@ -4,6 +4,7 @@ using TodoApp.Api.Contracts;
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Rules;
+using TodoApp.Domain.Sync;
 using TodoApp.Infrastructure.Persistence.Server;
 
 namespace TodoApp.Api.Services;
@@ -36,24 +37,35 @@ public sealed class PostgresTaskService : ITaskService
         return task is null ? null : TaskResponse.FromEntity(task);
     }
 
-    public async Task<TaskResponse> CreateAsync(TaskWriteRequest request, CancellationToken cancellationToken)
+    public Task<TaskResponse> CreateAsync(TaskWriteRequest request, CancellationToken cancellationToken) =>
+        CreateWithIdAsync(Guid.NewGuid(), request, cancellationToken);
+
+    public async Task<TaskResponse> CreateWithIdAsync(Guid id, TaskWriteRequest request, CancellationToken cancellationToken)
     {
         Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        var journal = new SyncJournal(database, currentUser);
+        await journal.LockAsync(cancellationToken);
         var category = await ResolveCategoryAsync(request.CategoryName, cancellationToken);
-        var task = new TaskItem(request.Title!, request.Description, request.DueDate, request.Priority, category);
+        var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category);
         task.SetCompleted(request.IsCompleted);
         database.Tasks.Add(task);
         database.Entry(task).Property<Guid?>("OwnerId").CurrentValue = currentUser.UserId;
         await database.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
+            task.Priority, task.Category?.Name, task.IsCompleted), cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
 
     public async Task<TaskResponse?> UpdateAsync(Guid id, TaskWriteRequest request, CancellationToken cancellationToken)
     {
         Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        var journal = new SyncJournal(database, currentUser);
+        await journal.LockAsync(cancellationToken);
         var task = await OwnedTasks().Include(task => task.Category)
             .SingleOrDefaultAsync(task => task.Id == id, cancellationToken);
         if (task is null) return null;
@@ -63,12 +75,23 @@ public sealed class PostgresTaskService : ITaskService
         task.SetCategory(category);
         task.SetCompleted(request.IsCompleted);
         await database.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
+            task.Priority, task.Category?.Name, task.IsCompleted), cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken) =>
-        await OwnedTasks().Where(task => task.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        var journal = new SyncJournal(database, currentUser);
+        await journal.LockAsync(cancellationToken);
+        var deleted = await OwnedTasks().Where(task => task.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
+        if (deleted) await journal.RecordAsync(id, null, cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return deleted;
+    }
 
     private IQueryable<TaskItem> OwnedTasks()
     {

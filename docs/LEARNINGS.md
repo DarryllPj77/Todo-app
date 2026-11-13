@@ -390,16 +390,46 @@ Only concepts used in this project are recorded here. Examples describe the curr
 
 **Definition:** A timeout or lost response does not prove that the server failed to save a request. Blind retries can create duplicates.
 
-**Short example:** The server workspace requires a successful explicit refresh after an uncertain write. A confirmed create clears its draft before the follow-up read. Durable idempotency and reconciliation belong to Phase 10.
+**Short example:** The server workspace requires a successful explicit refresh after an uncertain write. A confirmed create clears its draft before the follow-up read. Phase 10 adds a separate synced workspace whose durable operation IDs make retries safe.
 
 ## Online integration versus synchronization
 
 **Definition:** Calling a server from a client does not reconcile two databases or make server operations available offline.
 
-**Short example:** Account & server manages only online PostgreSQL tasks. Back returns to device-local SQLite tasks. Login does not claim or upload those tasks, and server rows are not stored as a local account replica.
+**Short example:** Account & server manages online PostgreSQL tasks. Synced tasks uses a separate per-account cache/outbox for reconciliation. Back returns to device-only SQLite tasks, which login never claims or uploads.
 
 ## Test transport boundaries
 
 **Definition:** An in-memory request host verifies HTTP contracts and middleware without proving certificates, native networking, or OS storage behavior.
 
 **Short example:** The real client passes registration/CRUD/JWT/PostgreSQL tests through WebApplicationFactory, while actual Windows/mobile HTTPS and SecureStorage restart acceptance remain manual checks.
+
+## Transactional outbox and immutable operations
+
+**Definition:** Save local state and its outgoing request in one transaction, so a restart cannot retain an edit without retaining the work needed to upload it.
+
+**Short example:** SqliteSyncStore saves Local plus Pending together. Pending keeps its original operation ID/payload after a lost response; later edits become the next operation after acknowledgement.
+
+## Idempotency receipts and revisions
+
+**Definition:** An operation receipt makes a repeated upload produce the same result. A server revision identifies the state an edit was based on; a mismatch requires conflict resolution.
+
+**Short example:** SyncService checks an owner/operation receipt before writing. BaseRevision must match the current record. Task, revision, and receipt commit together under the account transaction lock.
+
+## Tombstones and download cursors
+
+**Definition:** A tombstone retains evidence of deletion for clients that were offline. A cursor records the highest downloaded revision applied locally.
+
+**Short example:** SyncRecords retains a Deleted entry after its task row is removed. Applying a page saves that entry and the cursor in one SQLite transaction; the client does not resurrect a deleted row by forgetting the deletion.
+
+## Stale receipt ordering
+
+**Definition:** A retry response may describe an earlier successful write than a state already downloaded. Successful delivery does not make that response the newest state.
+
+**Short example:** A lost create reply at revision 1 can be replayed after another device's revision 2 was downloaded. The cache keeps revision 2; any later local edits become a conflict instead of being silently rebased over it.
+
+## Explicit conflicts and bounded retries
+
+**Definition:** Keep both versions until the user chooses a policy, and space failed requests instead of looping continuously.
+
+**Short example:** Keep mine creates a new operation against the displayed server revision; Use server discards the saved local intent. Failed uploads retain their operation IDs and retry from 4 seconds up to 5 minutes. Connectivity is a hint; a real request determines reachability. The full protocol and native acceptance steps are in SYNCHRONIZATION.md.

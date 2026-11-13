@@ -5,6 +5,8 @@ namespace TodoApp.Infrastructure.Persistence.Server;
 
 public sealed class TodoDbContext : DbContext
 {
+    public DbSet<SyncRecord> SyncRecords => Set<SyncRecord>();
+    public DbSet<SyncReceipt> SyncReceipts => Set<SyncReceipt>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<UserAccount> Users => Set<UserAccount>();
@@ -13,6 +15,17 @@ public sealed class TodoDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<SyncRecord>(record =>
+        {
+            record.HasKey(r => new { r.OwnerId, r.TaskId });
+            record.HasIndex(r => new { r.OwnerId, r.Revision }).IsUnique();
+            record.HasOne<UserAccount>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<SyncReceipt>(receipt =>
+        {
+            receipt.HasKey(r => new { r.OwnerId, r.OperationId });
+            receipt.HasOne<UserAccount>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
         modelBuilder.ApplyConfiguration(new TaskItemConfiguration());
         modelBuilder.ApplyConfiguration(new CategoryConfiguration());
         modelBuilder.Entity<UserAccount>(user =>

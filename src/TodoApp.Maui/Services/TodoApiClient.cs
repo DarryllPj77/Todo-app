@@ -1,4 +1,5 @@
 using System.Net;
+using TodoApp.Domain.Sync;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -53,7 +54,12 @@ public sealed class TodoApiClient(HttpClient http, ClientSession session)
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ProtectedAsync<object>(HttpMethod.Delete, $"api/tasks/{id}", null, cancellationToken);
 
-    private async Task<T> ProtectedAsync<T>(HttpMethod method, string path, ApiTaskWrite? body,
+    public Task<SyncPage> DownloadAsync(long cursor, CancellationToken token = default) =>
+        ProtectedAsync<SyncPage>(HttpMethod.Get, $"api/sync?cursor={cursor}", null, token);
+    public Task<SyncResult> UploadAsync(SyncMutation mutation, CancellationToken token = default) =>
+        ProtectedAsync<SyncResult>(HttpMethod.Post, "api/sync", mutation, token);
+
+    private async Task<T> ProtectedAsync<T>(HttpMethod method, string path, object? body,
         CancellationToken cancellationToken, bool allowUnverified = false)
     {
         var version = session.Version;
@@ -94,7 +100,7 @@ public sealed class TodoApiClient(HttpClient http, ClientSession session)
             HttpStatusCode.Forbidden => "This account does not have permission for that operation.",
             HttpStatusCode.BadRequest => "Check the entered fields and try again.",
             HttpStatusCode.NotFound => "This server task no longer exists. Refresh the server list.",
-            HttpStatusCode.Conflict => "Registration could not be completed with those details.",
+            HttpStatusCode.Conflict => authenticated ? "The server rejected this operation or cursor. Queued changes were retained; review sync/account settings." : "Registration could not be completed with those details.",
             HttpStatusCode.TooManyRequests => "Too many attempts. Wait a minute before trying again.",
             _ => "The API couldn't finish the request. Refresh before retrying a write; it may already have been saved."
         };

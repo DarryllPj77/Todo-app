@@ -38,6 +38,10 @@ public static class MauiProgram
             Timeout = TimeSpan.FromSeconds(15)
         });
         builder.Services.AddSingleton<TodoApiClient>();
+        builder.Services.AddSingleton(_ => new SqliteSyncStore(Path.Combine(FileSystem.AppDataDirectory, "sync.db3")));
+        builder.Services.AddSingleton<SyncEngine>();
+        builder.Services.AddScoped<SyncWorkspaceViewModel>();
+        builder.Services.AddTransient<SyncPage>();
         builder.Services.AddScoped<ServerWorkspaceViewModel>();
         builder.Services.AddScoped<AccountViewModel>();
         builder.Services.AddTransient<AccountPage>();

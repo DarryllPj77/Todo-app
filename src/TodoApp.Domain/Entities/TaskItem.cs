@@ -37,6 +37,13 @@ public sealed class TaskItem
         category?.AttachTask(this);
     }
 
+    public static TaskItem CreateWithId(Guid id, string title, string? description = null,
+        DateOnly? dueDate = null, TaskPriority priority = TaskPriority.Normal, Category? category = null)
+    {
+        if (id == Guid.Empty) throw new ArgumentException("A task must have an ID.", nameof(id));
+        return new TaskItem(title, description, dueDate, priority, category) { Id = id };
+    }
+
     // EF materialization only; application code uses the validating constructor.
     private TaskItem()
     {

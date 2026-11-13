@@ -103,6 +103,7 @@ internal sealed class ClientHarness : IDisposable
 internal sealed class ClientNavigation : ITaskNavigation
 {
     public bool Confirm { get; set; }
+    public Task OpenSyncAsync() => Task.CompletedTask;
     public Task OpenAccountAsync() => Task.CompletedTask;
     public Task EditTaskAsync(Guid? id) => Task.CompletedTask;
     public Task CloseEditorAsync() => Task.CompletedTask;

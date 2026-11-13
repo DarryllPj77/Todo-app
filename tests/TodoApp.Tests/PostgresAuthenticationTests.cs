@@ -21,7 +21,7 @@ using TodoApp.Maui.Services;
 
 namespace TodoApp.Tests;
 
-public sealed class PostgresAuthenticationTests : IAsyncLifetime
+public sealed partial class PostgresAuthenticationTests : IAsyncLifetime
 {
     private readonly string databaseName = "todoapp_tests_" + Guid.NewGuid().ToString("N");
     private string adminConnection = null!;

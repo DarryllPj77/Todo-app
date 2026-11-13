@@ -100,6 +100,52 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.SyncReceipt", b =>
+                {
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Request")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Response")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("OwnerId", "OperationId");
+
+                    b.ToTable("SyncReceipts");
+                });
+
+            modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.SyncRecord", b =>
+                {
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("OwnerId", "TaskId");
+
+                    b.HasIndex("OwnerId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("SyncRecords");
+                });
+
             modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -149,6 +195,24 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.SyncReceipt", b =>
+                {
+                    b.HasOne("TodoApp.Infrastructure.Persistence.Server.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.SyncRecord", b =>
+                {
+                    b.HasOne("TodoApp.Infrastructure.Persistence.Server.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TodoApp.Domain.Entities.Category", b =>

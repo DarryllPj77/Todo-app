@@ -153,25 +153,21 @@ For this small dataset, reads and task edits load the current graph, and both st
 
 Assigning a category saves its ID/name if new. Reusing an existing ID uses the stored name instead of overwriting it from a stale caller object. Inputs are not attached or mutated, including on failed writes. Category rename/delete operations remain outside ILocalTaskService. Task deletion retains the category row; SQLite's category FK uses ON DELETE SET NULL for any future category deletion operation.
 
-The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication and the separate online client workspace are implemented; notifications, synchronization, and advanced task relationships remain later work.
+The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication and the separate online client workspace are implemented; the separate synced account workspace now reconciles offline changes. Notifications and advanced task relationships remain later work.
 
-## Offline-first strategy (future)
+## Offline account synchronization (Phase 10)
 
-```text
-MAUI ViewModel -> local task service -> SQLite
-                                        |
-                               future sync worker
-                                        |
-                                HTTP DTOs -> API -> EF Core -> PostgreSQL
-```
+The main local task flow stays on `todoapp.db3`. The new toolbar route is `SyncPage -> SyncWorkspaceViewModel -> SqliteSyncStore (sync.db3)` for cached reads/writes and `SyncEngine -> TodoApiClient -> SyncController/SyncService -> PostgreSQL` for reconciliation. Account & server retains its direct online workspace. No device-only task is automatically imported or assigned.
 
-SQLite is the task screens' persistent read/write source. ILocalTaskService separates ViewModels from storage, and no task operation requires network availability.
+Shared `Domain/Sync` records define the small wire protocol without adding another project/package. SqliteSyncStore is an Infrastructure adapter with transactional account/origin partition state: local intent, immutable pending operation, latest server entry, conflicts, retry time, and download cursor. Acknowledgements preserve later local edits; stale receipt responses cannot regress newer downloads or silently rebase over another device's work. Separate store instances serialize SQLite transactions, and stale editors are rejected instead of overwriting newer cache rows.
 
-Later, write a task change and an outbox entry in one local transaction. Queue creates/edits/deletions, retain deletion tombstones until acknowledged, preserve client-generated IDs, and use idempotent uploads plus a server change cursor for downloads. Connectivity events can trigger attempts, but successful requests determine reachability. Add cancellation, retry/backoff, and sync status at that phase.
+The API's SyncJournal takes a transaction-scoped per-owner PostgreSQL advisory lock before task access. Normal PostgresTaskService creates/updates/deletes participate in the same journal. SyncRecords retains each task's latest revision or tombstone; SyncReceipts makes identical operation replay return the original result. Task write, revision, and receipt commit together. Lazy initialization records existing owned tasks without claiming legacy anonymous rows. Client-generated IDs are accepted only by the validated sync protocol; normal REST create semantics are unchanged.
 
-Use server-issued revision tokens for optimistic concurrency. Do not decide conflicts solely from device timestamps: device clocks drift. Initially surface conflicting revisions for an explicit resolution policy. Server login/ownership and client sessions now exist. Device SQLite tasks remain explicitly unassigned and separate from the online workspace. Phase 10 must design account-partitioned local replicas before downloading/queuing server work. Never upload device-local unassigned tasks into whichever account happens to log in first.
+BaseRevision implements optimistic concurrency. A mismatch preserves local and server versions for explicit Keep mine / Use server resolution. Downloads return latest states in revision order, at most 100 per page; SQLite commits each page and its cursor together. No wall-clock conflict ordering is used. Records/receipts remain retained; direct SQL writes and database restores require reviewed reconciliation.
 
-No synchronization worker, background upload jobs, or outbox tables exist in Phase 9. Parent/subtask hierarchy and task dependencies will be distinct relationships in future phases.
+The singleton engine prevents overlapping sync across windows and captures account/origin/version for each pass. It uploads up to 100 queued operations and downloads up to 100 pages, retains failed operations, and persists exponential retry backoff. The page requests sync on demand, opening, connectivity hints, and a 30-second visible-page timer. It stops scheduling when hidden; it is not an OS background service. Native connectivity is a hint rather than proof of API access. Unsaved drafts are preserved during automatic sync, and a stale editor must be reviewed before saving.
+
+Tokens stay in SecureStorage; cached task content is unencrypted SQLite. Sign-out/account switches clear visible rows/drafts without deleting another account's queue. Selecting a cache needs a current saved session; expired session re-entry requires reauthentication. See [SYNCHRONIZATION.md](SYNCHRONIZATION.md) for protocol details, limitations, recovery boundaries, and manual native acceptance.
 
 ## Build boundaries
 
