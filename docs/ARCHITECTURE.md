@@ -2,7 +2,7 @@
 
 ## Server side
 
-ASP.NET Core hosts HTTP requests. Program.cs registers controllers/Problem Details, string priority serialization, and a singleton InMemoryTaskService, then assembles exception handling, HTTPS redirection, and controller routing. HealthController provides GET /api/health; TasksController now implements the five task routes.
+ASP.NET Core hosts HTTP requests. Program.cs registers controllers/Problem Details and string priority serialization. DatabaseConfiguration registers a scoped TodoDbContext using Npgsql and a scoped ITaskService implemented by PostgresTaskService. Exception handling, HTTPS redirection, and controller routing remain separate. HealthController provides GET /api/health; TasksController implements the five task routes.
 
 REST uses resource URLs and HTTP verbs: GET reads, POST creates, PUT updates, DELETE removes. Implemented routes are:
 
@@ -20,13 +20,19 @@ TaskWriteRequest is a dedicated input DTO validated with IValidatableObject and 
 
 POST/PUT use the same full detail contract, including IsCompleted. Omitted optional values clear their fields, omitted priority selects Normal, and omitted completion selects false. This explicit PUT replacement behavior must be preserved when adding a database or clients. IDs, creation/update timestamps, and category IDs cannot be supplied in the write DTO. CategoryName assigns/reuses a case-insensitive server category; this API does not rename categories globally.
 
-InMemoryTaskService is independent of the client's ILocalTaskService and SQLite file. It protects its task/category dictionaries with one lock and constructs DTO snapshots inside that lock, so concurrent HTTP requests cannot mutate a collection during enumeration or serialize a live changing graph. Cancellation is checked inside the lock before work; no Task.Run or fake asynchronous I/O is needed for this memory-only service. The Task-returning boundary keeps controller code ready for real async database operations in Phase 7 without adding empty interfaces now.
+PostgresTaskService uses real asynchronous EF/Npgsql queries and transactions, with request cancellation passed through. Read-only queries use AsNoTracking and load Category for the flat response DTO. Create/update save category and task changes in a transaction; failure rolls both back. Delete uses ExecuteDeleteAsync. DbContext is scoped per request and is never shared across concurrent HTTP requests. The ITaskService interface now separates persistent server behavior from the old in-memory substitute used explicitly by portable REST contract tests.
 
-GetTasks reuses TaskQueries for filters and ordering. DueToday currently uses server-local time through TimeProvider; it does not infer the client's time zone. User/time-zone policy is future work before multi-user integration. A new API process has empty data, while the MAUI database remains untouched.
+GetTasks reuses TaskQueries after materializing the small MVP dataset, preserving ordinal case-insensitive sorting and ID tie-breaking instead of silently changing behavior to a database collation. DueToday uses server-local time through TimeProvider; user/time-zone policy is future work. Data survives a new API host because it is in PostgreSQL; MAUI's SQLite remains separate. Paging/narrower SQL queries can be added when actual data size warrants them.
 
-The host fails fast outside Development while this unauthenticated temporary server store is active. Launch profiles set Development; WebApplicationFactory tests use Development explicitly (and verify Production is refused). Configure durable storage and authentication/ownership before enabling production deployment. Development mode itself is not a security boundary for a publicly exposed service.
+The host still refuses non-Development environments until authentication/user ownership exist. It also checks for a configured ConnectionStrings:TodoDatabase after building configuration; missing configuration stops startup with instructions, rather than silently using memory. Launch profiles set Development. Test factories override configuration and explicitly substitute memory only for portable contract tests. PostgreSQL tests use the normal service registration. Development mode itself is not authorization for a publicly exposed service.
 
-EF Core will map domain objects to PostgreSQL tables. Its DbContext and model configuration belong in Infrastructure/Persistence, outside controllers. API/Configuration will own host-side registrations; API/Data is reserved for server-only startup/seed helpers if needed, not a second DbContext. Database migrations will be generated when persistence is introduced, not hand-invented now.
+TodoDbContext, Fluent entity configurations, and the generated InitialCreate migration/model snapshot live in Infrastructure/Persistence/Server. API/Configuration owns host registration; API/Data remains reserved. Migrations are applied explicitly with the pinned local EF tool, not automatically during API startup. See DATABASE.md for commands and role/secret setup.
+
+Domain remains framework-independent. TaskItem now has a scalar CategoryId so a foreign key survives loading without navigation. Private materialization constructors/setters let EF restore IDs/creation timestamps; public constructors/mutation methods retain validation. SetCategory clears even an unloaded relationship's scalar ID. Category's read-only collection maps through its private tasks field. SQLite's Restore factories and schema remain unchanged, and its regression tests still pass.
+
+The server stores an uppercase-invariant category NameKey as an EF shadow property, with a unique index. A parameterized PostgreSQL INSERT ... ON CONFLICT DO NOTHING creates/reuses a category atomically before querying it through EF. This handles concurrent assignments without process-wide locks and without sharing DbContext instances. Existing category casing is retained; category rename would need an operation that updates NameKey. Current concurrent task edits are last-writer behavior; synchronization revisions/conflict handling remain future work.
+
+PostgreSQL timestamp precision is microseconds. The context normalizes UTC task timestamps before SaveChangesAsync, preserving exact POST/PUT-to-GET round trips. No-tracking DTO reads, constraints, FK delete behavior, rollback, repeatable migrations, and data retained across new hosts are verified against PostgreSQL 18 in isolated test databases. The provider and EF package versions are pinned and compatible; details are in DATABASE.md.
 
 ## Client side
 
@@ -62,7 +68,7 @@ API --------------> Domain
 Tests ------------> API, Domain, Infrastructure
 ```
 
-Domain contains TaskItem, Category, TaskPriority, TaskFilter, the ILocalTaskService/TaskDetails contract, and shared TaskQueries rules without package dependencies. Infrastructure references Domain and implements both the SQLite service and the earlier in-memory learning service. Neither library references MAUI or ASP.NET Core. Infrastructure now depends on Microsoft.Data.Sqlite 10.0.15; only MAUI registers local persistence. The API does not use the local database. Server EF/Npgsql registration remains a future phase; split assemblies if host-specific dependencies later warrant it.
+Domain contains TaskItem, Category, TaskPriority, TaskFilter, the ILocalTaskService/TaskDetails contract, and shared TaskQueries rules without package dependencies. Infrastructure references Domain and contains SQLite services plus server EF mappings/migrations. Neither library references MAUI or ASP.NET Core. MAUI registers local SQLite persistence; API registers its PostgreSQL context/service. They use separate databases. Host-specific infrastructure assemblies can be split later if platform/deployment requirements justify it.
 
 Dependency injection lets the framework create registered objects and supply constructor dependencies. MAUI supplies the task ViewModels/pages, per-window navigation, and singleton SqliteLocalTaskService using FileSystem.AppDataDirectory/todoapp.db3. ASP.NET Core independently registers controllers through AddControllers. No second repository interface is needed.
 
@@ -70,7 +76,7 @@ Dependency injection lets the framework create registered objects and supply con
 
 The current task logic lives in plain domain methods. Construction validates and trims title/description, validates the priority enum, generates an ID, and captures UTC timestamps. UpdateDetails validates all inputs before assigning any fields, so rejected edits leave the task unchanged. Equivalent edits and repeated SetCompleted/SetCategory requests are no-ops. Real edits update UpdatedAt while preserving identity and CreatedAt.
 
-TaskItem.SetCategory removes the task from its previous category and adds it to the new one. Category exposes a read-only collection so callers cannot bypass that relationship logic. CategoryId derives from the category reference; SQLite stores a scalar FK and rebuilds references when reading. Internal Restore factories preserve saved identities/timestamps without public setters. Domain grants Infrastructure access through InternalsVisibleTo; neither UI nor API receives public hydration methods. No category deletion service exists yet. Category rename preserves its ID and tasks in memory; category rename persistence is not part of the task-service contract.
+TaskItem.SetCategory updates the scalar CategoryId and both loaded navigation sides. Category exposes a read-only task collection. SQLite rebuilds references through internal Restore factories, while EF uses private materialization support and Fluent mappings. Domain grants Infrastructure internal restore access; public identity setters are not exposed. No category deletion service exists yet. Category rename persistence is outside the task-service contract and would need to update the server NameKey as well.
 
 Past due dates remain valid so overdue tasks can be represented. DueDate is DateOnly? because a deadline day is different from a notification time. Priority has explicit stable values: Low = 0, Normal = 1, High = 2. Domain methods use exceptions for invalid programmer/service input; future ViewModels and API validation will translate failures into useful messages. The domain has no UI change-notification or service dependencies.
 
@@ -108,7 +114,7 @@ MAUI DI -> ILocalTaskService -> SqliteLocalTaskService
                                   -> parameterized SQL -> app-data/todoapp.db3
 ```
 
-Microsoft.Data.Sqlite 10.0.15 was checked for .NET compatibility and restored successfully. It bundles native SQLite. The Windows MAUI app now builds and opens the SQLite-backed task list; other native platform packages remain unverified. EF Core remains reserved for the PostgreSQL server phase so local SQL and schema responsibilities stay visible while learning.
+Microsoft.Data.Sqlite 10.0.15 bundles native SQLite. The Windows MAUI app builds with the shared infrastructure changes; other native platforms remain unverified. SQLite still uses explicit SQL/versioning while the server now uses EF Core/PostgreSQL. Both implementations remain in Infrastructure for this small solution; EF Design tooling is private to the API project. Separate client/server infrastructure assemblies can be introduced if mobile packaging or deployment requirements justify that split.
 
 SQLite's provider executes its async ADO.NET methods synchronously ([official limitation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/async)). This implementation uses Task.Run once per short database operation to keep blocking work off the future UI thread. It opens/disposes a connection and transaction inside that worker and never shares them between threads. This is a deliberate SQLite adapter choice, not guidance to wrap future HTTP/PostgreSQL async I/O in Task.Run.
 

@@ -6,13 +6,18 @@ public sealed class Category
 
     private readonly List<TaskItem> tasks = new();
 
-    public Guid Id { get; } = Guid.NewGuid();
+    public Guid Id { get; private set; } = Guid.NewGuid();
     public string Name { get; private set; }
     public IReadOnlyCollection<TaskItem> Tasks => tasks.AsReadOnly();
 
     public Category(string name)
     {
         Name = NormalizeName(name);
+    }
+
+    private Category()
+    {
+        Name = null!;
     }
 
     internal static Category Restore(Guid id, string name)

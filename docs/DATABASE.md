@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, and Phase 5 task ViewModels consume this service. Opening the Windows list and file-reopening persistence tests have been verified; full app restart acceptance remains on the README checklist. Phase 6 adds separate Development-only in-memory API tasks/categories. No server database, EF DbContext, or PostgreSQL migrations exist yet.
+Local tasks use SQLite through SqliteLocalTaskService. Phase 7 adds separate PostgreSQL storage for API tasks using EF Core and TodoDbContext. The initial migration and nine real PostgreSQL test cases verify mapping, retained data across API hosts, constraints, rollback, concurrency, and relationships. Your existing PostgreSQL service/databases were not changed during verification; tests used an isolated project-local cluster. Configure your own development connection and apply the migration before running the normal API.
 
 ## Initial entities and relationship
 
@@ -13,7 +13,7 @@ TaskItem.CategoryId is optional: uncategorized tasks are valid.
 
 TaskItem fields: client-generated `Guid Id`, required trimmed `Title`, optional `Description`, `bool IsCompleted`, optional `DateOnly DueDate`, enum `Priority`, optional `Guid CategoryId`, and UTC `DateTimeOffset CreatedAt/UpdatedAt`. Date-only due dates avoid changing the intended day across time zones. Reminders with a time will need a separate design.
 
-Category has a generated `Guid Id`, required trimmed `Name`, and a read-only task navigation collection. TaskItem.SetCategory keeps both sides consistent and supports clearing the category. CategoryId is computed from the in-memory reference. SQLite stores CategoryId as a nullable foreign key; loading restores a shared category object per ID and attaches its tasks. Internal domain Restore factories preserve saved IDs and timestamps. Infrastructure receives access with InternalsVisibleTo, rather than public identity setters or storage attributes in Domain.
+Category has a generated Guid Id, required trimmed Name, and a read-only task collection. TaskItem.SetCategory maintains a scalar CategoryId alongside its navigation reference, including clearing an ID when EF has not loaded the navigation. IDs/creation times have private setters and private EF materialization constructors; normal creation still uses validating constructors. SQLite retains its internal Restore path without a schema change. Domain has no EF package dependency or storage attributes; Fluent configurations live in Infrastructure.
 
 Implemented rules:
 
@@ -61,32 +61,70 @@ Only initialization to version 1 exists today. Before any schema change, add an 
 
 ## PostgreSQL: server storage
 
-Current Phase 6 endpoints use API/Services/InMemoryTaskService. It holds data for one API process only, locks access across requests, and returns flat DTO snapshots. Server CategoryName values are matched case-insensitively; server IDs/timestamps are generated independently from local tasks. There is no client/server ID mapping or sync yet, and the API never opens the MAUI SQLite file. Restarting the API resets only the temporary server data.
+Normal endpoints use scoped PostgresTaskService through ITaskService. TodoDbContext and its configurations/migrations live under Infrastructure/Persistence/Server. API/Configuration registers the context/service and loads the connection through configuration. The old InMemoryTaskService remains only as an explicit test substitute; startup never silently chooses it.
 
-Phase 7 must replace that storage while retaining the tested REST contract: 201/Location creation, 200 full updates (including completion), 204 deletion, 400 validation, 404 missing tasks, server-owned identity/timestamps, and named priority JSON. Preserve task/category identity on round trips, define server category-name uniqueness deliberately, and keep database configuration outside controllers. Authentication/production deployment remain later gates.
+### Packages and server mapping
 
-When the server persistence phase begins:
+EF Core, Relational, Design, and dotnet-ef are pinned to 10.0.15. Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 [supports EF Core >=10.0.4 and <11](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3). Explicit Relational pinning prevents different patch assemblies being chosen through Design versus the provider. Design tooling is private to the API project; the local tool manifest is dotnet-tools.json.
 
-1. Install PostgreSQL locally or use a development instance; create a development database and least-privileged development role.
-2. Add a stable compatible EF Core 10 release, matching EF Design tooling, and an Npgsql EF provider whose documented dependency range supports that EF version. Check current versions at that time.
-3. Add a server DbContext, entity configurations, relationships, constraints, and host DI registration.
-4. Initialize development user secrets for TodoApp.Api. Set `ConnectionStrings:TodoDatabase` there, or use the environment variable `ConnectionStrings__TodoDatabase`.
-5. Generate and review an initial Code First migration with Infrastructure as the migrations project and API as the startup project; apply it explicitly to the development database.
+| Table | Main mapping |
+| --- | --- |
+| Categories | uuid Id, varchar(100) Name, required varchar(100) shadow NameKey, unique NameKey index, nonblank-name check |
+| Tasks | uuid Id, varchar(200) Title, nullable varchar(4000) Description, boolean IsCompleted, nullable date DueDate, integer Priority, nullable uuid CategoryId, UTC timestamptz CreatedAt/UpdatedAt |
 
-Example future secret value format (placeholders only):
+IDs are assigned by the domain (ValueGeneratedNever). Priority is constrained to 0/1/2; titles must be nonblank; CategoryId is indexed and uses ON DELETE SET NULL. EF accesses Category's private tasks backing field. Read queries use Include for category names and AsNoTracking for DTO reads; writes use a request-scoped tracked context.
 
-```text
-Host=localhost;Port=5432;Database=todoapp;Username=<dev-role>;Password=<local-secret>
+Category NameKey is the trimmed name converted with ToUpperInvariant, stored as an EF shadow property rather than a domain field. A unique index enforces server case-normalized name reuse. ResolveCategory uses one parameterized INSERT ... ON CONFLICT DO NOTHING followed by an EF query, inside the task transaction. Concurrent requests reuse the winning category ID/name instead of racing to insert duplicates. Category rename is not exposed; any future implementation must update NameKey with Name. SQLite's duplicate-name policy is unchanged.
+
+PostgreSQL stores timestamp microseconds; .NET ticks have finer precision. SaveChangesAsync normalizes task timestamps to UTC microseconds before saving/returning DTOs, so POST/PUT responses match subsequent reads exactly. Dates remain date-only values. Create/update commit category/task changes together; failure disposes the uncommitted transaction. Native async EF/Npgsql calls receive cancellation tokens; no Task.Run wrapper is used. Concurrent edits currently use last-writer behavior, without a revision/conflict protocol.
+
+### Configure your development database
+
+The installed PostgreSQL 18 Windows service was detected running. Its credentials, roles, and databases were not inspected or altered. Use pgAdmin or psql as an administrator to create a new dedicated development role/database. Example psql commands (choose different names if these already exist):
+
+```sql
+CREATE ROLE todoapp_dev LOGIN;
+\password todoapp_dev
+CREATE DATABASE todoapp OWNER todoapp_dev;
 ```
 
-Future command shape, valid only after EF packages, the local tool, DbContext, and configuration exist:
+The psql password command prompts locally; do not paste credentials into chat or commit them. The role owns only the chosen development database and does not need superuser privileges. Then, from the solution root in PowerShell, replace the placeholder with your local password:
 
 ```powershell
-dotnet ef migrations add InitialCreate --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --output-dir Persistence/Migrations
-dotnet ef database update --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api
+dotnet tool restore
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet user-secrets set "ConnectionStrings:TodoDatabase" "Host=localhost;Port=5432;Database=todoapp;Username=todoapp_dev;Password=<local-password>" --project src/TodoApp.Api
+dotnet ef database update --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext
+dotnet run --project src/TodoApp.Api --launch-profile https
 ```
 
-Do not run these now. Never store production credentials in appsettings, source, examples, or MAUI. Review migrations before release; apply production migrations through a controlled deployment step rather than automatic startup mutation. Back up data before destructive schema changes.
+UserSecretsId is already assigned. Alternatively set ConnectionStrings__TodoDatabase in the API terminal or deployment configuration. A connection string is required at startup; missing configuration stops startup with instructions. No credentials are in appsettings/source. The API stays Development-only until authentication/user ownership are implemented. The health endpoint is liveness, not a database readiness check.
+
+### Migration strategy
+
+The generated initial migration is `20261113005745_InitialCreate` in Persistence/Server/Migrations, alongside its designer and model snapshot. It creates Categories/Tasks, constraints, and indexes. Review it and apply it explicitly with database update; the API does not call EnsureCreated or Migrate during startup.
+
+For future model changes:
+
+```powershell
+dotnet ef migrations add MeaningfulChangeName --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext --output-dir Persistence/Server/Migrations
+dotnet ef migrations script --idempotent --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext
+```
+
+Do not regenerate InitialCreate against an existing database. Review changes before applying them, and use controlled deployment/backup procedures before any destructive future migration. PostgreSQL tracks applied EF migrations in __EFMigrationsHistory; SQLite's user_version mechanism is separate.
+
+### Real PostgreSQL tests
+
+Default dotnet test runs the portable suite using an explicit in-memory REST substitute and skips nine database cases unless TODOAPP_TEST_POSTGRES is configured. It does not pretend those skipped cases validate PostgreSQL. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
+
+```powershell
+$env:TODOAPP_TEST_POSTGRES = 'Host=localhost;Port=5432;Database=postgres;Username=<test-role>;Password=<test-password>'
+.\scripts\Test-Postgres.ps1
+```
+
+Each database test creates/migrates a uniquely named todoapp_tests_<guid> database, then drops only that database during cleanup. Never point this at production. The script builds into ignored .tools/postgres-checks so an existing dev API need not lock its outputs. Tests cover retained DTOs across new API hosts, identity/timestamp precision, full CRUD, category concurrency/uniqueness, FK deletion/clearing, rollback after forced failure, filters, validation, and repeatable migrations/model consistency.
+
+This run used PostgreSQL 18 binaries with a separate .tools/pg-tests cluster on 127.0.0.1:55439 and a loopback-only trust-auth test role. This was test infrastructure, not the app's development database configuration or a replacement for your running service. Test databases were cleaned up; the isolated server is stopped after verification. Its local files remain ignored. Your normal API still needs the development connection/migration steps above.
 
 ## Future synchronization
 

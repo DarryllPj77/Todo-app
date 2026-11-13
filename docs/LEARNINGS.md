@@ -283,3 +283,51 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A JSON enum converter represents enum values by their names rather than numeric backing values.
 
 **Short example:** Priority is sent as `"High"`. JsonStringEnumConverter<TaskPriority> with allowIntegerValues false rejects numeric priority input.
+
+## DbContext and DbSet
+
+**Definition:** DbContext coordinates EF queries, tracking, and saving. DbSet is a query/update entry point for one entity type.
+
+**Short example:** TodoDbContext.Tasks represents stored TaskItem rows; await database.SaveChangesAsync(token) saves tracked changes. Each API request receives its own scoped context.
+
+## Fluent entity configuration
+
+**Definition:** EF's Fluent API maps classes, columns, relationships, and constraints outside the domain types.
+
+**Short example:** TaskItemConfiguration maps CategoryId as an optional FK with DeleteBehavior.SetNull. CategoryConfiguration maps the private tasks collection field.
+
+## Tracking and AsNoTracking
+
+**Definition:** EF tracks loaded objects when it needs to detect updates. AsNoTracking reads avoid that state for read-only results.
+
+**Short example:** GET operations load tasks with AsNoTracking plus Include(Category), then build response DTOs. PUT uses tracked entities and domain mutation methods before saving.
+
+## Code First migrations and model snapshot
+
+**Definition:** A migration records a model's schema changes as reviewable code. The snapshot describes the model used to compare future changes.
+
+**Short example:** InitialCreate creates Categories/Tasks and their FK/index/check constraints. dotnet ef database update applies pending migrations explicitly; API startup does not modify the schema.
+
+## Shadow property and unique index
+
+**Definition:** A shadow property exists in the EF model/database without a property on the domain class. A unique index prevents duplicate stored keys.
+
+**Short example:** Category's NameKey stores its uppercase-invariant name for server uniqueness. EF.Property<string>(category, "NameKey") queries it.
+
+## Atomic upsert
+
+**Definition:** An insert with a database conflict rule handles competing creators as one atomic operation.
+
+**Short example:** Category insertion uses parameterized INSERT ... ON CONFLICT (NameKey) DO NOTHING. Concurrent requests then read the same existing category instead of creating duplicates.
+
+## Development user secrets
+
+**Definition:** User secrets keep development configuration outside the repository. Environment variables can supply the same configuration key.
+
+**Short example:** The API reads ConnectionStrings:TodoDatabase; its environment spelling is ConnectionStrings__TodoDatabase. The connection never belongs in MAUI or committed appsettings.
+
+## Database timestamp precision
+
+**Definition:** Databases and .NET can represent timestamps at different resolutions, so a saved value may otherwise differ slightly when read back.
+
+**Short example:** TodoDbContext rounds down UTC timestamps to PostgreSQL microseconds before saving, so response timestamps round-trip exactly.

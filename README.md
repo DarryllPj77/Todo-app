@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 6 task REST API implemented; 103 tests pass.** The API supports create/read/update/delete, validation, completion, and filters using a Development-only in-memory server store. Live local HTTP CRUD checks passed. The offline MAUI/SQLite app remains independent; its Windows build/launch was verified in Phase 5, with full manual/light/mobile acceptance still pending. PostgreSQL, authentication, API client integration, and synchronization remain later work. See [development progress](docs/DEVELOPMENT_PROGRESS.md).
+**Current status (2026-11-13): Phase 7 PostgreSQL/EF Core persistence implemented.** The normal API uses a scoped PostgreSQL task service with an initial Code First migration. Real PostgreSQL tests verify stored data across new API hosts, transactions, constraints, and concurrent category assignment. The MAUI/SQLite app remains independent; authentication, API client integration, and synchronization are later phases. Configure your development connection and apply the migration before running the API. See [DATABASE.md](docs/DATABASE.md) and [development progress](docs/DEVELOPMENT_PROGRESS.md).
 
 ## Technology and prerequisites
 
@@ -12,7 +12,8 @@ A learning-focused C#/.NET Todo application, built one phase at a time. The firs
 - xUnit and ASP.NET Core's in-memory integration test host.
 - LINQ for local task filtering and ordering; no additional package is needed.
 - Microsoft.Data.Sqlite **10.0.15** for local SQLite storage, including its native SQLite dependency.
-- Planned: EF Core with Npgsql/PostgreSQL on the server and JWT later. Their packages are deferred until their phases.
+- EF Core/Relational/Design **10.0.15**, local dotnet-ef **10.0.15**, and Npgsql.EntityFrameworkCore.PostgreSQL **10.0.3** for server PostgreSQL storage.
+- Planned: authentication/JWT, client API integration, and synchronization.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -23,11 +24,13 @@ TodoApp.slnx                 All five projects, including MAUI
 TodoApp.Core.slnf            Same solution, excluding MAUI for SDK-only checks
 src/
   TodoApp.Domain/           Entities, Enums, Services contracts, shared query rules
-  TodoApp.Infrastructure/   SQLite schema/service; in-memory learning implementation
-  TodoApp.Api/              Controllers, Contracts, server Services; Data/Configuration reserved
+  TodoApp.Infrastructure/   SQLite service; server DbContext, mappings, migrations
+  TodoApp.Api/              Controllers, Contracts, Services, database Configuration
   TodoApp.Maui/             Views, ViewModels, Models, Services, Resources, Platforms
 tests/TodoApp.Tests/        Domain, storage, ViewModel behavior, and REST integration tests
 scripts/Run-Windows.ps1     Windows build/run launcher (PowerShell 5.1 compatible)
+scripts/Test-Postgres.ps1   Real PostgreSQL tests using a dedicated test connection
+dotnet-tools.json          Repository-local EF tool version
 docs/                      Roadmap, architecture, database plan, learnings, progress
 ```
 
@@ -47,7 +50,11 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter does not convert MAUI into a plain .NET library or claim to validate client code.
 
+The default test run needs no database: REST contract tests explicitly substitute the earlier in-memory service, while the nine PostgreSQL cases report skipped unless TODOAPP_TEST_POSTGRES is set. The Phase 7 verification run supplied an isolated PostgreSQL 18 test connection: **113 passed, 0 skipped**. See DATABASE.md to run the full suite yourself; skipped database tests are not PostgreSQL validation.
+
 ## Run the API
+
+First follow [PostgreSQL setup](docs/DATABASE.md): create a development role/database, configure ConnectionStrings:TodoDatabase through user secrets/environment variables, restore the local EF tool, and apply the included migration. The API has no automatic startup migration or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -56,7 +63,7 @@ dotnet run --project src/TodoApp.Api --launch-profile https
 
 Open `https://localhost:7114/api/health`; expected JSON is `{"status":"healthy"}`. The HTTP listener is `http://localhost:5062`, redirected to HTTPS by the pipeline when the HTTPS profile is used. `src/TodoApp.Api/TodoApp.Api.http` contains the same request. Stop with Ctrl+C.
 
-The health endpoint checks application liveness only. The task routes below now work; there is no database readiness check, OpenAPI UI, or authentication yet. The API deliberately refuses startup outside Development while it uses temporary unauthenticated storage. The launch profiles set Development automatically. API tasks are separate from the MAUI SQLite file and disappear when the API process restarts.
+The health endpoint checks application liveness only. The task routes use PostgreSQL; there is no database readiness check, OpenAPI UI, or authentication yet. Startup requires a configured connection string and refuses environments outside Development until authentication/ownership are implemented. The launch profiles set Development automatically. API tasks survive restarting the API and are separate from the MAUI SQLite file. User-specific access and client synchronization are not implemented yet.
 
 | Method and route | Success | Other expected responses |
 | --- | --- | --- |
@@ -136,7 +143,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 
 **No database server or manual SQLite installation is required.** Package restore supplies the SQLite library. The MAUI registration chooses `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`; opening the task list queries the service and creates the directory, database, and version-1 schema when absent. Do not delete this file if you want to keep your tasks.
 
-Tests create temporary database files and remove them after verification. There is no EF DbContext, PostgreSQL configuration, or EF migration yet. SQLite upgrades use `PRAGMA user_version`; unknown newer versions are rejected without resetting data. [DATABASE.md](docs/DATABASE.md) explains mapping, transactions, category behavior, and the future server setup. PostgreSQL credentials will use development user secrets or `ConnectionStrings__TodoDatabase`; never commit real credentials.
+Local storage tests create temporary SQLite files and remove them afterward. SQLite schema versioning remains independent of server EF migrations. The API now uses PostgreSQL through TodoDbContext and the included InitialCreate migration. [DATABASE.md](docs/DATABASE.md) contains separate local/server setup instructions and the PostgreSQL test procedure. Store server credentials in development user secrets or ConnectionStrings__TodoDatabase, never source or the MAUI app.
 
 ## Try the local service in code
 

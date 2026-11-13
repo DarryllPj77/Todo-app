@@ -1,0 +1,26 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using TodoApp.Domain.Entities;
+
+namespace TodoApp.Infrastructure.Persistence.Server;
+
+internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
+{
+    public void Configure(EntityTypeBuilder<TaskItem> builder)
+    {
+        builder.ToTable("Tasks", table =>
+        {
+            table.HasCheckConstraint("CK_Tasks_Title", "length(btrim(\"Title\")) BETWEEN 1 AND 200");
+            table.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
+        });
+        builder.HasKey(task => task.Id);
+        builder.Property(task => task.Id).ValueGeneratedNever();
+        builder.Property(task => task.Title).HasMaxLength(TaskItem.MaxTitleLength).IsRequired();
+        builder.Property(task => task.Description).HasMaxLength(TaskItem.MaxDescriptionLength);
+        builder.Property(task => task.Priority).HasConversion<int>();
+        builder.Property(task => task.CreatedAt).HasColumnType("timestamp with time zone");
+        builder.Property(task => task.UpdatedAt).HasColumnType("timestamp with time zone");
+        builder.HasOne(task => task.Category).WithMany(category => category.Tasks)
+            .HasForeignKey(task => task.CategoryId).OnDelete(DeleteBehavior.SetNull);
+    }
+}

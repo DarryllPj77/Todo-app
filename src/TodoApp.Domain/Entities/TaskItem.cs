@@ -7,15 +7,15 @@ public sealed class TaskItem
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 4000;
 
-    public Guid Id { get; } = Guid.NewGuid();
+    public Guid Id { get; private set; } = Guid.NewGuid();
     public string Title { get; private set; }
     public string? Description { get; private set; }
     public bool IsCompleted { get; private set; }
     public DateOnly? DueDate { get; private set; }
     public TaskPriority Priority { get; private set; }
     public Category? Category { get; private set; }
-    public Guid? CategoryId => Category?.Id;
-    public DateTimeOffset CreatedAt { get; }
+    public Guid? CategoryId { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public TaskItem(
@@ -31,9 +31,16 @@ public sealed class TaskItem
         DueDate = dueDate;
         Priority = priority;
         Category = category;
+        CategoryId = category?.Id;
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = CreatedAt;
         category?.AttachTask(this);
+    }
+
+    // EF materialization only; application code uses the validating constructor.
+    private TaskItem()
+    {
+        Title = null!;
     }
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
@@ -93,13 +100,14 @@ public sealed class TaskItem
 
     public void SetCategory(Category? category)
     {
-        if (Category == category)
+        if (Category == category && CategoryId == category?.Id)
         {
             return;
         }
 
         Category?.DetachTask(this);
         Category = category;
+        CategoryId = category?.Id;
         category?.AttachTask(this);
         UpdatedAt = DateTimeOffset.UtcNow;
     }

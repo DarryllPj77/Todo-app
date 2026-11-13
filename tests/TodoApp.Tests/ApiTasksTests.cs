@@ -19,7 +19,7 @@ public sealed class ApiTasksTests : IAsyncLifetime
     {
         Converters = { new JsonStringEnumConverter<TaskPriority>(allowIntegerValues: false) }
     };
-    private readonly WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+    private readonly WebApplicationFactory<Program> factory = new ApiTestFactory()
         .WithWebHostBuilder(builder => builder.UseEnvironment("Development")
             .ConfigureServices(services => services.AddSingleton<TimeProvider>(new ServerClock())));
     private HttpClient client = null!;
@@ -214,7 +214,7 @@ public sealed class ApiTasksTests : IAsyncLifetime
     public async Task AnotherServerInstance_StartsEmpty()
     {
         await CreateAsync(new TaskWriteRequest { Title = "Not durable" });
-        await using var otherFactory = new WebApplicationFactory<Program>();
+        await using var otherFactory = new ApiTestFactory();
         using var other = otherFactory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
         Assert.Empty((await other.GetFromJsonAsync<TaskResponse[]>("/api/tasks", JsonOptions))!);
     }

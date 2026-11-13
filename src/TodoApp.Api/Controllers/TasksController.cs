@@ -9,9 +9,9 @@ namespace TodoApp.Api.Controllers;
 [Route("api/tasks")]
 public sealed class TasksController : ControllerBase
 {
-    private readonly InMemoryTaskService tasks;
+    private readonly ITaskService tasks;
 
-    public TasksController(InMemoryTaskService tasks)
+    public TasksController(ITaskService tasks)
     {
         this.tasks = tasks;
     }

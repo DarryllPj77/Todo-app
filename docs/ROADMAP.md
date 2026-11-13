@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 6 task REST endpoints are implemented and 103 tests pass, including 32 new API cases. Windows MAUI build/launch was verified in Phase 5; its remaining manual acceptance checks are still open. The next implementation phase is PostgreSQL/EF Core, not client/server synchronization.
+Proceed one phase at a time after review. Phase 7 PostgreSQL/EF Core persistence is implemented. Verification ran 113 tests, including nine real PostgreSQL cases, with no skips; the Windows-targeted solution also builds. Your development database connection still needs local setup. Next is Phase 8 authentication/ownership, before client API integration and synchronization.
 
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
@@ -106,7 +106,7 @@ Proceed one phase at a time after review. Phase 6 task REST endpoints are implem
 - [x] Concurrent requests, filters, cancellation, ephemeral server state, and Development-only startup are tested.
 - [x] Real loopback HTTP create/read/update/delete smoke test passes; the temporary listener was stopped.
 
-## Phase 7 — PostgreSQL and EF Core
+## Phase 7 — PostgreSQL and EF Core (implemented; user development connection setup remains)
 
 **Goal:** Persist server task data.
 
@@ -118,8 +118,11 @@ Proceed one phase at a time after review. Phase 6 task REST endpoints are implem
 
 **Completion checklist:**
 
-- [ ] Documented migration process and secret-based configuration work.
-- [ ] Real PostgreSQL CRUD/relationship checks pass.
+- [x] Compatible EF/Npgsql packages, local EF tool, DbContext/Fluent mappings, and generated InitialCreate migration are present.
+- [x] Connection comes from secrets/environment configuration; missing connection stops startup without a memory fallback.
+- [x] Nine isolated PostgreSQL cases pass: persistence, relationships, constraints, concurrency, rollback, filters, and migrations.
+- [x] Existing SQLite/presentation/REST tests still pass; full run is 113 passed, 0 skipped.
+- [ ] Configure your own development role/database/connection and apply the included migration using DATABASE.md.
 
 ## Phase 8 — Authentication and ownership
 

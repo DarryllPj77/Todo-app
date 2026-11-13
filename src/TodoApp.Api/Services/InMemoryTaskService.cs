@@ -7,7 +7,7 @@ using TodoApp.Domain.Rules;
 namespace TodoApp.Api.Services;
 
 // Development-only server data. It never reads the MAUI database or returns live entities.
-public sealed class InMemoryTaskService
+public sealed class InMemoryTaskService : ITaskService
 {
     private readonly object gate = new();
     private readonly Dictionary<Guid, TaskItem> tasks = new();
