@@ -8,6 +8,8 @@ using System.Text.Json.Serialization;
 using TodoApp.Domain.Enums;
 using TodoApp.Maui.Models;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Maui.Services;
 
 public sealed class TodoApiClient(HttpClient http, ClientSession session)
@@ -54,6 +56,11 @@ public sealed class TodoApiClient(HttpClient http, ClientSession session)
         ProtectedAsync<ApiTask>(HttpMethod.Put, $"api/tasks/{id}", task, cancellationToken);
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ProtectedAsync<object>(HttpMethod.Delete, $"api/tasks/{id}", null, cancellationToken);
+
+    public Task<ApiTask> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken token = default) =>
+        ProtectedAsync<ApiTask>(HttpMethod.Put, $"api/tasks/{id}/recurrence", new { rule }, token);
+    public Task<ApiTask> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken token = default) =>
+        ProtectedAsync<ApiTask>(HttpMethod.Post, $"api/tasks/{id}/occurrences/complete", expected, token);
 
     public Task<ApiTask> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken token = default) =>
         ProtectedAsync<ApiTask>(HttpMethod.Put, $"api/tasks/{id}/quadrant", quadrant, token);

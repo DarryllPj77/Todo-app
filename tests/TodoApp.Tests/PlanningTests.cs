@@ -82,7 +82,7 @@ public sealed class PlanningTests : IDisposable
         Assert.Equal(time, restored.UpdatedAt); Assert.Equal(time, restored.CreatedAt); Assert.Equal(TagSet.Parse("work"), restored.Tags); Assert.True(restored.IsCompleted);
         using var check = new SqliteConnection($"Data Source={path};Pooling=False"); check.Open(); using var query = check.CreateCommand();
         query.CommandText = "UPDATE TaskItems SET Quadrant=99"; Assert.Throws<SqliteException>(() => query.ExecuteNonQuery());
-        query.CommandText = "PRAGMA user_version"; Assert.Equal(5L, query.ExecuteScalar());
+        query.CommandText = "PRAGMA user_version"; Assert.Equal(6L, query.ExecuteScalar());
     }
     [Fact]
     public async Task LegacyOperationAndDefinitionBytes_SurviveFormatUpgradesWithoutRewriteOnRead()

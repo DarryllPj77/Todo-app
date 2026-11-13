@@ -103,6 +103,11 @@ internal sealed class ClientHarness : IDisposable
 internal sealed class ClientNavigation : ITaskNavigation
 {
     public bool Confirm { get; set; }
+    public Task OpenRecurrenceAsync() => Task.CompletedTask;
+    public Func<Task<bool>>? RecurrenceConfirmation { get; set; }
+    public Task<bool> ConfirmRecurrenceConflictAsync(string title) => RecurrenceConfirmation?.Invoke() ?? Task.FromResult(Confirm);
+    public Func<Task<bool>>? OccurrenceConfirmation { get; set; }
+    public Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next) => OccurrenceConfirmation?.Invoke() ?? Task.FromResult(Confirm);
     public Task OpenPlanningAsync() => Task.CompletedTask;
     public Func<Task<bool>>? PlanningConfirmation { get; set; }
     public Task<bool> ConfirmPlanningConflictAsync(string title) => PlanningConfirmation?.Invoke() ?? Task.FromResult(Confirm);

@@ -17,6 +17,8 @@ public sealed class TodoDbContext : DbContext
     {
         modelBuilder.Entity<SyncRecord>(record =>
         {
+            record.ToTable("SyncRecords", table => table.HasCheckConstraint("CK_SyncRecords_RecurrenceFloor", "\"RecurrenceFloor\" BETWEEN 0 AND 1000000"));
+            record.Property(r => r.RecurrenceFloor).HasDefaultValue(0L);
             record.HasKey(r => new { r.OwnerId, r.TaskId });
             record.HasIndex(r => new { r.OwnerId, r.Revision }).IsUnique();
             record.HasOne<UserAccount>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Cascade);

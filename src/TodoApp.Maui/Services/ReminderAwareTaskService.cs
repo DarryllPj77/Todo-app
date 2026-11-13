@@ -4,6 +4,8 @@ using TodoApp.Domain.Services;
 using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Services;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Maui.Services;
 
 // A native notification failure cannot turn a committed SQLite task write into
@@ -24,6 +26,10 @@ public sealed class ReminderAwareTaskService(SqliteLocalTaskService tasks, Remin
     { var result = await tasks.SetPrerequisitesAsync(id, prerequisites, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken token = default)
     { var result = await tasks.SetQuadrantAsync(id, quadrant, token); await reminders.RefreshSafelyAsync(); return result; }
+    public async Task<TaskItem?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken token = default)
+    { var result = await tasks.SetRecurrenceRuleAsync(id, rule, token); await reminders.RefreshSafelyAsync(); return result; }
+    public async Task<TaskItem?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken token = default)
+    { var result = await tasks.CompleteOccurrenceAsync(id, expected, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> DeleteAsync(Guid id, CancellationToken token = default)
     { var result = await tasks.DeleteAsync(id, token); await reminders.RefreshSafelyAsync(); return result; }
 }

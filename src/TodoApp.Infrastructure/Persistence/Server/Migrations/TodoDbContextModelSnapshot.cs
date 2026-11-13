@@ -92,6 +92,12 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<string>("Recurrence")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValueSql("'{\"Rule\":null,\"Occurrence\":0,\"RuleStart\":0}'");
+
                     b.Property<string>("Tags")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -161,6 +167,11 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<string>("Payload")
                         .HasColumnType("text");
 
+                    b.Property<long>("RecurrenceFloor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
                     b.Property<long>("Revision")
                         .HasColumnType("bigint");
 
@@ -169,7 +180,10 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.HasIndex("OwnerId", "Revision")
                         .IsUnique();
 
-                    b.ToTable("SyncRecords");
+                    b.ToTable("SyncRecords", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SyncRecords_RecurrenceFloor", "\"RecurrenceFloor\" BETWEEN 0 AND 1000000");
+                        });
                 });
 
             modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.UserAccount", b =>

@@ -63,7 +63,7 @@ public sealed partial class PostgresAuthenticationTests
         await db.Database.MigrateAsync(); var restored = await db.Tasks.AsNoTracking().SingleAsync(t => t.Id == child);
         Assert.Equal(EisenhowerQuadrant.Unclassified, restored.Quadrant); Assert.Equal(Prerequisites(parent), restored.Prerequisites); Assert.Equal(parent, restored.ParentTaskId);
         Assert.Equal(TagSet.Parse("work"), restored.Tags); Assert.Equal(now, restored.UpdatedAt); Assert.Equal(now, restored.CreatedAt);
-        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(7, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(8, (await db.Database.GetAppliedMigrationsAsync()).Count());
         await Assert.ThrowsAsync<Npgsql.PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Tasks\" SET \"Quadrant\"=99 WHERE \"Id\"={child}"));
         As(account); Assert.Equal(EisenhowerQuadrant.Unclassified, (await client.GetFromJsonAsync<TaskResponse>($"/api/tasks/{child}", ClientHarness.JsonOptions))!.Quadrant);
     }

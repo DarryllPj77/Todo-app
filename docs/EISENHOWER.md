@@ -39,7 +39,7 @@ Content-Type: application/json
 
 Success returns the complete task (200); an unavailable/foreign target returns 404. Null/missing route bodies, objects/arrays, undefined strings, JSON numbers, and numeric strings return 400. The full-write DTO still rejects unknown/server-owned fields. Account identity comes from the bearer token. The existing per-owner transaction lock keeps write/journal atomic; sync whole-task revision checks choose one winner for competing edits.
 
-Sync advertises protocol **5**. Explicit Quadrant input requires 5 before upload, even for Unclassified. Older APIs block the operation with its original ID/payload retained; Retry now reuses it after upgrade. Prerequisite writes/deletions require 4, parent writes 3, and tags 2. Null Quadrant is omitted from legacy mutation serialization, preserving receipt request bytes from all earlier phases. New snapshots include explicit Unclassified where applicable.
+Planning introduced protocol **5**; current recurrence snapshots advertise **6** (RECURRENCE.md). Explicit Quadrant input requires 5 before upload, even for Unclassified. Older APIs block the operation with its original ID/payload retained; Retry now reuses it after upgrade. Prerequisite writes/deletions require 4, parent writes 3, and tags 2. Null Quadrant is omitted from legacy mutation serialization, preserving receipt request bytes from all earlier phases. New snapshots include explicit Unclassified where applicable.
 
 Classification uses whole-task conflicts, without automatic field merging. The planning page shows both complete versions. **Keep local fields & save classification** requires confirmation and creates a fresh operation against the displayed remote revision, with expected-local checks; stale data/account changes reject the action. Use server discards that task's local intent. Preserved parent/dependency changes can still conflict later. Normal edits never replace an immutable in-flight operation; later local intent becomes the next operation after acknowledgement.
 
@@ -48,8 +48,8 @@ Classification uses whole-task conflicts, without automatic field merging. The p
 | Store | Current version / change |
 | --- | --- |
 | PostgreSQL | Seventh migration AddTaskPlanning adds required integer Tasks.Quadrant default 0 with 0..4 check |
-| todoapp.db3 | Schema 5 adds equivalent required INTEGER column/default/check after dependency upgrade |
-| sync.db3 | Schema 5 guards quadrant-aware JSON; old pending payloads are retained without rewrite on read |
+| todoapp.db3 | Current schema 6; the planning upgrade adds equivalent required INTEGER column/default/check after dependency upgrade |
+| sync.db3 | Current schema 6 adds recurrence after quadrant-aware JSON; old pending payloads are retained without rewrite on read |
 | views.db3 | Schema 3 adds quadrant-aware definition JSON; old definitions/IDs/revisions remain without rewrite on read |
 | reminders.db3 | Schema 1, unchanged |
 
@@ -58,7 +58,7 @@ Enum values are stable: Unclassified=0, UrgentImportant=1, ImportantNotUrgent=2,
 Existing task IDs, ownership, parents, prerequisites, tags, categories, completion, dates, timestamps, queues, receipts, saved definitions, and reminders remain. No new package or service dependency is added. No user development database is migrated automatically. Down removes all classifications; older binaries cannot safely share new payloads/files. Upgrade API/client together and retain backups/queues rather than deleting caches.
 
 1. Stop the development API and close older client builds. Back up/retain existing databases and local files.
-2. Use your configured Development connection and JWT signing secret; apply all seven migrations:
+2. Use your configured Development connection and JWT signing secret; apply all eight migrations:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'

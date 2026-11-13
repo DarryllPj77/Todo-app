@@ -4,6 +4,8 @@ using TodoApp.Domain.Rules;
 using TodoApp.Domain.Relationships;
 using TodoApp.Domain.Services;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Infrastructure.Services;
 
 // Temporary, process-local storage for Phase 3; SQLite replaces it in Phase 4.
@@ -41,6 +43,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(details);
         if (details.Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
+        RecurrenceRules.ValidateWrite(RepeatState.None, details.Recurrence ?? RepeatState.None, details.DueDate, false, false);
         var id = Guid.NewGuid();
         TaskDependencies.ValidateChange(Nodes().Append(new(id, TaskPrerequisites.Empty, false)), id, details.Prerequisites ?? TaskPrerequisites.Empty);
         TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, details.Parent?.Id);
@@ -48,6 +51,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         task.SetParent(details.Parent ?? new TaskParent(null));
         task.SetPrerequisites(details.Prerequisites ?? TaskPrerequisites.Empty);
         task.SetQuadrant(details.Quadrant ?? EisenhowerQuadrant.Unclassified);
+        task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags, details.Recurrence);
         tasks.Add(task.Id, task);
         return Task.FromResult(task);
     }
@@ -63,9 +67,13 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         }
 
         if (details.Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
+        var recurrence = details.Recurrence ?? task.Recurrence;
+        RecurrenceRules.ValidateWrite(task.Recurrence, recurrence, details.DueDate, task.IsCompleted, task.IsCompleted);
+        if (recurrence.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(), id);
+        if (recurrence.Occurrence > task.Recurrence.Occurrence) TaskDependencies.ValidateChange(Nodes(), id, details.Prerequisites ?? task.Prerequisites, true);
         if (details.Prerequisites is { } prerequisites) TaskDependencies.ValidateChange(Nodes(), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
         if (details.Parent is { } parent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parent.Id);
-        task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
+        task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags, details.Recurrence);
         if (details.Parent is { } change) task.SetParent(change);
         if (details.Prerequisites is { } changed) task.SetPrerequisites(changed);
         if (details.Quadrant is { } changeQuadrant) task.SetQuadrant(changeQuadrant);
@@ -95,7 +103,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         task.SetParent(new TaskParent(parentId)); return Task.FromResult(true);
     }
 
-    private IEnumerable<DependencyNode> Nodes() => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted));
+    private IEnumerable<DependencyNode> Nodes() => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted, t.Recurrence.IsActive));
     public Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -109,6 +117,27 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         cancellationToken.ThrowIfCancellationRequested();
         if (!tasks.TryGetValue(id, out var task)) return Task.FromResult(false);
         task.SetQuadrant(quadrant); return Task.FromResult(true);
+    }
+
+    public Task<TaskItem?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskItem?>(null);
+        var next = RecurrenceRules.Configure(task.Recurrence, rule);
+        if (next.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(), id);
+        task.SetRecurrence(next); return Task.FromResult<TaskItem?>(task);
+    }
+    public Task<TaskItem?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskItem?>(null);
+        var next = RecurrenceRules.Complete(task.Recurrence, expected);
+        if (next != task.Recurrence)
+        {
+            TaskDependencies.ValidateChange(Nodes(), id, task.Prerequisites, true);
+            task.CompleteOccurrence(expected);
+        }
+        return Task.FromResult<TaskItem?>(task);
     }
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

@@ -2,6 +2,8 @@ using TodoApp.Api.Contracts;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Services;
 
 public interface ITaskService
@@ -13,5 +15,7 @@ public interface ITaskService
     Task<TaskResponse?> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken);
     Task<TaskResponse?> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default);
     Task<TaskResponse?> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default);
+    Task<TaskResponse?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken cancellationToken = default);
+    Task<TaskResponse?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }

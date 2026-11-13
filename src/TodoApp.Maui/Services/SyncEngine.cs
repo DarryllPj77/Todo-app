@@ -31,7 +31,7 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
                 if (row?.Pending is not { } pending) break;
                 // Deletes also need the API's incoming-dependency policy, even
                 // though their immutable payload contains no task snapshot.
-                var requiredProtocol = pending.Task?.Quadrant is not null ? 5 : pending.Deleted || pending.Task?.Prerequisites is not null ? 4 : pending.Task?.Parent is not null ? 3 : pending.Task?.Tags is not null ? 2 : 1;
+                var requiredProtocol = pending.Task?.Recurrence is not null ? 6 : pending.Task?.Quadrant is not null ? 5 : pending.Deleted || pending.Task?.Prerequisites is not null ? 4 : pending.Task?.Parent is not null ? 3 : pending.Task?.Tags is not null ? 2 : 1;
                 if (requiredProtocol > checkedProtocol)
                 {
                     var capability = await api.DownloadAsync(0, token);
@@ -39,7 +39,7 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
                     if (capability.ProtocolVersion < requiredProtocol)
                     {
                         await store.FailedAsync(partition, pending, time.GetUtcNow(), permanent: true);
-                        throw new ApiClientException("This API does not support this task feature (tags/hierarchy/dependencies/planning). Upgrade the API, apply its migration, then Retry now. Your queue was retained.");
+                        throw new ApiClientException("This API does not support this task feature (tags/hierarchy/dependencies/planning/recurrence). Upgrade the API, apply its migration, then Retry now. Your queue was retained.");
                     }
                     checkedProtocol = capability.ProtocolVersion;
                 }
@@ -81,7 +81,7 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
         {
             if (!state.Rows.TryGetValue(prerequisiteId, out var prerequisite)) continue; // Server returns a reviewable conflict.
             if (prerequisite.Remote is not { Deleted: false, Task: not null } && prerequisite.Pending is not null && !prerequisite.Conflict) return false;
-            if (pending.Task!.IsCompleted && prerequisite.Remote?.Task?.IsCompleted != true &&
+            if ((pending.Task!.IsCompleted || (pending.Task.Recurrence?.Occurrence ?? 0) > (state.Rows[pending.TaskId].Remote?.Task?.Recurrence?.Occurrence ?? 0)) && prerequisite.Remote?.Task?.IsCompleted != true &&
                 prerequisite.Pending is not null && prerequisite.Local?.IsCompleted == true && !prerequisite.Conflict) return false;
         }
         if (pending.Task?.Parent?.Id is { } parentId && state.Rows.TryGetValue(parentId, out var parent))

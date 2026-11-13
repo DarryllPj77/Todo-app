@@ -4,6 +4,8 @@ using TodoApp.Domain.Sync;
 using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Persistence.Server;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Services;
 
 public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
@@ -20,7 +22,7 @@ public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
             .Where(t => EF.Property<Guid?>(t, "OwnerId") == owner && !known.Contains(t.Id)).ToListAsync(token);
         foreach (var task in legacy)
             await RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), token);
+                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant, task.Recurrence), token);
     }
 
     public async Task<SyncEntry> RecordAsync(Guid id, SyncTaskData? data, CancellationToken token)
@@ -34,6 +36,7 @@ public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
             record = new SyncRecord { OwnerId = owner, TaskId = id };
             database.SyncRecords.Add(record);
         }
+        record.RecurrenceFloor = Math.Max(record.RecurrenceFloor, data?.Recurrence?.Occurrence ?? 0);
         record.Revision = revision;
         record.Deleted = data is null;
         record.Payload = data is null ? null : JsonSerializer.Serialize(data);
@@ -42,5 +45,5 @@ public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
     }
 
     public static SyncEntry Entry(SyncRecord record) => new(record.TaskId, record.Revision,
-        record.Deleted, record.Payload is null ? null : JsonSerializer.Deserialize<SyncTaskData>(record.Payload));
+        record.Deleted, record.Payload is null ? null : JsonSerializer.Deserialize<SyncTaskData>(record.Payload), record.RecurrenceFloor);
 }

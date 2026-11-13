@@ -6,6 +6,8 @@ using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Infrastructure.Persistence.Server;
 
 internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
@@ -33,6 +35,10 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
                 json => JsonSerializer.Deserialize<TaskPrerequisites>(json, (JsonSerializerOptions?)null)!,
                 new ValueComparer<TaskPrerequisites>((a, b) => a!.Equals(b), value => value.GetHashCode(), value => value));
         builder.Property(task => task.Quadrant).HasConversion<int>().HasDefaultValue(EisenhowerQuadrant.Unclassified).IsRequired();
+        builder.Property(task => task.Recurrence).HasColumnType("text").HasDefaultValueSql("'{\"Rule\":null,\"Occurrence\":0,\"RuleStart\":0}'").IsRequired()
+            .HasConversion(value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
+                json => JsonSerializer.Deserialize<RepeatState>(json, (JsonSerializerOptions?)null)!,
+                new ValueComparer<RepeatState>((a, b) => a == b, value => value.GetHashCode(), value => value));
         builder.Property(task => task.Priority).HasConversion<int>();
         builder.Property(task => task.CreatedAt).HasColumnType("timestamp with time zone");
         builder.Property(task => task.UpdatedAt).HasColumnType("timestamp with time zone");

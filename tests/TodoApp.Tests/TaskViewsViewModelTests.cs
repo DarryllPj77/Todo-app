@@ -157,7 +157,10 @@ public sealed class TaskViewsViewModelTests : IDisposable
         public Task<bool> ConfirmDeleteAsync(string name) => Task.FromResult(false);
         public Task EditTaskAsync(Guid? id) { EditedId = id; return Task.CompletedTask; }
         public Task OpenSyncAsync() { SyncOpened++; return Task.CompletedTask; }
-        public Task OpenPlanningAsync() => Task.CompletedTask;
+        public Task OpenRecurrenceAsync() => Task.CompletedTask;
+    public Task<bool> ConfirmRecurrenceConflictAsync(string title) => Task.FromResult(false);
+    public Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next) => Task.FromResult(false);
+    public Task OpenPlanningAsync() => Task.CompletedTask;
     public Task<bool> ConfirmPlanningConflictAsync(string title) => Task.FromResult(false);
     public Task OpenDependenciesAsync() => Task.CompletedTask;
     public Task<bool> ConfirmDependencyConflictAsync(string title) => Task.FromResult(false);
@@ -178,6 +181,8 @@ public sealed class TaskViewsViewModelTests : IDisposable
         public Task<TaskItem> CreateAsync(TaskDetails details, CancellationToken token = default) => inner.CreateAsync(details, token);
         public Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken token = default) => inner.UpdateAsync(id, details, token);
         public Task<bool> SetCompletedAsync(Guid id, bool completed, CancellationToken token = default) => inner.SetCompletedAsync(id, completed, token);
+        public Task<TodoApp.Domain.Entities.TaskItem?> SetRecurrenceRuleAsync(Guid id, TodoApp.Domain.Recurrence.RepeatRule? rule, CancellationToken token = default) => inner.SetRecurrenceRuleAsync(id, rule, token);
+        public Task<TodoApp.Domain.Entities.TaskItem?> CompleteOccurrenceAsync(Guid id, TodoApp.Domain.Recurrence.RepeatState expected, CancellationToken token = default) => inner.CompleteOccurrenceAsync(id, expected, token);
         public Task<bool> SetQuadrantAsync(Guid id, TodoApp.Domain.Enums.EisenhowerQuadrant quadrant, CancellationToken token = default) => inner.SetQuadrantAsync(id, quadrant, token);
         public Task<bool> SetPrerequisitesAsync(Guid id, TodoApp.Domain.Relationships.TaskPrerequisites prerequisites, CancellationToken token = default) => inner.SetPrerequisitesAsync(id, prerequisites, token);
         public Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken token = default) => inner.SetParentAsync(id, parentId, token);

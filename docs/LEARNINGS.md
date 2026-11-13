@@ -565,3 +565,21 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Nullable command input distinguishes preserve from an intentional reset while a stable stored enum represents the actual task value.
 
 **Short example:** Omitted/null Quadrant preserves; explicit Unclassified clears. Old receipt bytes omit null Quadrant, protocol 5 guards new writes, and immutable outgoing payloads keep later classifications as separate operations. Saved-view Any is null, which differs from an Unclassified filter. See EISENHOWER.md.
+
+## Calendar anchors versus repeated addition
+
+**Definition:** Calculate a monthly occurrence from its original anchor instead of adding one month to the previous clamped date.
+
+**Short example:** January 31 plus one anchored month is February 28; plus two is March 31. Repeatedly adding to February 28 would drift to March 28. DateOnly has no instant/time-zone conversion; reminder instants stay separate.
+
+## Idempotent completion and retained counters
+
+**Definition:** A retry must identify the occurrence it meant to complete rather than mean complete whatever is current now.
+
+**Short example:** An expected RepeatState advances counter 0 to 1. Retrying that state returns current counter 1 without another advance. The server retains a counter floor after deletion so restoring the same ID cannot reset consumed work. A same-counter rule change requires review. Sync combines this with owner transactions, base revisions, receipts, and frozen outgoing operations.
+
+## Choose a scheduler only for a timed action
+
+**Definition:** A scheduler is justified by a required time-triggered job, not merely by the word recurring.
+
+**Short example:** Completion-based recurrence already has a current future task and advances in an explicit user transaction. No timed task-generation job is needed. Timed expansion/background jobs would require separate scheduling/idempotency/retention design. See RECURRENCE.md.

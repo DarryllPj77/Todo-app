@@ -5,6 +5,7 @@ public sealed class SyncRecord
 {
     public Guid OwnerId { get; set; }
     public Guid TaskId { get; set; }
+    public long RecurrenceFloor { get; set; }
     public long Revision { get; set; }
     public bool Deleted { get; set; }
     public string? Payload { get; set; }

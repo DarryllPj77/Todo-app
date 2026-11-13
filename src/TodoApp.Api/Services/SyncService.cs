@@ -5,6 +5,8 @@ using TodoApp.Domain.Sync;
 using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Persistence.Server;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Services;
 
 public sealed class SyncService(TodoDbContext database, ICurrentUser user, PostgresTaskService tasks, SyncJournal journal)
@@ -20,7 +22,7 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
             .OrderBy(r => r.Revision).Take(101).ToListAsync(token);
         var changes = records.Take(100).Select(SyncJournal.Entry).ToArray();
         await tx.CommitAsync(token);
-        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 5);
+        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 6);
     }
 
     public async Task<SyncResult?> ApplyAsync(SyncMutation input, CancellationToken token)
@@ -53,14 +55,14 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
                     var data = input.Task!;
                     var write = new TaskWriteRequest { Title = data.Title, Description = data.Description,
                         DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName,
-                        IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent, Prerequisites = data.Prerequisites, Quadrant = data.Quadrant };
+                        IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent, Prerequisites = data.Prerequisites, Quadrant = data.Quadrant, Recurrence = data.Recurrence };
                     if (record is null || record.Deleted) await tasks.CreateWithIdAsync(input.TaskId, write, token);
                     else await tasks.UpdateAsync(input.TaskId, write, token);
                 }
                 record = await database.SyncRecords.FindAsync([owner, input.TaskId], token);
                 result = new SyncResult(false, SyncJournal.Entry(record!));
             }
-            catch (ArgumentException error) when (error is TaskHierarchyException or TaskDependencyException)
+            catch (ArgumentException error) when (error is TaskHierarchyException or TaskDependencyException or TaskRecurrenceException)
             {
                 // Structural checks happen before task/category mutation. Preserve
                 // the local intent as a resolvable conflict rather than a blind retry.

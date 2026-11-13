@@ -1,6 +1,8 @@
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Domain.Entities;
 
 public sealed class TaskItem
@@ -8,6 +10,7 @@ public sealed class TaskItem
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 4000;
 
+    public RepeatState Recurrence { get; private set; } = RepeatState.None;
     public TagSet Tags { get; private set; } = TagSet.Empty;
     public EisenhowerQuadrant Quadrant { get; private set; } = EisenhowerQuadrant.Unclassified;
     public Guid? ParentTaskId { get; private set; }
@@ -44,10 +47,11 @@ public sealed class TaskItem
     }
 
     public static TaskItem CreateWithId(Guid id, string title, string? description = null,
-        DateOnly? dueDate = null, TaskPriority priority = TaskPriority.Normal, Category? category = null, TagSet? tags = null)
+        DateOnly? dueDate = null, TaskPriority priority = TaskPriority.Normal, Category? category = null, TagSet? tags = null, long occurrenceFloor = 0)
     {
         if (id == Guid.Empty) throw new ArgumentException("A task must have an ID.", nameof(id));
-        return new TaskItem(title, description, dueDate, priority, category, tags) { Id = id };
+        var baseline = new RepeatState(null, occurrenceFloor, occurrenceFloor); RecurrenceRules.Validate(baseline);
+        return new TaskItem(title, description, dueDate, priority, category, tags) { Id = id, Recurrence = baseline };
     }
 
     // EF materialization only; application code uses the validating constructor.
@@ -58,7 +62,7 @@ public sealed class TaskItem
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified, RepeatState? recurrence = null)
     {
         if (id == Guid.Empty)
         {
@@ -66,42 +70,58 @@ public sealed class TaskItem
         }
 
         return new TaskItem(id, title, description, dueDate, priority, category,
-            isCompleted, createdAt, updatedAt, tags, parentTaskId, prerequisites, quadrant);
+            isCompleted, createdAt, updatedAt, tags, parentTaskId, prerequisites, quadrant, recurrence);
     }
 
     private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified, RepeatState? recurrence = null)
         : this(title, description, dueDate, priority, category, tags)
     {
         Id = id;
         SetParent(new TaskParent(parentTaskId));
         SetPrerequisites(prerequisites ?? TaskPrerequisites.Empty);
         SetQuadrant(quadrant);
+        var restoredRecurrence = recurrence ?? RepeatState.None;
+        RecurrenceRules.ValidateWrite(restoredRecurrence, restoredRecurrence, dueDate, false, isCompleted);
+        Recurrence = restoredRecurrence;
         IsCompleted = isCompleted;
         CreatedAt = createdAt.ToUniversalTime();
         UpdatedAt = updatedAt.ToUniversalTime();
     }
 
-    public void UpdateDetails(string title, string? description, DateOnly? dueDate, TaskPriority priority, TagSet? tags = null)
+    public void UpdateDetails(string title, string? description, DateOnly? dueDate, TaskPriority priority, TagSet? tags = null, RepeatState? recurrence = null)
     {
         // Validate everything first: a rejected edit must not partially change the task.
         var normalizedTitle = NormalizeTitle(title);
         var normalizedDescription = NormalizeDescription(description);
         ValidatePriority(priority);
+        var repeat = recurrence ?? Recurrence;
+        RecurrenceRules.ValidateWrite(Recurrence, repeat, dueDate, IsCompleted, IsCompleted);
 
         if (Title == normalizedTitle && Description == normalizedDescription &&
-            DueDate == dueDate && Priority == priority && (tags is null || Tags.Equals(tags)))
+            DueDate == dueDate && Priority == priority && (tags is null || Tags.Equals(tags)) && Recurrence == repeat)
         {
             return;
         }
 
+        Recurrence = repeat;
         if (tags is not null) Tags = tags;
         Title = normalizedTitle;
         Description = normalizedDescription;
         DueDate = dueDate;
         Priority = priority;
         UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetRecurrence(RepeatState recurrence) => UpdateDetails(Title, Description,
+        recurrence.IsActive ? RecurrenceRules.DueDate(recurrence) : DueDate, Priority, Tags, recurrence);
+
+    public bool CompleteOccurrence(RepeatState expected)
+    {
+        var next = RecurrenceRules.Complete(Recurrence, expected);
+        if (next == Recurrence) return false;
+        SetRecurrence(next); return true;
     }
 
     public void SetParent(TaskParent parent)
@@ -135,6 +155,7 @@ public sealed class TaskItem
 
     public void SetCompleted(bool isCompleted)
     {
+        if (isCompleted && Recurrence.IsActive) throw new TaskRecurrenceException("Use Recurring tasks to complete this occurrence; the next occurrence stays pending.");
         if (IsCompleted == isCompleted)
         {
             return;

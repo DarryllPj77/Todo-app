@@ -2,7 +2,7 @@
 
 ## Current state
 
-Device tasks use todoapp.db3 schema **5** with tags, parent, prerequisites, and checked integer Quadrant defaulting to Unclassified. The API has seven migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, AddTaskDependencies, and AddTaskPlanning. The last adds Tasks.Quadrant default 0 with a 0..4 check. sync.db3 uses schema **5**, views.db3 **3**, and reminders.db3 **1**. Existing rows/fields/ownership/queues/receipts/definitions are retained. Only generated test databases were migrated. Follow EISENHOWER.md for coordinated API/client upgrade.
+Device tasks use todoapp.db3 schema **6** with recurrence JSON plus existing tags/parent/prerequisites/planning. The API has eight migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, AddTaskDependencies, AddTaskPlanning, and AddTaskRecurrence. The last adds Tasks.Recurrence text and bounded SyncRecords.RecurrenceFloor bigint. sync.db3 uses schema **6**, views.db3 remains **3**, reminders.db3 **1**. Existing data/counters/queues/receipts/definitions remain. Only generated test databases were migrated. Follow RECURRENCE.md for coordinated API/client upgrade.
 
 ## Initial entities and relationship
 
@@ -30,7 +30,7 @@ SQLite configures and tests category deletion with ON DELETE SET NULL, preservin
 
 ## SQLite: local device storage
 
-The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 5 when absent (initial creation followed by explicit tag/parent/dependency/planning upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 6 when absent (initial creation followed by explicit tag/parent/dependency/planning/recurrence upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
 
 The editor keeps title/description/category/date/priority fields separate from loaded entities until Save. It matches an entered category name case-insensitively against categories visible among existing tasks; new names create a new category on save. Blank category clears the association. Empty stored categories have no browsing/management UI yet. Cancel/Back discards fields without a write. Completion is changed from the list separately, and deleting a task requires a native confirmation.
 
@@ -55,9 +55,9 @@ Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](http
 
 ### Schema version and upgrade strategy
 
-`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2), parent (2-to-3), prerequisite (3-to-4), and planning (4-to-5) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 5 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
+`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2), parent (2-to-3), prerequisite (3-to-4), planning (4-to-5), and recurrence (5-to-6) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 6 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
 
-Initialization and all four incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
+Initialization and all five incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
 
@@ -144,7 +144,7 @@ This run used PostgreSQL 18 binaries with a separate .tools/pg-tests cluster on 
 
 AddTaskSynchronization creates SyncRecords (composite account/task key, unique account/revision index, latest payload or tombstone) and SyncReceipts (composite account/operation key, immutable request/result). Both have account FKs; tombstones deliberately have no FK to a live task. Task changes, journal revision, and receipt are one transaction. Existing owned rows are bootstrapped lazily under the account lock; anonymous rows are never assigned. The Down migration removes sync history/receipts and is unsafe against active replicas. Review backup/roll-forward recovery before any downgrade; never prune receipts/tombstones without a retention/reset design.
 
-The separate `sync.db3` file now has independent schema version 5 and ReplicaPartitions rows keyed by canonical API origin/account ID. Each state includes cached local intent, pending operations, latest server revisions, tombstones/conflicts, retry metadata, and cursor. Saving an edit queues its operation atomically. Applying a download commits rows and cursor atomically. Corrupt/newer-version caches fail without a data reset. This compact JSON-per-partition implementation targets the small MVP dataset; normalization/paging is later performance work.
+The separate `sync.db3` file now has independent schema version 6 and ReplicaPartitions rows keyed by canonical API origin/account ID. Each state includes cached local intent, pending operations, latest server revisions, tombstones/conflicts, retry metadata, and cursor. Saving an edit queues its operation atomically. Applying a download commits rows and cursor atomically. Corrupt/newer-version caches fail without a data reset. This compact JSON-per-partition implementation targets the small MVP dataset; normalization/paging is later performance work.
 
 The existing `todoapp.db3` version-1 device-only tables are untouched. Server credentials and signing keys never enter either client file. Task cache content is unencrypted; tokens remain in platform SecureStorage. Logout hides the account cache without deleting queued work. Database restore, raw SQL edits to journaled tasks, and lost server history need explicit reconciliation; do not delete a cache containing pending work to reset its cursor. See [SYNCHRONIZATION.md](SYNCHRONIZATION.md).
 
@@ -166,7 +166,7 @@ Phase 10 introduces the separate synced cache described above; Phase 9's direct 
 
 Desired choices and cancellations persist before native side effects. A failed notification call does not roll back or misreport an already committed task/sync write. Windows saves its one-attempt marker before showing an alert, so an uncertain delivery/crash is not automatically retried. This is best effort, not a distributed transaction with the OS.
 
-Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all seven migrations including Phase 12D AddTaskPlanning.
+Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all eight migrations including Phase 12E AddTaskRecurrence.
 
 ## Saved-view metadata (Phase 12A)
 
@@ -197,3 +197,9 @@ These bounded outgoing sets are a separate dependency graph from ParentTaskId. J
 AddTaskPlanning is migration seven: required Tasks.Quadrant integer default 0 with a 0..4 check. Device schema 5 adds the equivalent column transactionally after dependencies. Existing tasks become Unclassified while timestamps and other fields remain. Stable values: Unclassified=0, UrgentImportant=1, ImportantNotUrgent=2, UrgentNotImportant=3, Neither=4. Domain validation and SQL checks reject unsupported values; JSON uses named strings only.
 
 sync.db3 advances to 5 for explicit Quadrant input; old null fields stay omitted for receipt matching. views.db3 advances to 3 for nullable quadrant predicates without rewriting existing definition payloads on read. Reminders remain 1. Planning-only operations preserve unrelated fields; explicit Unclassified clears, omitted/null update input preserves. See EISENHOWER.md for full upgrade/compatibility/acceptance and rollback limits.
+
+## Recurrence and consumed counters (Phase 12E)
+
+AddTaskRecurrence is migration eight: Tasks.Recurrence required TEXT defaults to {"Rule":null,"Occurrence":0,"RuleStart":0}; SyncRecords.RecurrenceFloor bigint defaults to 0 with a 0..1,000,000 check. Device schema 6 adds the recurrence text value transactionally. Existing fields/IDs/times remain; no task begins repeating automatically. EF converts/compares immutable RepeatState values. Calendar, transitions, same-task completion, and dependency semantics are service rules, not SQL JSON-member constraints.
+
+The server retains RecurrenceFloor across deletion/restoration, never lowering a consumed counter. Journal updates, task state, receipts, and floors share the owner transaction/lock. Do not prune/restore these independently; a downgrade removes duplicate-completion protection. sync.db3 advances to 6 without rewriting old pending requests on read, while views stays 3 and reminders 1. RECURRENCE.md documents date-only policy, completion/retry/queue limits, no-scheduler decision, upgrade and native acceptance.

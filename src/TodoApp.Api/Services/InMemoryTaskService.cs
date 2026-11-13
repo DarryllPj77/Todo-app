@@ -5,6 +5,8 @@ using TodoApp.Domain.Enums;
 using TodoApp.Domain.Rules;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Services;
 
 // Development-only server data. It never reads the MAUI database or returns live entities.
@@ -50,8 +52,10 @@ public sealed class InMemoryTaskService : ITaskService
             var id = Guid.NewGuid();
             TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, request.Parent?.Id);
             TaskDependencies.ValidateChange(Nodes().Append(new(id, TaskPrerequisites.Empty, false)), id, request.Prerequisites ?? TaskPrerequisites.Empty, request.IsCompleted);
+            RecurrenceRules.ValidateWrite(RepeatState.None, request.Recurrence ?? RepeatState.None, request.DueDate, false, request.IsCompleted);
             var category = ResolveCategory(request.CategoryName);
             var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
+            task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags, request.Recurrence);
             if (request.Parent is { } parent) task.SetParent(parent);
             task.SetPrerequisites(request.Prerequisites ?? TaskPrerequisites.Empty);
             if (request.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
@@ -73,11 +77,14 @@ public sealed class InMemoryTaskService : ITaskService
                 return Task.FromResult<TaskResponse?>(null);
             }
 
+            var repeat = request.Recurrence ?? task.Recurrence;
+            RecurrenceRules.ValidateWrite(task.Recurrence, repeat, request.DueDate, task.IsCompleted, request.IsCompleted);
+            if (repeat.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(), id);
             var prerequisites = request.Prerequisites ?? task.Prerequisites;
-            TaskDependencies.ValidateChange(Nodes(), id, prerequisites, request.IsCompleted && (!task.IsCompleted || !task.Prerequisites.Equals(prerequisites)));
+            TaskDependencies.ValidateChange(Nodes(), id, prerequisites, (request.IsCompleted && (!task.IsCompleted || !task.Prerequisites.Equals(prerequisites))) || repeat.Occurrence > task.Recurrence.Occurrence);
             if (request.Parent is { } requestedParent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, requestedParent.Id);
             var category = ResolveCategory(request.CategoryName);
-            task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
+            task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags, request.Recurrence);
             task.SetCategory(category);
             if (request.Parent is { } parent) task.SetParent(parent);
             task.SetPrerequisites(prerequisites);
@@ -99,7 +106,7 @@ public sealed class InMemoryTaskService : ITaskService
         }
     }
 
-    private IEnumerable<DependencyNode> Nodes() => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted));
+    private IEnumerable<DependencyNode> Nodes() => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted, t.Recurrence.IsActive));
     public Task<TaskResponse?> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default)
     {
         lock (gate)
@@ -118,6 +125,30 @@ public sealed class InMemoryTaskService : ITaskService
             cancellationToken.ThrowIfCancellationRequested();
             if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
             task.SetQuadrant(quadrant); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
+        }
+    }
+
+    public Task<TaskResponse?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
+            var next = RecurrenceRules.Configure(task.Recurrence, rule);
+            if (next.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(), id);
+            task.SetRecurrence(next); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
+        }
+    }
+    public Task<TaskResponse?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
+            var next = RecurrenceRules.Complete(task.Recurrence, expected);
+            if (next != task.Recurrence)
+            { TaskDependencies.ValidateChange(Nodes(), id, task.Prerequisites, true); task.CompleteOccurrence(expected); }
+            return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
         }
     }
 

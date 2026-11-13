@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" x:Class="TodoApp.Maui.Views.RecurrencePage" x:DataType="vm:RecurrenceViewModel" Title="Recurring tasks" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Repeat after completion" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="One task, one current calendar occurrence. Complete it here to advance one date and stay pending. Monthly rules keep the original anchor day, clamping short months. Dates have no time zone conversion; reminders keep their separate time settings." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Button Text="Refresh recurrence" Command="{Binding RefreshCommand}" />
+  <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <CollectionView HeightRequest="280" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
+   <CollectionView.EmptyView><Label Text="Create tasks or sign in and sync first, then Refresh." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:RecurringRow">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="4">
+     <Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding RecurrenceText}" /><Label Text="{Binding Status}" />
+    </VerticalStackLayout></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
+   <Label Text="A rule starts at its anchor date. Changing the rule restarts its calendar from the anchor while retaining consumed occurrence counts. Saving an unchanged rule keeps its current occurrence. Stop repeating retains the due date." Style="{StaticResource TaskMuted}" />
+   <Picker Title="Repeat frequency" ItemsSource="{Binding Frequencies}" ItemDisplayBinding="{Binding Label, x:DataType=vm:RepeatOption}" SelectedItem="{Binding Frequency, Mode=TwoWay}" />
+   <Entry Text="{Binding Interval}" Keyboard="Numeric" MaxLength="3" Placeholder="Interval from 1 to 365" SemanticProperties.Description="Repeat interval from one to 365" />
+   <Label Text="Anchor calendar date" /><DatePicker Date="{Binding AnchorDate}" />
+   <Label Text="{Binding Preview}" />
+   <Button Text="Save repeat rule" Command="{Binding SaveCommand}" />
+   <Button Text="Complete occurrence &amp; advance" Command="{Binding CompleteCommand}" />
+   <Label Text="An account occurrence can advance once offline after its last sync; sync before completing another. Repeating tasks cannot be prerequisites. Their own prerequisites must be complete before an occurrence advances. Due-date changes cancel the old reminder; set a new reminder explicitly." Style="{StaticResource TaskMuted}" />
+   <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="Review both complete versions. Keeping local fields reconfigures recurrence at the current server occurrence; consumed occurrences are not undone. The preview shows the resulting date. Other task changes may conflict again." Style="{StaticResource TaskError}" />
+    <Label Text="{Binding SelectedTask.LocalDetails}" /><Label Text="{Binding SelectedTask.ServerDetails}" />
+    <Button Text="Keep local fields &amp; save repeat rule" Command="{Binding KeepLocalCommand}" />
+    <Button Text="Use server (discard local intent)" Command="{Binding UseServerCommand}" />
+   </VerticalStackLayout>
+  </VerticalStackLayout></Border>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

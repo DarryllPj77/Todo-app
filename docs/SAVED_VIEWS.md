@@ -71,3 +71,5 @@ Phase 12B upgrades old definition JSON without resetting IDs/revisions, adds exa
 ## Quadrant rules (Phase 12D)
 
 Urgency/importance adds All quadrants, Unclassified, and four Eisenhower choices. A nullable rule means Any; explicit Unclassified matches only unclassified tasks. Rules combine with existing predicates using AND and persist in schema-3 views.db3 without changing tasks/queues. Old definitions retain Any and their IDs/revisions/JSON on read. Device candidates use stored classification; cached legacy snapshots missing Quadrant read as Unclassified. Priority/due date never derive classification. See EISENHOWER.md.
+
+Phase 12E recurrence keeps one current task, so existing date/completion filters use its current occurrence date and pending state. There is no separate recurrence predicate or occurrence-history query. views.db3 remains schema 3; recurrence configuration/completion happens in Recurring tasks (RECURRENCE.md).

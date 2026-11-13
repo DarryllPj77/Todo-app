@@ -79,6 +79,20 @@ Content-Type: application/json
 
 {"id":null}
 
+### Configure completion-based monthly recurrence; use {"rule":null} to stop
+PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/recurrence
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"rule":{"frequency":"Monthly","interval":1,"anchorDate":"2026-11-30"}}
+
+### Complete exactly this expected occurrence; copy recurrence from the latest task response
+POST {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/occurrences/complete
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"rule":{"frequency":"Monthly","interval":1,"anchorDate":"2026-11-30"},"occurrence":0,"ruleStart":0}
+
 ### Change only manual urgency/importance; Unclassified explicitly clears
 PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/quadrant
 Authorization: Bearer {{accessToken}}

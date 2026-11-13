@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 12D urgency/importance is implemented with explicit Unclassified/four-quadrant semantics, persistence, protocol-5 sync, planning UI, and saved-view rules. Upgrade using EISENHOWER.md and complete native acceptance. Next is 12E recurrence; the remaining Phase 12 increments stay open.
+Proceed one phase at a time after review. Phase 12E completion-based recurrence is implemented: daily/weekly/monthly calendar rules, stable task identity, anchored month behavior, explicit completion, monotonic counters/tombstone protection, protocol-6 sync, migration, and Recurring tasks UI. No timed generation job is needed. Upgrade using RECURRENCE.md and complete native acceptance. Next is 12F focus/time history; remaining Phase 12 increments stay open.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -214,7 +214,7 @@ Proceed one phase at a time after review. Phase 12D urgency/importance is implem
 **Completion checklist:**
 
 - [x] Parent hierarchy and dependencies are separately modeled and validated; native acceptance remains in HIERARCHY.md/DEPENDENCIES.md.
-- [ ] Evaluate Hangfire versus another scheduler only when recurrence requires server jobs.
+- [x] Evaluated scheduler need: completion-based recurrence uses explicit transactions and needs no server job. Revisit Hangfire/hosted scheduling if timed generation is added; see RECURRENCE.md.
 - [ ] Each selected feature and adaptive layout has its own completion review.
 
 ### Phase 12 increments
@@ -225,11 +225,11 @@ Proceed one phase at a time after review. Phase 12D urgency/importance is implem
 - [x] **12C.1 - Parent hierarchy/subtasks:** optional parent, same-workspace/account validation, cycle/16-level checks, restricted parent deletion, additive migrations, protocol-3 ordering/conflicts, and hierarchy screen implemented. Native acceptance remains in HIERARCHY.md.
 - [x] **12C.2 - Dependencies:** separate immutable prerequisite graph, same-account/workspace and cycle checks, completion gate/reopen policy, incoming-delete restriction, transactional migration, protocol-4 ordering/conflicts, and dependency screen implemented. Native acceptance remains in DEPENDENCIES.md.
 - [x] **12D - Urgency/importance:** manual four-quadrant classification plus Unclassified, independent priority/due date, transactional upgrades, strict API enum, protocol-5 queue/receipt compatibility, scoped planning UI/conflict review, summaries, and saved-view rules implemented. Native acceptance remains in EISENHOWER.md.
-- [ ] **12E - Recurrence:** define calendar/time-zone, completion, idempotency, and scheduling policy before choosing a server scheduler such as Hangfire.
+- [x] **12E - Recurrence:** date-only daily/weekly/monthly interval rules, anchored short-month handling, same-task completion/monotonic counters, idempotent retries/tombstone floor, dependency policy, transactional upgrades, protocol-6 queue/receipt/conflict handling, reminder reconciliation, and Recurring tasks UI implemented. Native acceptance remains in RECURRENCE.md; no server scheduler is needed for this completion-based model.
 - [ ] **12F - Focus/time history:** add Pomodoro, TimeSpent, and durable history with explicit timer/lifecycle behavior.
 - [ ] **12G - Adaptive workspace:** desktop categories/tasks/details panes and mobile navigation after each feature's data/UI boundaries are stable.
 
-A saved view remains a device-local query definition. Tags, hierarchy, dependencies, and urgency/importance have distinct semantics. Recurrence, focus history, adaptive layout, and server subscriptions remain later work. Phase 12 remains open until selected later increments and acceptance reviews are complete.
+A saved view remains a device-local query definition. Tags, hierarchy, dependencies, urgency/importance, and recurrence have distinct semantics. Recurrence advances one stable task after explicit completion; focus history and adaptive layout remain later work. Phase 12 remains open until selected later increments and acceptance reviews are complete.
 
 ## Phase 13 — Calendar integration
 

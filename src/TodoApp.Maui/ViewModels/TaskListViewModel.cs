@@ -5,6 +5,8 @@ using TodoApp.Domain.Services;
 using TodoApp.Maui.Models;
 using TodoApp.Maui.Services;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Maui.ViewModels;
 
 public sealed class TaskListViewModel : ObservableViewModel
@@ -30,6 +32,7 @@ public sealed class TaskListViewModel : ObservableViewModel
     public AsyncCommand EditCommand { get; }
     public AsyncCommand ToggleCommand { get; }
     public AsyncCommand DeleteCommand { get; }
+    public AsyncCommand RecurrenceCommand { get; }
     public AsyncCommand PlanningCommand { get; }
     public AsyncCommand DependenciesCommand { get; }
     public AsyncCommand HierarchyCommand { get; }
@@ -86,6 +89,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         EditCommand = Command(() => navigation.EditTaskAsync(SelectedTask!.Id), needsSelection: true);
         ToggleCommand = Command(ToggleAsync, needsSelection: true);
         DeleteCommand = Command(DeleteAsync, needsSelection: true);
+        RecurrenceCommand = Command(navigation.OpenRecurrenceAsync);
         PlanningCommand = Command(navigation.OpenPlanningAsync);
         DependenciesCommand = Command(navigation.OpenDependenciesAsync);
         HierarchyCommand = Command(navigation.OpenHierarchyAsync);
@@ -109,7 +113,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         {
             await action();
         }
-        catch (ArgumentException error) when (error is TaskHierarchyException or TaskDependencyException) { ErrorMessage = error.Message; }
+        catch (ArgumentException error) when (error is TaskHierarchyException or TaskDependencyException or TaskRecurrenceException) { ErrorMessage = error.Message; }
         catch (Exception)
         {
             ErrorMessage = "Couldn't finish the request. Refresh to check your saved tasks, then try again.";
@@ -179,6 +183,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         SyncCommand.NotifyCanExecuteChanged();
         RemindersCommand.NotifyCanExecuteChanged();
         TaskViewsCommand.NotifyCanExecuteChanged();
+        RecurrenceCommand.NotifyCanExecuteChanged();
         PlanningCommand.NotifyCanExecuteChanged();
         DependenciesCommand.NotifyCanExecuteChanged();
         HierarchyCommand.NotifyCanExecuteChanged();

@@ -93,7 +93,7 @@ public sealed class PlanningViewModel : ObservableViewModel, IDisposable
         {
             var tasks = await device.GetTasksAsync(); Ensure(context);
             rows.AddRange(tasks.Select(t => new PlanningRow(t.Id, t.Title,
-                new(t.Title, t.Description, t.DueDate, t.Priority, t.Category?.Name, t.IsCompleted, t.Tags, new(t.ParentTaskId), t.Prerequisites, t.Quadrant), null, false,
+                new(t.Title, t.Description, t.DueDate, t.Priority, t.Category?.Name, t.IsCompleted, t.Tags, new(t.ParentTaskId), t.Prerequisites, t.Quadrant, t.Recurrence), null, false,
                 t.IsCompleted ? "Completed" : "Pending")));
         }
         else

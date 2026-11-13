@@ -4,11 +4,14 @@ using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Contracts;
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class TaskWriteRequest : IValidatableObject
 {
+    public RepeatState? Recurrence { get; init; }
     public EisenhowerQuadrant? Quadrant { get; init; }
     public TaskPrerequisites? Prerequisites { get; init; }
     public TaskParent? Parent { get; init; }
@@ -30,6 +33,12 @@ public sealed class TaskWriteRequest : IValidatableObject
             yield return new ValidationResult($"Category name must be {Category.MaxNameLength} characters or fewer.", new[] { nameof(CategoryName) });
         if (Parent?.Id == Guid.Empty) yield return new ValidationResult("Choose a valid parent ID or explicit root.", new[] { nameof(Parent) });
         if (Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) yield return new ValidationResult("Choose a valid urgency/importance quadrant.", new[] { nameof(Quadrant) });
+        if (Recurrence is { } recurrence)
+        {
+            string? error = null;
+            try { RecurrenceRules.Validate(recurrence); } catch (ArgumentException exception) { error = exception.Message; }
+            if (error is not null) yield return new ValidationResult(error, new[] { nameof(Recurrence) });
+        }
         if (!Enum.IsDefined(Priority))
             yield return new ValidationResult("Choose Low, Normal, or High priority.", new[] { nameof(Priority) });
     }

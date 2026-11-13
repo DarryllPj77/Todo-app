@@ -78,7 +78,7 @@ public sealed class HierarchyTests : IDisposable
         Assert.Null(restored.ParentTaskId); Assert.Equal(time, restored.UpdatedAt); Assert.Equal(TagSet.Parse("work"), restored.Tags);
         var child = await service.CreateAsync(new("Child", Parent: new(id)));
         using var check = new SqliteConnection($"Data Source={path};Pooling=False;Foreign Keys=True"); check.Open(); using var query = check.CreateCommand();
-        query.CommandText = "PRAGMA user_version;"; Assert.Equal(5L, query.ExecuteScalar());
+        query.CommandText = "PRAGMA user_version;"; Assert.Equal(6L, query.ExecuteScalar());
         query.CommandText = "DELETE FROM TaskItems WHERE Id=$id"; query.Parameters.AddWithValue("$id", id.ToString());
         Assert.Throws<SqliteException>(() => query.ExecuteNonQuery()); Assert.NotNull(await service.GetByIdAsync(child.Id));
     }

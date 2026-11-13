@@ -5,6 +5,8 @@ using TodoApp.Domain.Enums;
 using TodoApp.Domain.Sync;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Infrastructure.Services;
 
 public sealed class ReplicaRow
@@ -50,10 +52,17 @@ public sealed class SqliteSyncStore(string path)
         }
         else
         {
-            data = data with { Parent = data.Parent ?? row.Local?.Parent, Prerequisites = data.Prerequisites ?? row.Local?.Prerequisites, Quadrant = data.Quadrant ?? row.Local?.Quadrant };
+            data = data with { Parent = data.Parent ?? row.Local?.Parent, Prerequisites = data.Prerequisites ?? row.Local?.Prerequisites, Quadrant = data.Quadrant ?? row.Local?.Quadrant, Recurrence = data.Recurrence ?? row.Local?.Recurrence };
+            var currentRepeat = row.Local?.Recurrence ?? new RepeatState(null, row.Remote?.RecurrenceFloor ?? 0, row.Remote?.RecurrenceFloor ?? 0);
+            var repeat = data.Recurrence ?? currentRepeat;
+            if (data.Recurrence is null && currentRepeat.Occurrence > 0) data = data with { Recurrence = repeat };
+            RecurrenceRules.ValidateWrite(currentRepeat, repeat, data.DueDate, row.Local?.IsCompleted ?? false, data.IsCompleted);
+            if (repeat.IsActive) TaskDependencies.ValidateRepeatActivation(DependencyNodes(state), id);
+            if (repeat.Occurrence > currentRepeat.Occurrence && row.Pending is not null)
+                throw new TaskRecurrenceException("Sync the outstanding operation before completing another occurrence.");
             var prerequisites = data.Prerequisites ?? TaskPrerequisites.Empty;
             TaskDependencies.ValidateChange(DependencyNodes(state).Where(t => t.Id != id).Append(new(id, TaskPrerequisites.Empty, false)), id, prerequisites,
-                data.IsCompleted && (row.Local?.IsCompleted != true || !(row.Local.Prerequisites ?? TaskPrerequisites.Empty).Equals(prerequisites)));
+                (data.IsCompleted && (row.Local?.IsCompleted != true || !(row.Local.Prerequisites ?? TaskPrerequisites.Empty).Equals(prerequisites))) || repeat.Occurrence > currentRepeat.Occurrence);
             if (data.Parent is { } placement) TaskHierarchy.ValidateMove(Links(state).Where(t => t.Id != id).Append(new TaskLink(id, null)), id, placement.Id);
         }
         row.Local = data;
@@ -66,7 +75,47 @@ public sealed class SqliteSyncStore(string path)
         .Select(r => new TaskLink(r.Id, r.Local!.Parent?.Id));
 
     private static IEnumerable<DependencyNode> DependencyNodes(ReplicaState state) => state.Rows.Values.Where(r => r.Local is not null)
-        .Select(r => new DependencyNode(r.Id, r.Local!.Prerequisites ?? TaskPrerequisites.Empty, r.Local.IsCompleted));
+        .Select(r => new DependencyNode(r.Id, r.Local!.Prerequisites ?? TaskPrerequisites.Empty, r.Local.IsCompleted, r.Local.Recurrence?.IsActive ?? false));
+
+    public Task SetRecurrenceRuleAsync(string partition, Guid id, RepeatRule? rule, long expectedRevision,
+        SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
+    {
+        var row = ExpectedRecurrenceRow(state, id, expectedRevision, expectedLocal);
+        if (row.Conflict && !keepLocalConflict) throw new TaskRecurrenceException("Review and confirm the conflict before keeping local fields.");
+        var current = row.Conflict
+            ? row.Remote?.Task?.Recurrence ?? new RepeatState(null, row.Remote?.RecurrenceFloor ?? 0, row.Remote?.RecurrenceFloor ?? 0)
+            : row.Local!.Recurrence ?? RepeatState.None;
+        var next = RecurrenceRules.Configure(current, rule);
+        var due = next.IsActive ? RecurrenceRules.DueDate(next) : row.Local!.DueDate;
+        RecurrenceRules.ValidateWrite(current, next, due, row.Local!.IsCompleted, row.Local.IsCompleted);
+        if (next.IsActive) TaskDependencies.ValidateRepeatActivation(DependencyNodes(state), id);
+        row.Local = row.Local with { Recurrence = next, DueDate = due };
+        if (row.Conflict)
+        {
+            row.Conflict = false; row.ConflictReason = null; row.Pending = Mutation(row);
+            row.Attempts = 0; row.RetryAt = default;
+        }
+        else row.Pending ??= Mutation(row);
+        return true;
+    });
+
+    public Task CompleteOccurrenceAsync(string partition, Guid id, long expectedRevision, SyncTaskData expectedLocal) => ExecuteAsync(partition, state =>
+    {
+        var row = ExpectedRecurrenceRow(state, id, expectedRevision, expectedLocal);
+        if (row.Pending is not null || row.Conflict) throw new TaskRecurrenceException("Sync and resolve outstanding changes before completing this occurrence.");
+        var current = row.Local!.Recurrence ?? RepeatState.None;
+        var next = RecurrenceRules.Complete(current, current);
+        TaskDependencies.ValidateChange(DependencyNodes(state), id, row.Local.Prerequisites ?? TaskPrerequisites.Empty, true);
+        row.Local = row.Local with { Recurrence = next, DueDate = RecurrenceRules.DueDate(next), IsCompleted = false };
+        row.Pending = Mutation(row); return true;
+    });
+
+    private static ReplicaRow ExpectedRecurrenceRow(ReplicaState state, Guid id, long revision, SyncTaskData local)
+    {
+        if (!state.Rows.TryGetValue(id, out var row) || row.Local is null || row.Local != local || (row.Remote?.Revision ?? 0) != revision)
+            throw new TaskRecurrenceException("This task changed. Refresh and review recurrence before saving.");
+        return row;
+    }
 
     public Task SetQuadrantAsync(string partition, Guid id, EisenhowerQuadrant quadrant, long expectedRevision,
         SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
@@ -141,7 +190,9 @@ public sealed class SqliteSyncStore(string path)
         var row = state.Rows[sent.TaskId];
         if (row.Pending?.OperationId != sent.OperationId) return false;
         if (result.Current.TaskId != sent.TaskId || result.Current.Revision < sent.BaseRevision || (!result.Conflict && result.Current.Revision == sent.BaseRevision) ||
-            result.Current.Deleted != (result.Current.Task is null)) throw new InvalidDataException("Invalid sync acknowledgement.");
+            result.Current.Deleted != (result.Current.Task is null) || result.Current.RecurrenceFloor is < 0 or > RecurrenceRules.MaxOccurrence ||
+            (result.Current.Task is not null && (result.Current.Task.Recurrence?.Occurrence ?? 0) < result.Current.RecurrenceFloor)) throw new InvalidDataException("Invalid sync acknowledgement.");
+        Validate(result.Current.Task);
         // A replayed receipt may predate changes already downloaded during backoff.
         // Never move a replica backwards or silently rebase newer local intent.
         var latest = row.Remote is { } known && known.Revision > result.Current.Revision ? known : result.Current;
@@ -176,6 +227,9 @@ public sealed class SqliteSyncStore(string path)
             throw new InvalidDataException("Invalid sync download; the cursor was not advanced.");
         foreach (var entry in page.Changes)
         {
+            if (entry.RecurrenceFloor is < 0 or > RecurrenceRules.MaxOccurrence || (entry.Task is { } payload && (payload.Recurrence?.Occurrence ?? 0) < entry.RecurrenceFloor))
+                throw new InvalidDataException("Invalid recurrence counter; download cursor retained.");
+            if (entry.Task?.Recurrence is { } repeat) RecurrenceRules.ValidateWrite(repeat, repeat, entry.Task.DueDate, false, entry.Task.IsCompleted);
             if (!state.Rows.TryGetValue(entry.TaskId, out var row))
                 state.Rows.Add(entry.TaskId, row = new ReplicaRow { Id = entry.TaskId });
             if (row.Remote?.Revision > entry.Revision) continue; // Upload ack may be ahead of this page.
@@ -194,6 +248,7 @@ public sealed class SqliteSyncStore(string path)
         if (data is null) return;
         var validated = new TaskItem(data.Title, data.Description, data.DueDate, data.Priority);
         if (data.Quadrant is { } quadrant) validated.SetQuadrant(quadrant);
+        if (data.Recurrence is { } repeat) RecurrenceRules.ValidateWrite(repeat, repeat, data.DueDate, false, data.IsCompleted);
         if (data.CategoryName?.Trim().Length > Category.MaxNameLength)
             throw new ArgumentException("Category must be at most 100 characters.");
     }
@@ -212,8 +267,8 @@ public sealed class SqliteSyncStore(string path)
             command.Transaction = transaction;
             command.CommandText = "PRAGMA user_version;";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version > 5) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=5;";
+            if (version > 6) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=6;";
             command.ExecuteNonQuery();
             command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
             command.Parameters.AddWithValue("$partition", partition);

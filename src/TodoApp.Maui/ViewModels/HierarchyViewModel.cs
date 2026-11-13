@@ -88,7 +88,7 @@ public sealed class HierarchyViewModel : ObservableViewModel, IDisposable
         {
             var tasks = await device.GetTasksAsync(); Ensure(context);
             loaded.AddRange(tasks.Select(t => new HierarchyRow(t.Id, t.Title, t.ParentTaskId, 1, true, false,
-                new(t.Title,t.Description,t.DueDate,t.Priority,t.Category?.Name,t.IsCompleted,t.Tags,new TaskParent(t.ParentTaskId), t.Prerequisites, t.Quadrant), null,
+                new(t.Title,t.Description,t.DueDate,t.Priority,t.Category?.Name,t.IsCompleted,t.Tags,new TaskParent(t.ParentTaskId), t.Prerequisites, t.Quadrant, t.Recurrence), null,
                 t.IsCompleted ? "Completed (children keep their own completion state)" : "Pending")));
         }
         else

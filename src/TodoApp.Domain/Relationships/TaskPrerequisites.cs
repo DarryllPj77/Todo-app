@@ -47,7 +47,7 @@ public sealed class TaskPrerequisitesJsonConverter : JsonConverter<TaskPrerequis
     { writer.WriteStartArray(); foreach (var id in value) writer.WriteStringValue(id); writer.WriteEndArray(); }
 }
 
-public sealed record DependencyNode(Guid Id, TaskPrerequisites Prerequisites, bool Completed);
+public sealed record DependencyNode(Guid Id, TaskPrerequisites Prerequisites, bool Completed, bool Repeats = false);
 public sealed class TaskDependencyException(string message) : ArgumentException(message);
 
 public static class TaskDependencies
@@ -71,8 +71,14 @@ public static class TaskDependencies
             stack.Push((item.Id, true));
             foreach (var prerequisite in node.Prerequisites) stack.Push((prerequisite, false));
         }
+        if (prerequisites.Any(p => map[p].Repeats)) throw new TaskDependencyException("Repeating tasks cannot be prerequisites. Stop recurrence first or use a separate one-time milestone.");
         if (completing && prerequisites.Any(p => !map[p].Completed))
             throw new TaskDependencyException("Complete this task's prerequisites before marking it completed or adding unfinished prerequisites to a completed task.");
+    }
+    public static void ValidateRepeatActivation(IEnumerable<DependencyNode> source, Guid id)
+    {
+        if (source.Any(t => t.Id != id && t.Prerequisites.Contains(id)))
+            throw new TaskDependencyException("Remove incoming dependency links before enabling recurrence; repeating tasks cannot be prerequisites.");
     }
     public static void ValidateDelete(IEnumerable<DependencyNode> source, Guid id)
     {

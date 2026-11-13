@@ -269,7 +269,10 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
-        public Task OpenPlanningAsync() => Task.CompletedTask;
+        public Task OpenRecurrenceAsync() => Task.CompletedTask;
+    public Task<bool> ConfirmRecurrenceConflictAsync(string title) => Task.FromResult(false);
+    public Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next) => Task.FromResult(false);
+    public Task OpenPlanningAsync() => Task.CompletedTask;
     public Task<bool> ConfirmPlanningConflictAsync(string title) => Task.FromResult(false);
     public Task OpenDependenciesAsync() => Task.CompletedTask;
     public Task<bool> ConfirmDependencyConflictAsync(string title) => Task.FromResult(false);
@@ -311,6 +314,8 @@ public sealed class TaskViewModelTests
         }
         public Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken cancellationToken = default) => inner.UpdateAsync(id, details, cancellationToken);
         public Task<bool> SetCompletedAsync(Guid id, bool isCompleted, CancellationToken cancellationToken = default) => inner.SetCompletedAsync(id, isCompleted, cancellationToken);
+        public Task<TodoApp.Domain.Entities.TaskItem?> SetRecurrenceRuleAsync(Guid id, TodoApp.Domain.Recurrence.RepeatRule? rule, CancellationToken token = default) => Task.FromResult<TodoApp.Domain.Entities.TaskItem?>(null);
+        public Task<TodoApp.Domain.Entities.TaskItem?> CompleteOccurrenceAsync(Guid id, TodoApp.Domain.Recurrence.RepeatState expected, CancellationToken token = default) => Task.FromResult<TodoApp.Domain.Entities.TaskItem?>(null);
         public Task<bool> SetQuadrantAsync(Guid id, TodoApp.Domain.Enums.EisenhowerQuadrant quadrant, CancellationToken token = default) => Task.FromResult(false);
         public Task<bool> SetPrerequisitesAsync(Guid id, TodoApp.Domain.Relationships.TaskPrerequisites prerequisites, CancellationToken token = default) => Task.FromResult(false);
         public Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default) => Task.FromResult(false);

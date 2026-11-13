@@ -1,10 +1,10 @@
 # Development progress
 
-Last updated: **2026-11-13 (Asia/Manila)**.
+Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 12D - Urgency/importance implemented; native acceptance pending.** A five-state Eisenhower model keeps manual urgency/importance separate from priority/dates. Device/API/sync persistence, planning-only operations, scoped planning UI/conflict review, summaries, and saved-view quadrant rules are implemented. All **339 tests passed, 0 failed, 0 skipped**, including **51 PostgreSQL facts**. Windows solution/XAML build: **0 warnings/errors**. AddTaskPlanning is migration seven; device/sync files use schema 5, views 3, reminders 1. Upgrade client/API together using EISENHOWER.md. Next is 12E recurrence; native platform acceptance remains open.
+**Phase 12E - Completion-based recurrence implemented; native acceptance pending.** Daily/weekly/monthly rules advance one stable task after explicit completion, retaining pending state and an anchored calendar. Monotonic counters, expected-state completion, server tombstone floors, receipts/revisions, and queue limits prevent duplicate advances. All **372 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Windows solution/XAML build: **0 warnings/errors**. AddTaskRecurrence is migration eight; device/sync use schema 6, views remain 3, reminders 1. Upgrade using RECURRENCE.md. No timed-generation job/scheduler is needed. Next is 12F focus/time history; native platform acceptance remains open.
 
 ## Completed work
 
@@ -111,16 +111,17 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Build and test evidence
 
-Phase 12D adds 18 portable cases and six PostgreSQL facts covering all Boolean combinations, strict named-enum JSON, Unclassified versus Neither, independent priority/date, no-op/invalid edits, field retention, version-4 task/cache and version-2 view upgrades, legacy pending/definition/receipt bytes, capability rejection, frozen operations/repair guards, planning filters/counts/account confirmation, saved-view composition/reopen, ownership, SQL constraints, concurrent revisions, and two-replica classification/clear convergence. All 339 cases pass; native interaction/mobile compilation remain separate gates.
+Phase 12E adds 25 portable cases and eight PostgreSQL facts covering anchored daily/weekly/monthly/leap arithmetic, strict state JSON, counter/date bounds, idempotent concurrent completion, stop/reconfigure, field retention, incoming/own dependency policy, version-5 task/cache migration, immutable legacy receipt bytes, one-offline-advance limits, protocol rejection, invalid remote metadata, conflict/floor repair, UI confirmation/account races, reminder cancellation, ownership, PostgreSQL migration/constraints, revision/receipt replay, delete/restore floors, and two-replica completion convergence. Full suite: 372 pass. A final focused recurrence run checks the clearer activation error message; native interaction/mobile compilation remain separate gates.
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| Full CLI suite using TODOAPP_TEST_POSTGRES and isolated artifacts | Passed: 339 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection) |
+| Full CLI suite using TODOAPP_TEST_POSTGRES and isolated artifacts | Passed: 372 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection) |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Final Phase 12D native build output | Passed: isolated .tools/phase12d-native, all five projects, 0 warnings/errors; no app stop required |
-| Final test result | .tools/phase12d-results/phase12d.trx: 339 passed, 0 failed, 0 skipped |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Fifty-one PostgreSQL facts are explicitly skipped (288 portable cases); portable REST tests use explicit memory/auth substitutes |
+| Final Phase 12E native build output | Passed: isolated .tools/phase12e-native, all five projects, 0 warnings/errors; no app stop required |
+| Final test result | .tools/phase12e-results/phase12e.trx: 372 passed, 0 failed, 0 skipped |
+| Final focused recurrence verification after activation-message refinement | .tools/phase12e-results/phase12e-recurrence-final.trx: 33 passed, 0 failed, 0 skipped (25 portable cases plus eight PostgreSQL facts) |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Fifty-nine PostgreSQL facts are explicitly skipped (313 portable cases); portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -129,7 +130,7 @@ Phase 12D adds 18 portable cases and six PostgreSQL facts covering all Boolean c
 | Windows native direct launch | Passed: task-list empty state and editor visible in dark mode; app left available for user testing |
 | Full native CRUD/restart, light/narrow/mobile acceptance | Pending README manual checklist; not claimed from ViewModel/storage tests |
 | SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
-| PostgreSQL 18 verification | Passed: 51 real-database facts including planning/dependency/hierarchy migration, ownership, concurrent revisions/edges, receipts, and replicas; zero generated databases remain, isolated cluster stopped, installed service remains Running |
+| PostgreSQL 18 verification | Passed: 59 real-database facts including recurrence migrations/counters/tombstones, ownership, concurrent completion, receipt replay, and replicas; zero generated databases remain, isolated cluster stopped, installed service remains Running |
 
 Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 compiled native Windows/XAML with a local workload. Phase 6 added 32 tests for the actual API pipeline: routes, response contracts, missing IDs, malformed JSON/values, length limits, unknown/server-owned fields, all filters, category reuse, parallel creates, cancellation, fresh server state, and refusal to start in Production. Integration tests use an in-memory HTTPS request host, not a deployed TLS certificate. A separate loopback HTTP listener passed real socket CRUD checks. The HTTP-only profile logged its expected missing HTTPS redirect-port warning. An initial smoke assertion mishandled PowerShell's empty-array wrapping; checking the final JSON body directly verified it was []. No application change was needed for that assertion correction.
 
@@ -146,21 +147,21 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 ## Work in progress / pending verification
 
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
-- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12D; planning/dependency/hierarchy native interaction and prior reminder delivery remain unverified. No running user app was stopped.
+- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12E; recurrence/planning/dependency/hierarchy native interaction and prior reminder delivery remain unverified. No running user app was stopped.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
-- Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all seven migrations. No user development database migration or persistent connection change ran here.
+- Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all eight migrations. No user development database migration or persistent connection change ran here.
 - Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
-- Review Phase 12D using EISENHOWER.md and retain DEPENDENCIES.md/HIERARCHY.md/TAGS.md/SAVED_VIEWS.md/NOTIFICATIONS.md/SYNCHRONIZATION.md acceptance gates. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Review Phase 12E using RECURRENCE.md/EISENHOWER.md and retain DEPENDENCIES.md/HIERARCHY.md/TAGS.md/SAVED_VIEWS.md/NOTIFICATIONS.md/SYNCHRONIZATION.md acceptance gates. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
 - Verify Reminders native permission/display/cancellation/time/account behavior using NOTIFICATIONS.md. Android/Apple adapters need compilation/device checks, and Windows closed-app delivery remains outside this unpackaged implementation.
-- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device tasks/sync use schema 5, saved views use 3, and reminders use 1.
+- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device tasks/sync use schema 6, saved views use 3, and reminders use 1.
 - API DueToday currently follows the server's local date; define a per-user time-zone policy before release; sync dates are calendar values. Production deployment remains later work.
 
 ## Uncommitted changes
 
-Phase 12D changes are uncommitted; no commit or push ran. Phase 12C.2 is recorded in local commit `8329aef`, verified at the start. User-added untracked `.vscode/` remains excluded. Build/test/tool/cluster files stay ignored.
+Phase 12E changes are uncommitted; no commit or push ran. Phase 12D is recorded in local commit `6464399`, verified at the start. User-added untracked `.vscode/` remains excluded. Build/test/tool/cluster files stay ignored.
 
-- New: EisenhowerQuadrant/converter/helpers, AddTaskPlanning migration/designer, Planning ViewModel/page, QuadrantOption, PlanningTests/PostgresPlanningTests, docs/EISENHOWER.md.
-- Modified: task/local/sync/view contracts, SQLite task/sync/view formats, EF mapping/snapshot, API quadrant route/writes/journal/HTTP samples, client navigation/summaries/saved views/engine/reminder hook/conflict details, test doubles/expectations, README and docs.
+- New: Domain recurrence rule/state/frequency/validation, AddTaskRecurrence migration/designer, recurrence API request, Recurrence ViewModel/page, RecurrenceTests/PostgresRecurrenceTests, docs/RECURRENCE.md.
+- Modified: task/local/sync contracts, SQLite task/sync formats, EF task/journal mapping/snapshot, API recurrence endpoints/writes/journal/floor/HTTP samples, client navigation/summaries/engine/reminder hooks/conflict details, dependency policy, test doubles/expectations, README and docs.
 - Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
@@ -195,12 +196,13 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - `0bacb27` - `Implement Phase 12B task tags and saved-view tag filters`: verified at the start of Phase 12C.1.
 - `f0dc3e1` - `Implement Phase 12C.1 task hierarchy and subtasks`: verified at the start of Phase 12C.2.
 - `8329aef` - `Implement Phase 12C.2 task dependencies`: verified at the start of Phase 12D.
-- Phase 12D has no committed milestone yet. No merge or force-push ran.
+- `6464399` - `Implement Phase 12D urgency and importance planning`: verified at the start of Phase 12E.
+- Phase 12E has no committed milestone yet. No merge or force-push ran.
 
 ## Next task
 
-Follow EISENHOWER.md to stop the development API/older client, apply AddTaskPlanning using configured Development secrets, restart HTTPS, and rebuild the client. Preserve queues/caches/views. Complete planning classification/clear/count/filter/restart/conflict/two-device native acceptance. Next is 12E recurrence: review calendar/time-zone, completion, occurrence identity/idempotency, and scheduler policy before implementation. Existing mobile/notification/TLS/sync acceptance remains open; Windows reminders require the app running.
+Follow RECURRENCE.md to stop the development API/older client, apply AddTaskRecurrence using configured Development secrets, restart HTTPS, and rebuild the client. Preserve queues/caches/views/receipts/counter floors. Complete recurrence anchor/advance/retry/conflict/restart/two-device/reminder native acceptance. Next is 12F focus/time history: review Pomodoro lifecycle, elapsed-time semantics, durable sessions/TimeSpent, and history before implementation. Existing mobile/notification/TLS/sync acceptance remains open; Windows reminders require the app running.
 
 ## What to learn now
 
-Trace a manual classification through enum validation, transactional write, immutable outbox, protocol check, receipt, acknowledgement, and whole-task conflict review. Understand Unclassified versus Neither, null-preserve versus explicit clear, and Any versus an Unclassified saved-view predicate. Keep priority/dates independent. See LEARNINGS.md and EISENHOWER.md.
+Trace anchored calendar arithmetic and expected-state completion through counter validation, transaction/owner lock, immutable queue, receipt, and tombstone floor. Distinguish recurrence date policy from reminder time zones, consumed counters from completion history, and completion-driven advancement from timed task generation. See LEARNINGS.md and RECURRENCE.md.

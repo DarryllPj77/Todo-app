@@ -8,6 +8,8 @@ using TodoApp.Domain.Relationships;
 using TodoApp.Domain.Services;
 using TodoApp.Infrastructure.Persistence;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Infrastructure.Services;
 
 public sealed class SqliteLocalTaskService : ILocalTaskService
@@ -48,6 +50,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         {
             ArgumentNullException.ThrowIfNull(details);
             var id = Guid.NewGuid();
+            RecurrenceRules.ValidateWrite(RepeatState.None, details.Recurrence ?? RepeatState.None, details.DueDate, false, false);
             var existing = LoadTasks(connection, transaction, token);
             TaskDependencies.ValidateChange(Nodes(existing).Append(new(id, TaskPrerequisites.Empty, false)), id, details.Prerequisites ?? TaskPrerequisites.Empty);
             var links = existing.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null));
@@ -57,6 +60,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
             task.SetParent(details.Parent ?? new TaskParent(null));
             task.SetPrerequisites(details.Prerequisites ?? TaskPrerequisites.Empty);
             task.SetQuadrant(details.Quadrant ?? EisenhowerQuadrant.Unclassified);
+            task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags, details.Recurrence);
             SaveCategory(connection, transaction, category);
             SaveTask(connection, transaction, task, insert: true);
             return task;
@@ -74,6 +78,10 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 return false;
             }
 
+            var recurrence = details.Recurrence ?? task.Recurrence;
+            RecurrenceRules.ValidateWrite(task.Recurrence, recurrence, details.DueDate, task.IsCompleted, task.IsCompleted);
+            if (recurrence.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(tasks), id);
+            if (recurrence.Occurrence > task.Recurrence.Occurrence) TaskDependencies.ValidateChange(Nodes(tasks), id, details.Prerequisites ?? task.Prerequisites, true);
             if (details.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
             if (details.Prerequisites is { } prerequisites)
             {
@@ -85,7 +93,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parent.Id);
                 task.SetParent(parent);
             }
-            task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
+            task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags, details.Recurrence);
             var category = task.CategoryId == details.Category?.Id
                 ? task.Category
                 : ResolveCategory(connection, transaction, details.Category);
@@ -122,7 +130,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
             task.SetParent(new TaskParent(parentId)); SaveTask(connection, transaction, task, insert: false); return true;
         }, cancellationToken);
 
-    private static IEnumerable<DependencyNode> Nodes(Dictionary<Guid, TaskItem> tasks) => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted));
+    private static IEnumerable<DependencyNode> Nodes(Dictionary<Guid, TaskItem> tasks) => tasks.Values.Select(t => new DependencyNode(t.Id, t.Prerequisites, t.IsCompleted, t.Recurrence.IsActive));
 
     public Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default) =>
         ExecuteAsync((connection, transaction, token) =>
@@ -139,6 +147,30 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
             var tasks = LoadTasks(connection, transaction, token);
             if (!tasks.TryGetValue(id, out var task)) return false;
             task.SetQuadrant(quadrant); SaveTask(connection, transaction, task, insert: false); return true;
+        }, cancellationToken);
+
+    public Task<TaskItem?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken cancellationToken = default) =>
+        ExecuteAsync((connection, transaction, token) =>
+        {
+            var tasks = LoadTasks(connection, transaction, token);
+            if (!tasks.TryGetValue(id, out var task)) return null;
+            var next = RecurrenceRules.Configure(task.Recurrence, rule);
+            if (next.IsActive) TaskDependencies.ValidateRepeatActivation(Nodes(tasks), id);
+            task.SetRecurrence(next); SaveTask(connection, transaction, task, insert: false); return task;
+        }, cancellationToken);
+
+    public Task<TaskItem?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken cancellationToken = default) =>
+        ExecuteAsync((connection, transaction, token) =>
+        {
+            var tasks = LoadTasks(connection, transaction, token);
+            if (!tasks.TryGetValue(id, out var task)) return null;
+            var next = RecurrenceRules.Complete(task.Recurrence, expected);
+            if (next != task.Recurrence)
+            {
+                TaskDependencies.ValidateChange(Nodes(tasks), id, task.Prerequisites, true);
+                task.CompleteOccurrence(expected); SaveTask(connection, transaction, task, insert: false);
+            }
+            return task;
         }, cancellationToken);
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -192,7 +224,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
 
         var tasks = new Dictionary<Guid, TaskItem>();
         command.CommandText = """
-            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites, Quadrant
+            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites, Quadrant, Recurrence
             FROM TaskItems;
             """;
         using var taskReader = command.ExecuteReader();
@@ -209,7 +241,8 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 JsonSerializer.Deserialize<TagSet>(taskReader.GetString(9)) ?? throw new InvalidDataException("Unreadable task tags."),
                 taskReader.IsDBNull(10) ? null : Guid.Parse(taskReader.GetString(10)),
                 JsonSerializer.Deserialize<TaskPrerequisites>(taskReader.GetString(11)) ?? throw new InvalidDataException("Unreadable prerequisites."),
-                (EisenhowerQuadrant)taskReader.GetInt32(12));
+                (EisenhowerQuadrant)taskReader.GetInt32(12),
+                JsonSerializer.Deserialize<RepeatState>(taskReader.GetString(13)) ?? throw new InvalidDataException("Unreadable recurrence state."));
             tasks.Add(task.Id, task);
         }
 
@@ -253,16 +286,17 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         command.Transaction = transaction;
         command.CommandText = insert
             ? """
-                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites, Quadrant)
-                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated, $tags, $parent, $prerequisites, $quadrant);
+                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags, ParentTaskId, Prerequisites, Quadrant, Recurrence)
+                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated, $tags, $parent, $prerequisites, $quadrant, $recurrence);
                 """
             : """
                 UPDATE TaskItems SET Title = $title, Description = $description, IsCompleted = $completed,
-                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated, Tags = $tags, ParentTaskId = $parent, Prerequisites = $prerequisites, Quadrant = $quadrant
+                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated, Tags = $tags, ParentTaskId = $parent, Prerequisites = $prerequisites, Quadrant = $quadrant, Recurrence = $recurrence
                 WHERE Id = $id;
                 """;
         command.Parameters.AddWithValue("$id", task.Id.ToString());
         command.Parameters.AddWithValue("$parent", (object?)task.ParentTaskId?.ToString() ?? DBNull.Value);
+        command.Parameters.AddWithValue("$recurrence", JsonSerializer.Serialize(task.Recurrence));
         command.Parameters.AddWithValue("$quadrant", (int)task.Quadrant);
         command.Parameters.AddWithValue("$prerequisites", JsonSerializer.Serialize(task.Prerequisites));
         command.Parameters.AddWithValue("$tags", JsonSerializer.Serialize(task.Tags));

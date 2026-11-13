@@ -2,6 +2,8 @@ using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Domain.Services;
 
 public interface ILocalTaskService
@@ -17,5 +19,7 @@ public interface ILocalTaskService
     Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default);
     Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default);
     Task<bool> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default);
+    Task<TaskItem?> SetRecurrenceRuleAsync(Guid id, RepeatRule? rule, CancellationToken cancellationToken = default);
+    Task<TaskItem?> CompleteOccurrenceAsync(Guid id, RepeatState expected, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

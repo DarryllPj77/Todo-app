@@ -25,6 +25,12 @@ public sealed class TaskNavigationService : ITaskNavigation
 
     public async Task CloseEditorAsync() => await GetRoot().Navigation.PopAsync();
 
+    public Task OpenRecurrenceAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<RecurrencePage>());
+    public Task<bool> ConfirmRecurrenceConflictAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(
+        "Keep local task fields?", $"Queue local fields for {title} with the displayed repeat-rule preview against the server occurrence? Completed occurrences will not be undone.", "Keep local", "Cancel");
+    public Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next) => GetRoot().CurrentPage.DisplayAlertAsync(
+        "Complete this occurrence?", $"Complete {title} for {current:d} and move its due date to {next:d}? This task stays pending. The old due-date reminder is canceled.", "Complete and advance", "Cancel");
+
     public Task OpenPlanningAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<PlanningPage>());
     public Task<bool> ConfirmPlanningConflictAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(
         "Keep local task fields?", $"Queue the saved local fields for {title} with the chosen urgency/importance classification? Review the displayed server version first.", "Keep local", "Cancel");

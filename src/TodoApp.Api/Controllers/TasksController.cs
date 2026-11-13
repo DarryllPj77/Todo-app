@@ -5,6 +5,8 @@ using TodoApp.Api.Services;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
+using TodoApp.Domain.Recurrence;
+
 namespace TodoApp.Api.Controllers;
 
 [ApiController]
@@ -73,6 +75,19 @@ public sealed class TasksController : ControllerBase
     {
         if (!Enum.IsDefined(request)) return BadRequest();
         var task = await tasks.SetQuadrantAsync(id, request, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
+    }
+
+    [HttpPut("{id:guid}/recurrence")]
+    public async Task<ActionResult<TaskResponse>> SetRecurrence(Guid id, RecurrenceRuleRequest request, CancellationToken cancellationToken)
+    {
+        var task = await tasks.SetRecurrenceRuleAsync(id, request.Rule, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
+    }
+    [HttpPost("{id:guid}/occurrences/complete")]
+    public async Task<ActionResult<TaskResponse>> CompleteOccurrence(Guid id, RepeatState expected, CancellationToken cancellationToken)
+    {
+        var task = await tasks.CompleteOccurrenceAsync(id, expected, cancellationToken);
         return task is null ? NotFound() : Ok(task);
     }
 

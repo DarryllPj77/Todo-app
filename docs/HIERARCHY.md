@@ -33,7 +33,7 @@ Content-Type: application/json
 
 Success returns the full task (200); an unavailable child returns 404; invalid hierarchy returns safe 409 Problem Details; empty IDs/unknown fields return 400. Foreign and nonexistent parent failures use the same message. Ownership comes from the token. The server's existing per-owner transaction advisory lock serializes validation, write, and revision journal, so simultaneous opposite moves cannot both commit a cycle.
 
-Hierarchy introduced protocol **3**; prerequisites introduced **4** and current Phase 12D advertises **5** for planning (EISENHOWER.md). Parent-aware mutations require version 3 before upload; tagged mutations still require at least 2. An older API retains the immutable pending operation and reports the required upgrade; Retry now reuses its ID after upgrading. Absent Parent is omitted during serialization, preserving both pre-tag and tagged legacy receipt request bytes. New snapshots include an explicit root wrapper to distinguish root intent from a legacy omission. Coordinated API/client upgrade is required; old binaries are not supported against new hierarchy payloads/files.
+Hierarchy introduced protocol **3**; prerequisites introduced **4** and planning introduced **5** and current recurrence advertises **6** (RECURRENCE.md). Parent-aware mutations require version 3 before upload; tagged mutations still require at least 2. An older API retains the immutable pending operation and reports the required upgrade; Retry now reuses its ID after upgrading. Absent Parent is omitted during serialization, preserving both pre-tag and tagged legacy receipt request bytes. New snapshots include an explicit root wrapper to distinguish root intent from a legacy omission. Coordinated API/client upgrade is required; old binaries are not supported against new hierarchy payloads/files.
 
 The upload loop waits for a newly created parent to reach the server before sending a child link, and for known server children to detach/delete before a parent deletion. A bounded pass or concurrent remote work can require another Sync. Missing remote children/parents can still cause a conflict; ordering does not bypass server validation.
 
@@ -44,15 +44,15 @@ Invalid structural uploads produce a receipted conflict with the current server 
 | Store | Current version / change |
 | --- | --- |
 | PostgreSQL | Fifth migration AddTaskHierarchy adds nullable Tasks.ParentTaskId, self FK ON DELETE RESTRICT, index, and non-self check |
-| todoapp.db3 | Current schema 5; the 2-to-3 hierarchy upgrade adds nullable ParentTaskId with the same FK/check/index, transactionally after the tag upgrade |
-| sync.db3 | Current schema 5 adds planning after prerequisite/parent formats; old pending payloads are retained without rewriting on read |
+| todoapp.db3 | Current schema 6; the 2-to-3 hierarchy upgrade adds nullable ParentTaskId with the same FK/check/index, transactionally after the tag upgrade |
+| sync.db3 | Current schema 6 adds recurrence after planning/prerequisite/parent formats; old pending payloads are retained without rewriting on read |
 | views.db3 | Current schema 3 adds quadrant rules; saved views remain flat query results |
 | reminders.db3 | Schema 1, unchanged; parent-only moves retain reminder time |
 
 Existing tasks become roots; tags, ownership, fields, timestamps, queues, receipts, and saved views remain. The FK prevents dangling IDs/direct deletion; cycle/depth/owner consistency is enforced by application services. Administrative SQL must preserve those additional rules. Do not downgrade active data: migration Down removes all parent relationships.
 
 1. Stop the development API and close older clients. Retain/back up existing files and databases; do not reset queues.
-2. Use your configured Development connection and JWT secret, then apply all seven migrations (including AddTaskPlanning; EISENHOWER.md):
+2. Use your configured Development connection and JWT secret, then apply all eight migrations (including AddTaskRecurrence; RECURRENCE.md):
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
