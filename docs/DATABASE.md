@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, with CRUD, completion, and shared LINQ filters. Phase 5 task ViewModels now consume this service. Opening the Windows list has been verified, including initial schema access; file-reopening tests verify retained data. Full app restart acceptance remains on the README checklist. The API/PostgreSQL database, EF DbContext, and server migrations are still future work.
+Phase 4 implements SqliteLocalTaskService using Microsoft.Data.Sqlite 10.0.15. Task/category data is stored in a file, and Phase 5 task ViewModels consume this service. Opening the Windows list and file-reopening persistence tests have been verified; full app restart acceptance remains on the README checklist. Phase 6 adds separate Development-only in-memory API tasks/categories. No server database, EF DbContext, or PostgreSQL migrations exist yet.
 
 ## Initial entities and relationship
 
@@ -60,6 +60,10 @@ Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](http
 Only initialization to version 1 exists today. Before any schema change, add an explicit incremental migration for that old version, update the supported version, and test it using a database created by the earlier schema with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
+
+Current Phase 6 endpoints use API/Services/InMemoryTaskService. It holds data for one API process only, locks access across requests, and returns flat DTO snapshots. Server CategoryName values are matched case-insensitively; server IDs/timestamps are generated independently from local tasks. There is no client/server ID mapping or sync yet, and the API never opens the MAUI SQLite file. Restarting the API resets only the temporary server data.
+
+Phase 7 must replace that storage while retaining the tested REST contract: 201/Location creation, 200 full updates (including completion), 204 deletion, 400 validation, 404 missing tasks, server-owned identity/timestamps, and named priority JSON. Preserve task/category identity on round trips, define server category-name uniqueness deliberately, and keep database configuration outside controllers. Authentication/production deployment remain later gates.
 
 When the server persistence phase begins:
 

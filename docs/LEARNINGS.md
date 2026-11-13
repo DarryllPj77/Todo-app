@@ -241,3 +241,45 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A small interface can separate UI-specific interactions from presentation logic so tests can supply predictable behavior.
 
 **Short example:** ITaskNavigation handles editor navigation and delete confirmation. Tests return true/false for confirmation and simulate failed navigation without opening a native window.
+
+## DTO (Data Transfer Object)
+
+**Definition:** A DTO defines the data allowed across an application boundary without exposing the full domain entity.
+
+**Short example:** TaskWriteRequest accepts editable fields; TaskResponse returns a flat categoryId/categoryName instead of Category.Tasks navigation graphs. Id/CreatedAt/UpdatedAt are response-only.
+
+## API model validation
+
+**Definition:** Model validation checks deserialized input before controller logic executes. ApiController automatically returns a 400 validation response when model state is invalid.
+
+**Short example:** TaskWriteRequest implements IValidatableObject to validate trimmed text lengths. See [ASP.NET Core API behavior](https://learn.microsoft.com/en-us/aspnet/core/web-api/?view=aspnetcore-10.0).
+
+## Unknown JSON member rejection
+
+**Definition:** A JSON contract can reject fields that have no corresponding allowed property, helping detect client mistakes and attempts to set server-owned values.
+
+**Short example:** JsonUnmappedMemberHandling.Disallow on TaskWriteRequest makes a supplied createdAt field a 400 error instead of silently ignoring it.
+
+## HTTP resource responses
+
+**Definition:** HTTP status codes communicate the result of a resource operation independently of its response body.
+
+**Short example:** CreatedAtAction returns 201 plus the GET URL of a created task. DELETE returns 204 with no body; an absent task returns 404.
+
+## PUT replacement semantics
+
+**Definition:** A full-update request describes the editable state to retain, rather than only a subset of fields to change.
+
+**Short example:** PUT with only a title clears optional fields, sets Normal priority, and sets IsCompleted to false. Include fields whose values should remain unchanged.
+
+## Locking shared server state
+
+**Definition:** A lock ensures only one thread enters a critical section at a time, protecting shared mutable collections.
+
+**Short example:** The singleton InMemoryTaskService locks task/category updates and builds response snapshots within the lock. It never awaits while holding that lock.
+
+## String enum JSON
+
+**Definition:** A JSON enum converter represents enum values by their names rather than numeric backing values.
+
+**Short example:** Priority is sent as `"High"`. JsonStringEnumConverter<TaskPriority> with allowIntegerValues false rejects numeric priority input.

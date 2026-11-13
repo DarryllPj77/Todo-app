@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Checkboxes describe completion criteria, not promises that planned behavior already exists. Phase 5 task screens are implemented, the Windows MAUI build/launch passes, and 71 tests pass. Full hands-on acceptance, light/narrow layouts, and mobile-device checks remain pending.
+Proceed one phase at a time after review. Phase 6 task REST endpoints are implemented and 103 tests pass, including 32 new API cases. Windows MAUI build/launch was verified in Phase 5; its remaining manual acceptance checks are still open. The next implementation phase is PostgreSQL/EF Core, not client/server synchronization.
 
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
@@ -89,7 +89,7 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 - [ ] Complete the README hands-on checklist for create/edit/toggle/filter/delete and actual app restart.
 - [ ] Verify light-mode switching, narrow layouts, accessibility, and mobile sizing on native devices.
 
-## Phase 6 — REST task API
+## Phase 6 — REST task API (implemented)
 
 **Goal:** Expose clearly defined task operations over HTTP.
 
@@ -101,8 +101,10 @@ Proceed one phase at a time after review. Checkboxes describe completion criteri
 
 **Completion checklist:**
 
-- [ ] Route/status/validation/missing-resource tests pass.
-- [ ] DTOs prevent unintended updates of server-managed fields.
+- [x] All five routes return tested HTTP status codes, including Location on creation and Problem Details for invalid/missing resources.
+- [x] Dedicated DTOs validate editable fields and reject unknown/server-managed/navigation fields.
+- [x] Concurrent requests, filters, cancellation, ephemeral server state, and Development-only startup are tested.
+- [x] Real loopback HTTP create/read/update/delete smoke test passes; the temporary listener was stopped.
 
 ## Phase 7 — PostgreSQL and EF Core
 

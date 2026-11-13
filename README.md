@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 5 offline task screens implemented; Windows build and native launch verified.** The app now opens a task list connected to SQLite, with add/edit, completion/reopening, delete confirmation, filters, and optional due date/category. All 71 core/presentation tests pass. The Windows empty state and editor were inspected in dark mode; the full manual acceptance checklist, light-mode switching, and mobile device checks remain pending. Server task endpoints, authentication, and synchronization are later work. See [development progress](docs/DEVELOPMENT_PROGRESS.md).
+**Current status (2026-11-13): Phase 6 task REST API implemented; 103 tests pass.** The API supports create/read/update/delete, validation, completion, and filters using a Development-only in-memory server store. Live local HTTP CRUD checks passed. The offline MAUI/SQLite app remains independent; its Windows build/launch was verified in Phase 5, with full manual/light/mobile acceptance still pending. PostgreSQL, authentication, API client integration, and synchronization remain later work. See [development progress](docs/DEVELOPMENT_PROGRESS.md).
 
 ## Technology and prerequisites
 
@@ -24,9 +24,9 @@ TodoApp.Core.slnf            Same solution, excluding MAUI for SDK-only checks
 src/
   TodoApp.Domain/           Entities, Enums, Services contracts, shared query rules
   TodoApp.Infrastructure/   SQLite schema/service; in-memory learning implementation
-  TodoApp.Api/              Controllers, Services, Data, Configuration
+  TodoApp.Api/              Controllers, Contracts, server Services; Data/Configuration reserved
   TodoApp.Maui/             Views, ViewModels, Models, Services, Resources, Platforms
-tests/TodoApp.Tests/        Domain, storage, ViewModel behavior, and API startup tests
+tests/TodoApp.Tests/        Domain, storage, ViewModel behavior, and REST integration tests
 scripts/Run-Windows.ps1     Windows build/run launcher (PowerShell 5.1 compatible)
 docs/                      Roadmap, architecture, database plan, learnings, progress
 ```
@@ -56,7 +56,36 @@ dotnet run --project src/TodoApp.Api --launch-profile https
 
 Open `https://localhost:7114/api/health`; expected JSON is `{"status":"healthy"}`. The HTTP listener is `http://localhost:5062`, redirected to HTTPS by the pipeline when the HTTPS profile is used. `src/TodoApp.Api/TodoApp.Api.http` contains the same request. Stop with Ctrl+C.
 
-This endpoint checks application liveness only. No task endpoints, database readiness checks, OpenAPI UI, or authentication exist in this phase. Do not deploy the unauthenticated foundation as a task service.
+The health endpoint checks application liveness only. The task routes below now work; there is no database readiness check, OpenAPI UI, or authentication yet. The API deliberately refuses startup outside Development while it uses temporary unauthenticated storage. The launch profiles set Development automatically. API tasks are separate from the MAUI SQLite file and disappear when the API process restarts.
+
+| Method and route | Success | Other expected responses |
+| --- | --- | --- |
+| GET /api/tasks | 200 with an array (possibly empty) | 400 for an invalid filter |
+| GET /api/tasks/{id} | 200 with a task | 404 if missing or the ID route is malformed |
+| POST /api/tasks | 201 with a task and Location header | 400 for invalid JSON/input |
+| PUT /api/tasks/{id} | 200 with the updated task | 400 for invalid input; 404 if missing |
+| DELETE /api/tasks/{id} | 204, no response body | 404 if missing |
+
+Use `?filter=All`, `Pending`, `Completed`, `DueToday`, or `HighPriority`. DueToday uses the server's local calendar day for this development phase, not a phone's time zone. DueToday/HighPriority include completed tasks when they match. Tasks sort by title (ordinal, case-insensitive), then ID.
+
+POST/PUT accept only these fields:
+
+```json
+{
+  "title": "Learn REST",
+  "description": "Try the task endpoints",
+  "dueDate": "2026-11-20",
+  "priority": "High",
+  "categoryName": "Learning",
+  "isCompleted": false
+}
+```
+
+Priority is a JSON string: Low, Normal, or High; numeric values are rejected. DueDate is a nullable ISO calendar date. PUT is a full replacement: omitted description/dueDate/categoryName become null, priority defaults to Normal, and isCompleted defaults to false (reopens a completed task). Include every editable field whose value you want to retain. POST may also create an already completed task by explicitly setting isCompleted.
+
+IDs/timestamps are server-generated response fields; categoryId is read-only. Unknown JSON properties (including id/createdAt/updatedAt/categoryId/navigation objects) return 400 instead of being silently accepted. Titles, descriptions, and category names use the existing trimmed domain length rules. Existing category names are reused case-insensitively; category management is not exposed yet. Responses are flat DTOs with categoryId/categoryName and no entity navigation graph. Validation errors return Problem Details with field errors; missing tasks return 404 Problem Details.
+
+Open `src/TodoApp.Api/TodoApp.Api.http` in an HTTP client to try the workflow; copy the created ID into `taskId`. You can also run the `http` profile at localhost:5062 for loopback development if HTTPS trust is not set up; HTTPS redirection has no target in that HTTP-only profile, so it may log a warning and serve HTTP. The live smoke test used temporary loopback port 5073 and stopped afterward.
 
 ## Build and run MAUI
 

@@ -2,3 +2,42 @@
 
 GET {{TodoApp.Api_HostAddress}}/api/health
 Accept: application/json
+
+### List tasks; valid filters: All, Pending, Completed, DueToday, HighPriority
+GET {{TodoApp.Api_HostAddress}}/api/tasks?filter=All
+Accept: application/json
+
+### Create a task; copy the returned id into taskId below
+POST {{TodoApp.Api_HostAddress}}/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Learn REST",
+  "description": "Try the five task endpoints",
+  "dueDate": "2026-11-20",
+  "priority": "High",
+  "categoryName": "Learning",
+  "isCompleted": false
+}
+
+### Replace this ID with the created task's ID
+@taskId = 00000000-0000-0000-0000-000000000000
+
+GET {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
+Accept: application/json
+
+### Full replacement: omitted optional fields reset to their defaults
+PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
+Content-Type: application/json
+
+{
+  "title": "Learn REST",
+  "description": null,
+  "dueDate": null,
+  "priority": "Normal",
+  "categoryName": null,
+  "isCompleted": true
+}
+
+### Delete a disposable test task
+DELETE {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}

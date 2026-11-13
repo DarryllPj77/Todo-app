@@ -2,9 +2,9 @@
 
 ## Server side
 
-ASP.NET Core hosts HTTP requests. `Program.cs` is the composition root: it registers controller services and Problem Details, then assembles exception handling, HTTPS redirection, and controller routing. `HealthController` provides only `GET /api/health`.
+ASP.NET Core hosts HTTP requests. Program.cs registers controllers/Problem Details, string priority serialization, and a singleton InMemoryTaskService, then assembles exception handling, HTTPS redirection, and controller routing. HealthController provides GET /api/health; TasksController now implements the five task routes.
 
-Later, task controllers will translate REST requests into application operations. REST uses resource URLs and HTTP verbs: GET reads, POST creates, PUT updates, DELETE removes. The intended routes are:
+REST uses resource URLs and HTTP verbs: GET reads, POST creates, PUT updates, DELETE removes. Implemented routes are:
 
 ```text
 GET    /api/tasks
@@ -14,7 +14,17 @@ PUT    /api/tasks/{id}
 DELETE /api/tasks/{id}
 ```
 
-These routes are a plan, not implemented endpoints. DTOs will define input/output contracts so EF navigation graphs and server-managed fields are not exposed for unrestricted writes. Plan for validation responses (400), missing resources (404), creation with a location (201), and successful deletion (204). Authentication and user ownership must precede public multi-user deployment.
+TasksController delegates to the server service and awaits Task-returning operations with request cancellation. POST returns CreatedAtAction (201 with a working Location); GET/PUT return 200, DELETE returns 204, missing IDs return 404, and invalid requests/filters return 400. Guid route constraints mean malformed IDs do not match a task route. No category endpoints or PATCH route is introduced.
+
+TaskWriteRequest is a dedicated input DTO validated with IValidatableObject and the same trimmed domain length limits. ApiController converts invalid model state into ValidationProblemDetails before an action runs. JsonUnmappedMemberHandling.Disallow rejects unknown/server-owned properties instead of accepting untrusted fields. TaskResponse maps each entity into an immutable flat scalar response with categoryId/categoryName; no navigation objects or task collections are serialized. Priority uses named JSON strings only, and dates use DateOnly's ISO JSON representation.
+
+POST/PUT use the same full detail contract, including IsCompleted. Omitted optional values clear their fields, omitted priority selects Normal, and omitted completion selects false. This explicit PUT replacement behavior must be preserved when adding a database or clients. IDs, creation/update timestamps, and category IDs cannot be supplied in the write DTO. CategoryName assigns/reuses a case-insensitive server category; this API does not rename categories globally.
+
+InMemoryTaskService is independent of the client's ILocalTaskService and SQLite file. It protects its task/category dictionaries with one lock and constructs DTO snapshots inside that lock, so concurrent HTTP requests cannot mutate a collection during enumeration or serialize a live changing graph. Cancellation is checked inside the lock before work; no Task.Run or fake asynchronous I/O is needed for this memory-only service. The Task-returning boundary keeps controller code ready for real async database operations in Phase 7 without adding empty interfaces now.
+
+GetTasks reuses TaskQueries for filters and ordering. DueToday currently uses server-local time through TimeProvider; it does not infer the client's time zone. User/time-zone policy is future work before multi-user integration. A new API process has empty data, while the MAUI database remains untouched.
+
+The host fails fast outside Development while this unauthenticated temporary server store is active. Launch profiles set Development; WebApplicationFactory tests use Development explicitly (and verify Production is refused). Configure durable storage and authentication/ownership before enabling production deployment. Development mode itself is not a security boundary for a publicly exposed service.
 
 EF Core will map domain objects to PostgreSQL tables. Its DbContext and model configuration belong in Infrastructure/Persistence, outside controllers. API/Configuration will own host-side registrations; API/Data is reserved for server-only startup/seed helpers if needed, not a second DbContext. Database migrations will be generated when persistence is introduced, not hand-invented now.
 

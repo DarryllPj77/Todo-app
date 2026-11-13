@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 5 — MVVM task UI implemented; Windows build and native launch verified.** TaskListPage and TaskEditorPage consume SQLite through tested ViewModels, with CRUD, completion/reopening, filters, category/date/priority fields, confirmation, and error/busy states. The initial dark list/editor screens have been inspected. Full manual CRUD/restart acceptance, light/narrow layouts, and mobile targets remain pending; Phase 6 API task endpoints have not started.
+**Phase 6 — REST task API implemented.** TasksController exposes five task routes through dedicated write/response DTOs and a Development-only thread-safe in-memory server service. Validation, protected fields, status codes, cancellation, concurrent requests, and ephemeral storage behavior are tested. The offline MAUI app remains independent and unchanged. Its outstanding manual/native-device checks remain open; Phase 7 PostgreSQL/EF Core has not started.
 
 ## Completed work
 
@@ -36,14 +36,20 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Added themed layouts and scripts/Run-Windows.ps1; fixed single-target builds with TodoAppTargetFrameworks rather than retargeting shared libraries.
 - Installed a portable .NET 10.0.404 SDK plus maui-windows workload under ignored .tools/dotnet after the global installer was canceled during elevation. Local installation succeeded without administrator installation.
 - Built and directly launched the unpackaged Windows app with bundled Windows App SDK files. Inspected native dark empty/editor screens; further UI input stopped when the user began using the editor.
+- Added TasksController, TaskWriteRequest, TaskResponse, and a singleton InMemoryTaskService with locked request-safe state and flat response snapshots.
+- Added normalized input validation, unknown JSON member rejection, string-only priority JSON, server-owned IDs/timestamps, full PUT replacement, and category-name reuse.
+- Implemented 200/201/204 success responses, Location creation URLs, 400 ValidationProblemDetails, and 404 missing-task responses.
+- Added Development-only startup enforcement and request cancellation propagation; no database/JWT packages were added.
+- Added 32 API test cases and sample GET/POST/PUT/DELETE requests in TodoApp.Api.http. A real loopback CRUD smoke test passed and its temporary listener was stopped.
 
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| `dotnet test TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 71 tests, 0 failed, 0 skipped; core/presentation sources rebuilt |
-| `scripts/Run-Windows.ps1 -BuildOnly` | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors, using local SDK/workload |
+| `dotnet test TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 103 tests, 0 failed, 0 skipped; core/presentation/API sources rebuilt |
+| Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
+| `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
 | Initial generic TargetFrameworks override after local setup | NETSDK1005 in shared libraries; fixed using the client-only TodoAppTargetFrameworks property |
 | Full solution build (historical Phase 1 check) | Blocked: NETSDK1147, missing maui-android workload |
@@ -52,7 +58,9 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 | SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
 | PostgreSQL verification | Not applicable; server persistence is not implemented |
 
-Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 additionally compiled native Windows/XAML with a local workload. The API integration test verifies actual startup, routing, controller DI, status, and JSON; it does not test a deployed HTTPS listener/certificate. Presentation tests cover validation, unchanged saved state before Save/after Cancel, category reuse, due-date clearing, missing tasks, failed reads/writes, retry, delete confirmation, selection/filter/completion, double-save prevention, and failed post-save navigation. They do not simulate native clicks or theme switching.
+Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 compiled native Windows/XAML with a local workload. Phase 6 added 32 tests for the actual API pipeline: routes, response contracts, missing IDs, malformed JSON/values, length limits, unknown/server-owned fields, all filters, category reuse, parallel creates, cancellation, fresh server state, and refusal to start in Production. Integration tests use an in-memory HTTPS request host, not a deployed TLS certificate. A separate loopback HTTP listener passed real socket CRUD checks. The HTTP-only profile logged its expected missing HTTPS redirect-port warning. An initial smoke assertion mishandled PowerShell's empty-array wrapping; checking the final JSON body directly verified it was []. No application change was needed for that assertion correction.
+
+Presentation tests retain their Phase 5 coverage of validation, draft isolation, cancel, retry, confirmations, missing tasks, and double-save/navigation failures. They do not simulate native clicks or theme switching.
 
 Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions restored for net10.0. MVC.Testing 10.0.15 matches the installed ASP.NET runtime line. Microsoft.Data.Sqlite 10.0.15 supplies local SQLite/native dependencies; its synchronous native calls are offloaded once per operation rather than falsely treated as nonblocking ADO.NET async I/O. EF/Npgsql/JWT packages remain deferred.
 
@@ -61,15 +69,16 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
 - Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows has been compiled/launched in this run.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
-- Review Phase 5 before starting API task endpoints. No SQLite version-2 migration was introduced; future schema changes need explicit incremental migration tests.
+- Review the Phase 6 DTO/PUT contract before introducing PostgreSQL. API tasks are not durable and are not synchronized with the MAUI database. No SQLite schema change was introduced.
+- API DueToday currently follows the server's local date; define a per-user time-zone policy before multi-user integration. Authentication/ownership and production deployment remain later work.
 
 ## Uncommitted changes
 
-Phase 5 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 4 recorded in local commit `f191e39`. Use `git status` for live state. The portable SDK/workload, databases, template downloads, and build output remain ignored.
+Phase 6 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 5 recorded in local commit `7639dff`. Use `git status` for live state. The portable SDK/workload, databases, template downloads, and build output remain ignored.
 
-- New: MAUI list/editor pages and ViewModels, ObservableViewModel, AsyncCommand, TaskRow, FilterOption, ITaskNavigation/TaskNavigationService, TaskStyles.xaml, scripts/Run-Windows.ps1, and tests/TodoApp.Tests/TaskViewModelTests.cs.
-- Removed: welcome page/ViewModel and the Models/Services .gitkeep placeholders.
-- Modified: MAUI startup/DI/resources/project settings, test project source links, README, and all five docs.
+- New: API/Contracts/TaskWriteRequest.cs, API/Contracts/TaskResponse.cs, API/Controllers/TasksController.cs, API/Services/InMemoryTaskService.cs, and tests/TodoApp.Tests/ApiTasksTests.cs.
+- Removed: the now-populated API/Services .gitkeep placeholder.
+- Modified: API Program.cs and TodoApp.Api.http, README, and all five docs.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
 
@@ -83,7 +92,7 @@ Foundation file groups (historical):
 - Tests: project file and `ApiStartupTests.cs`.
 - Docs: README plus ROADMAP, ARCHITECTURE, DATABASE, LEARNINGS, and this progress file.
 
-Phase 5 preserves Domain, Infrastructure, and API behavior. `.tools`, `bin`, `obj`, and SQLite files/journals are local artifacts excluded from the intended Git scope.
+Phase 6 preserves Domain, Infrastructure, and MAUI source/behavior. `.tools`, `bin`, `obj`, and SQLite files/journals are local artifacts excluded from the intended Git scope.
 
 ## Committed milestones
 
@@ -92,12 +101,13 @@ Phase 5 preserves Domain, Infrastructure, and API behavior. `.tools`, `bin`, `ob
 - `0e50592` — `Implement Phase 2 domain models and business rules`: verified in local Git history at the start of Phase 3.
 - `337e418` — `Implement Phase 3 local CRUD service and LINQ filters`: verified in local Git history at the start of Phase 4.
 - `f191e39` — `Implement Phase 4 SQLite persistence`: verified in local Git history at the start of Phase 5.
-- Phase 5 has no committed milestone yet. No merge or force-push has been performed.
+- `7639dff` — `Implement Phase 5 offline MAUI task interface`: verified in local Git history at the start of Phase 6.
+- Phase 6 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Run the Windows app with scripts/Run-Windows.ps1 and finish the README hands-on checklist. Then review Phase 5 before authorizing Phase 6 task REST endpoints/DTOs/validation. The current local app needs no API or login. Do not start Phase 6 automatically.
+Review Phase 6, then authorize Phase 7 PostgreSQL/EF Core: select compatible packages/tooling, configure secrets, map entities/relationships, review an initial migration, and replace the temporary server storage while retaining the REST contract. Finish the independent MAUI manual checklist as needed. Do not start Phase 7 automatically; do not connect the client to this temporary server store as synchronization.
 
 ## What to learn now
 
-Trace a XAML binding into TaskListViewModel or TaskEditorViewModel, then follow a command to ILocalTaskService. Learn change notification, observable collections, separate draft state, async command guards, and per-window DI scopes. Read the failed-save/double-save tests to see why edits are retained and saved creates are not repeated after navigation errors. See LEARNINGS for short examples.
+Trace a JSON request into TaskWriteRequest validation, TasksController, and InMemoryTaskService, then back through TaskResponse. Learn DTO boundaries, HTTP statuses and Location headers, automatic API validation, full PUT semantics, cancellation, and locking shared server data. Read rejected-field/parallel-request tests to see why the API accepts inputs differently from directly mutating domain objects. See LEARNINGS for short examples.
