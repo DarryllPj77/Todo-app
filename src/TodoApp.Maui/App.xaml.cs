@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TodoApp.Maui;
 
@@ -20,9 +20,11 @@ public partial class App : Application
         scope.ServiceProvider.GetRequiredService<Services.TaskNavigationService>().Attach(navigation);
         var window = new Window(navigation);
         var reminders = services.GetRequiredService<Services.ReminderRuntime>();
-        window.Created += async (_, _) => await reminders.AttachAsync(window.Dispatcher);
-        window.Resumed += async (_, _) => await reminders.ResumeAsync();
-        window.Destroying += (_, _) => { reminders.Detach(); scope.Dispose(); };
+        var focus = services.GetRequiredService<Services.FocusRuntime>();
+        window.Created += async (_, _) => { await reminders.AttachAsync(window.Dispatcher); await focus.AttachAsync(window); };
+        window.Resumed += async (_, _) => { await reminders.ResumeAsync(); await focus.ResumedAsync(window); };
+        window.Stopped += async (_, _) => await focus.StoppedAsync(window);
+        window.Destroying += async (_, _) => { reminders.Detach(); await focus.DetachAsync(window); scope.Dispose(); };
         return window;
 	}
 }

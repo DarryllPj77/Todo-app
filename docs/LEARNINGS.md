@@ -583,3 +583,21 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A scheduler is justified by a required time-triggered job, not merely by the word recurring.
 
 **Short example:** Completion-based recurrence already has a current future task and advances in an explicit user transaction. No timed task-generation job is needed. Timed expansion/background jobs would require separate scheduling/idempotency/retention design. See RECURRENCE.md.
+
+## Elapsed time is not a wall-clock difference
+
+**Definition:** A monotonic timestamp measures duration; UTC timestamps describe when observations were recorded and may jump when a clock changes.
+
+**Short example:** Focus TimeSpent uses TimeProvider.GetElapsedTime. Moving the wall clock backwards cannot remove credited ticks; moving it forwards cannot add hours. Long heartbeat gaps interrupt instead of guessing. UTC labels and an increasing ledger sequence are separate metadata.
+
+## Derive totals from stable ledger entries
+
+**Definition:** A durable session row is the source of truth; a displayed total is a query over those rows.
+
+**Short example:** Checkpoints update one session ID with cumulative elapsed ticks. Retrying Stop does not add time again. TimeSpent sums Focus rows, excludes breaks/paused gaps, and rounds only for display. Task/recurrence snapshots keep history after deletion or rescheduling.
+
+## Live state versus a recoverable checkpoint
+
+**Definition:** A timer can have a small unsaved tail, but recovery should never infer unseen work from the time an app was closed.
+
+**Short example:** Five-second checkpoints bound crash loss. Restart marks the abandoned session Interrupted at its saved timestamp; no auto-resume or closed-app duration is credited. An OS process lease, one-active SQL index, revisions, and account guards solve different concurrency problems. See FOCUS.md.

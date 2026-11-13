@@ -55,6 +55,12 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(FileSystem.AppDataDirectory, "views.db3")));
+        builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(FileSystem.AppDataDirectory, "focus.db3")));
+        builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
+        builder.Services.AddSingleton<FocusService>();
+        builder.Services.AddSingleton<FocusRuntime>();
+        builder.Services.AddScoped<FocusViewModel>();
+        builder.Services.AddTransient<FocusPage>();
         builder.Services.AddScoped<RecurrenceViewModel>();
         builder.Services.AddTransient<RecurrencePage>();
         builder.Services.AddScoped<PlanningViewModel>();

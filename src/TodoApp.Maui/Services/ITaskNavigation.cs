@@ -9,6 +9,7 @@ public interface ITaskNavigation
     Task OpenSyncAsync();
     Task OpenRemindersAsync();
     Task OpenTaskViewsAsync();
+    Task OpenFocusAsync();
     Task OpenRecurrenceAsync();
     Task<bool> ConfirmRecurrenceConflictAsync(string title);
     Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next);

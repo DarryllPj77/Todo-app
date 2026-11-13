@@ -489,6 +489,7 @@ $RECYCLE.BIN/
 *.db-*
 *.db3
 *.db3-*
+*.db3.runtime.lock
 *.sqlite
 *.sqlite-*
 *.sqlite3

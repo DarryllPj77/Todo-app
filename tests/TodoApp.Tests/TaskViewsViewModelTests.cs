@@ -157,7 +157,8 @@ public sealed class TaskViewsViewModelTests : IDisposable
         public Task<bool> ConfirmDeleteAsync(string name) => Task.FromResult(false);
         public Task EditTaskAsync(Guid? id) { EditedId = id; return Task.CompletedTask; }
         public Task OpenSyncAsync() { SyncOpened++; return Task.CompletedTask; }
-        public Task OpenRecurrenceAsync() => Task.CompletedTask;
+        public Task OpenFocusAsync() => Task.CompletedTask;
+    public Task OpenRecurrenceAsync() => Task.CompletedTask;
     public Task<bool> ConfirmRecurrenceConflictAsync(string title) => Task.FromResult(false);
     public Task<bool> ConfirmOccurrenceAsync(string title, DateOnly current, DateOnly next) => Task.FromResult(false);
     public Task OpenPlanningAsync() => Task.CompletedTask;

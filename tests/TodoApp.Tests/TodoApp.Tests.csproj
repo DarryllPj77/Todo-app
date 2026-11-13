@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -23,6 +23,8 @@
   <ItemGroup>
     <Compile Include="..\..\src\TodoApp.Maui\ViewModels\*.cs" Link="Client\ViewModels\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Models\*.cs" Link="Client\Models\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\FocusTaskCatalog.cs" Link="Client\FocusTaskCatalog.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\FocusService.cs" Link="Client\FocusService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ITaskNavigation.cs" Link="Client\ITaskNavigation.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\IClientSettings.cs" Link="Client\IClientSettings.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ApiClientException.cs" Link="Client\ApiClientException.cs" />

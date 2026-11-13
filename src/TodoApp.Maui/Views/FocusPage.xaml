@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" x:Class="TodoApp.Maui.Views.FocusPage" x:DataType="vm:FocusViewModel" Title="Focus &amp; history" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Focus, breaks &amp; time history" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="History is local to this device and separated by workspace. Focus counts while the app process keeps ticking, even on another desktop app. Suspend, restart, or a long timer gap interrupts at the last reliable reading. Checkpoints save every five seconds; a crash can lose the unsaved tail." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Button Text="Refresh tasks, saved durations &amp; history" Command="{Binding RefreshCommand}" />
+  <Label Text="{Binding Error}" Style="{StaticResource TaskError}" /><Label Text="{Binding Status}" />
+  <Border Style="{StaticResource TaskCard}"><VerticalStackLayout Spacing="8">
+   <Label Text="{Binding ActiveTitle}" FontAttributes="Bold" /><Label Text="{Binding Timer}" FontSize="40" SemanticProperties.Description="Time remaining in the current session" />
+   <Button Text="Pause" Command="{Binding PauseCommand}" /><Button Text="Resume" Command="{Binding ResumeCommand}" /><Button Text="Stop &amp; save tracked time" Command="{Binding StopCommand}" />
+   <Label Text="{Binding Suggestion}" />
+  </VerticalStackLayout></Border>
+  <Border Style="{StaticResource TaskCard}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="Durations for the next session" FontAttributes="Bold" /><Label Text="Starting saves these settings for this workspace. Changes do not alter an active session." Style="{StaticResource TaskMuted}" />
+   <Label Text="Focus minutes (1-180)" /><Entry Text="{Binding FocusMinutes}" Keyboard="Numeric" MaxLength="3" />
+   <Label Text="Short break minutes (1-60)" /><Entry Text="{Binding ShortBreakMinutes}" Keyboard="Numeric" MaxLength="2" />
+   <Label Text="Long break minutes (1-60)" /><Entry Text="{Binding LongBreakMinutes}" Keyboard="Numeric" MaxLength="2" />
+   <Label Text="Select a pending device task or cached account task. Completed/deleted tasks stay in history but cannot start a new focus block." Style="{StaticResource TaskMuted}" />
+   <CollectionView HeightRequest="220" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single">
+    <CollectionView.EmptyView><Label Text="No pending tasks. Create tasks or sign in and sync first, then Refresh." /></CollectionView.EmptyView>
+    <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:FocusTaskRow"><VerticalStackLayout Padding="8" Spacing="4"><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding TimeSpent, StringFormat='TimeSpent: {0}'}" /></VerticalStackLayout></DataTemplate></CollectionView.ItemTemplate>
+   </CollectionView>
+   <Button Text="Start focus for selected task" Command="{Binding StartFocusCommand}" /><Button Text="Start short break" Command="{Binding StartShortBreakCommand}" /><Button Text="Start long break" Command="{Binding StartLongBreakCommand}" />
+  </VerticalStackLayout></Border>
+  <Label Text="{Binding Totals}" FontAttributes="Bold" />
+  <Label Text="Task totals include stopped/interrupted focus time and all recurrence occurrences. Titles below are snapshots from the latest session; deleting or renaming a task keeps its history. Break time is never added to TimeSpent." Style="{StaticResource TaskMuted}" />
+  <CollectionView HeightRequest="180" ItemsSource="{Binding TaskTotals}"><CollectionView.ItemTemplate><DataTemplate x:DataType="vm:FocusTaskTotal"><VerticalStackLayout Padding="6"><Label Text="{Binding Title}" /><Label Text="{Binding TimeSpent}" /></VerticalStackLayout></DataTemplate></CollectionView.ItemTemplate></CollectionView>
+  <Label Text="Recent session history" FontAttributes="Bold" />
+  <CollectionView HeightRequest="300" ItemsSource="{Binding History}">
+   <CollectionView.EmptyView><Label Text="No focus or break sessions saved for this workspace." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:FocusHistoryRow"><Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="4"><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Summary}" /><Label Text="{Binding Detail}" Style="{StaticResource TaskMuted}" /></VerticalStackLayout></Border></DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 12E recurrence implemented; native acceptance pending.** Open **Recurring tasks** to configure daily/weekly/monthly rules and confirm completion of one occurrence. The same task advances its calendar date and stays pending; consumed counters/receipts prevent duplicate advances. Monthly anchors avoid drift. All **372 tests passed, none skipped**; Windows build **0 warnings/errors**. Apply AddTaskRecurrence and rebuild API/client together using [RECURRENCE.md](docs/RECURRENCE.md). Device/sync files upgrade without reset. Next is 12F focus/time history; existing native/mobile acceptance remains open.
+**Current status (2026-11-14): Phase 12F focus/time history implemented; native acceptance pending.** Open **Focus & history** for configurable Pomodoro focus/break sessions, pause/resume, task TimeSpent, and durable device-local history. Monotonic timing, checkpoints, interruption recovery, scope guards, one-session/process protection, and manual breaks have explicit policies. Rebuild the client using [FOCUS.md](docs/FOCUS.md); no new API migration is needed. All **404 tests passed, none skipped**; Windows build **0 warnings/errors**. Next is 12G adaptive workspace; native/mobile timer/lifecycle acceptance remains open.
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 12E suite passed **372 tests, 0 skipped** (313 portable cases; 59 PostgreSQL facts). See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 12F suite passed **404 tests, 0 skipped** (345 portable cases; 59 PostgreSQL facts). Focus adds 32 portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 

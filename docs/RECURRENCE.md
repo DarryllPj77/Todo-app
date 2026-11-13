@@ -104,3 +104,5 @@ Only generated test databases were migrated during implementation. No user devel
 7. Check old reminder cancellation after advance/new date, no automatic next reminder, and retention when stopping without a date change. Verify native light/dark/narrow/keyboard/screen-reader/multi-window behavior and compile/test mobile separately.
 
 Automated tests cover pure calendar/transition rules, SQLite upgrades/atomicity, reminder hooks, current client ViewModels, API/JWT/PostgreSQL migrations/ownership/concurrency/receipts/counter floors, and replica convergence. Windows compilation checks native/XAML references; it does not prove native clicks, notification display, device HTTPS, or mobile builds.
+
+Phase 12F adds independent local focus history. A focus session captures the task's RepeatState at start; changing/advancing that state interrupts tracking at the last verified checkpoint. Completing a focus block does not complete a recurrence occurrence. Task TimeSpent aggregates all its locally tracked occurrences, while session rows retain the captured occurrence identity. Recurrence counters are not rewritten by focus tracking. See FOCUS.md.

@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 12E - Completion-based recurrence implemented; native acceptance pending.** Daily/weekly/monthly rules advance one stable task after explicit completion, retaining pending state and an anchored calendar. Monotonic counters, expected-state completion, server tombstone floors, receipts/revisions, and queue limits prevent duplicate advances. All **372 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Windows solution/XAML build: **0 warnings/errors**. AddTaskRecurrence is migration eight; device/sync use schema 6, views remain 3, reminders 1. Upgrade using RECURRENCE.md. No timed-generation job/scheduler is needed. Next is 12F focus/time history; native platform acceptance remains open.
+**Phase 12F - Focus/time history implemented; native acceptance pending.** Device-local Pomodoro focus/short/long breaks now support pause/resume, manual transitions, monotonic timing, five-second checkpoints, scoped durable history, and derived task TimeSpent. Process/session/revision guards and interruption recovery prevent duplicate or unobserved credit. All **404 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Windows solution/XAML build has 0 warnings/errors. focus.db3 is new schema 1; existing task/sync/views/reminder/server formats remain unchanged. No new API migration is needed. Next is 12G adaptive workspace; native timer/lifecycle/mobile acceptance remains open.
 
 ## Completed work
 
@@ -111,17 +111,17 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Build and test evidence
 
-Phase 12E adds 25 portable cases and eight PostgreSQL facts covering anchored daily/weekly/monthly/leap arithmetic, strict state JSON, counter/date bounds, idempotent concurrent completion, stop/reconfigure, field retention, incoming/own dependency policy, version-5 task/cache migration, immutable legacy receipt bytes, one-offline-advance limits, protocol rejection, invalid remote metadata, conflict/floor repair, UI confirmation/account races, reminder cancellation, ownership, PostgreSQL migration/constraints, revision/receipt replay, delete/restore floors, and two-replica completion convergence. Full suite: 372 pass. A final focused recurrence run checks the clearer activation error message; native interaction/mobile compilation remain separate gates.
+Phase 12F adds 32 portable cases for duration bounds, completion/paused time, break exclusion, monotonic/wall-clock changes, heartbeat gaps, checkpoint/restart/suspension recovery, task/occurrence snapshots, account/origin/expiry/lookup races, device independence, exclusive app-instance leases, concurrent starts, stale/history rewrite protection, forced storage failures, corrupt/newer files, fractional aggregation, UI drafts/totals, manual long-break suggestions, and stale-window controls. Existing 59 PostgreSQL facts are unchanged and remain in the full regression gate. Native interaction/lifecycle/device acceptance is separate from these tests and Windows compilation.
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| Full CLI suite using TODOAPP_TEST_POSTGRES and isolated artifacts | Passed: 372 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection) |
+| Full CLI suite using TODOAPP_TEST_POSTGRES and isolated artifacts | Passed: 404 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection) |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Final Phase 12E native build output | Passed: isolated .tools/phase12e-native, all five projects, 0 warnings/errors; no app stop required |
-| Final test result | .tools/phase12e-results/phase12e.trx: 372 passed, 0 failed, 0 skipped |
-| Final focused recurrence verification after activation-message refinement | .tools/phase12e-results/phase12e-recurrence-final.trx: 33 passed, 0 failed, 0 skipped (25 portable cases plus eight PostgreSQL facts) |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Fifty-nine PostgreSQL facts are explicitly skipped (313 portable cases); portable REST tests use explicit memory/auth substitutes |
+| Final Phase 12F native build output | Passed: isolated .tools/phase12f-native, all five projects, 0 warnings/errors; no app stop required |
+| Final test result | .tools/phase12f-results/phase12f.trx: 404 passed, 0 failed, 0 skipped |
+| Final Phase 12F focus verification | .tools/phase12f-results/phase12f-focus-final.trx: 32 passed, 0 failed, 0 skipped after final scope guard refinement |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Fifty-nine PostgreSQL facts are explicitly skipped (345 portable cases); portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -147,21 +147,21 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 ## Work in progress / pending verification
 
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
-- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12E; recurrence/planning/dependency/hierarchy native interaction and prior reminder delivery remain unverified. No running user app was stopped.
+- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12F; focus timer/lifecycle and recurrence/planning/dependency/hierarchy native interaction and prior reminder delivery remain unverified. No running user app was stopped.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
 - Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all eight migrations. No user development database migration or persistent connection change ran here.
 - Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
-- Review Phase 12E using RECURRENCE.md/EISENHOWER.md and retain DEPENDENCIES.md/HIERARCHY.md/TAGS.md/SAVED_VIEWS.md/NOTIFICATIONS.md/SYNCHRONIZATION.md acceptance gates. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Review Phase 12F using FOCUS.md and retain RECURRENCE.md/EISENHOWER.md/DEPENDENCIES.md/HIERARCHY.md/TAGS.md/SAVED_VIEWS.md/NOTIFICATIONS.md/SYNCHRONIZATION.md acceptance gates. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
 - Verify Reminders native permission/display/cancellation/time/account behavior using NOTIFICATIONS.md. Android/Apple adapters need compilation/device checks, and Windows closed-app delivery remains outside this unpackaged implementation.
-- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device tasks/sync use schema 6, saved views use 3, and reminders use 1.
+- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device tasks/sync use schema 6, saved views 3, reminders 1, and new focus history 1.
 - API DueToday currently follows the server's local date; define a per-user time-zone policy before release; sync dates are calendar values. Production deployment remains later work.
 
 ## Uncommitted changes
 
-Phase 12E changes are uncommitted; no commit or push ran. Phase 12D is recorded in local commit `6464399`, verified at the start. User-added untracked `.vscode/` remains excluded. Build/test/tool/cluster files stay ignored.
+Phase 12F changes are uncommitted; no commit or push ran. Phase 12E is recorded in local commit `1482320`, verified at the start. User-added untracked `.vscode/` remains excluded. Build/test/tool/cluster files stay ignored; the empty focus lease companion is now ignored too.
 
-- New: Domain recurrence rule/state/frequency/validation, AddTaskRecurrence migration/designer, recurrence API request, Recurrence ViewModel/page, RecurrenceTests/PostgresRecurrenceTests, docs/RECURRENCE.md.
-- Modified: task/local/sync contracts, SQLite task/sync formats, EF task/journal mapping/snapshot, API recurrence endpoints/writes/journal/floor/HTTP samples, client navigation/summaries/engine/reminder hooks/conflict details, dependency policy, test doubles/expectations, README and docs.
+- New: Domain focus/session rules, SqliteFocusStore, FocusTaskCatalog/FocusService/FocusRuntime, Focus ViewModel/page, FocusTests, docs/FOCUS.md.
+- Modified: native window lifecycle/DI/navigation/task-list toolbar, portable test-source links and navigation doubles, .gitignore, README and docs. Existing task/API/sync/model/migration source remains unchanged.
 - Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
@@ -197,12 +197,13 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - `f0dc3e1` - `Implement Phase 12C.1 task hierarchy and subtasks`: verified at the start of Phase 12C.2.
 - `8329aef` - `Implement Phase 12C.2 task dependencies`: verified at the start of Phase 12D.
 - `6464399` - `Implement Phase 12D urgency and importance planning`: verified at the start of Phase 12E.
-- Phase 12E has no committed milestone yet. No merge or force-push ran.
+- `1482320` - `Implement Phase 12E completion-based task recurrence`: verified at the start of Phase 12F.
+- Phase 12F has no committed milestone yet. No merge or force-push ran.
 
 ## Next task
 
-Follow RECURRENCE.md to stop the development API/older client, apply AddTaskRecurrence using configured Development secrets, restart HTTPS, and rebuild the client. Preserve queues/caches/views/receipts/counter floors. Complete recurrence anchor/advance/retry/conflict/restart/two-device/reminder native acceptance. Next is 12F focus/time history: review Pomodoro lifecycle, elapsed-time semantics, durable sessions/TimeSpent, and history before implementation. Existing mobile/notification/TLS/sync acceptance remains open; Windows reminders require the app running.
+Rebuild the client and follow FOCUS.md for pause/resume/stop, checkpoint/restart/suspend, desktop app switching, manual breaks, one-session/two-window/process, account/expiry, task/recurrence changes, and history native acceptance. No new API migration is needed. Existing eight migrations/protocol 6 remain prerequisites for current account-task features. Next is 12G adaptive desktop/mobile workspace, with reviewed navigation/layout/accessibility. Existing TLS/SecureStorage/notification/mobile acceptance stays open.
 
 ## What to learn now
 
-Trace anchored calendar arithmetic and expected-state completion through counter validation, transaction/owner lock, immutable queue, receipt, and tombstone floor. Distinguish recurrence date policy from reminder time zones, consumed counters from completion history, and completion-driven advancement from timed task generation. See LEARNINGS.md and RECURRENCE.md.
+Trace monotonic ticks through live state, a revisioned checkpoint, terminal ledger status, and derived TimeSpent. Separate UTC labels from elapsed duration, breaks from focus, captured task/occurrence identity from current task state, and local history from server task sync. Review OS file leases versus SQL uniqueness/revisions and conservative recovery without phantom duration. See LEARNINGS.md and FOCUS.md.
