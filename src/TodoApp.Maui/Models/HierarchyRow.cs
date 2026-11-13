@@ -11,5 +11,5 @@ public sealed record HierarchyRow(Guid Id, string Title, Guid? ParentId, int Lev
     public string ShortTitle => Title + " (" + Id.ToString("N")[..8] + ")";
     public string LocalDetails => Local is null ? "Local: deletion requested" : "Local: " + Describe(Local);
     public string ServerDetails => Remote?.Task is { } task ? "Server: " + Describe(task) : "Server: deleted / not uploaded";
-    private static string Describe(SyncTaskData task) => $"{task.Title}\n{task.Description}\n{task.Priority}; {task.DueDate}; {task.CategoryName}; Tags: {task.Tags}; {(task.IsCompleted ? "Completed" : "Pending")}; Parent: {task.Parent?.Id?.ToString() ?? "Root"}; Prerequisites: {string.Join(", ", task.Prerequisites ?? TodoApp.Domain.Relationships.TaskPrerequisites.Empty)}";
+    private static string Describe(SyncTaskData task) => $"{task.Title}\n{task.Description}\n{task.Priority}; {task.DueDate}; {task.CategoryName}; Tags: {task.Tags}; {(task.IsCompleted ? "Completed" : "Pending")}; Parent: {task.Parent?.Id?.ToString() ?? "Root"}; Planning: {TodoApp.Domain.Enums.Eisenhower.Label(task.Quadrant ?? TodoApp.Domain.Enums.EisenhowerQuadrant.Unclassified)}; Prerequisites: {string.Join(", ", task.Prerequisites ?? TodoApp.Domain.Relationships.TaskPrerequisites.Empty)}";
 }

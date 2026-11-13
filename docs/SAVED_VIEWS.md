@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Phase 12B adds tags and tag rules. Phase 12C.1 adds a separate hierarchy screen (HIERARCHY.md); saved-view results stay flat. Phase 12C.2 adds a separate Dependencies screen (DEPENDENCIES.md); saved views do not add dependency predicates. Urgency/importance, recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work.
+Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Phase 12B adds tags and tag rules. Phase 12C.1 adds a separate hierarchy screen (HIERARCHY.md); saved-view results stay flat. Phase 12C.2 adds a separate Dependencies screen (DEPENDENCIES.md); saved views do not add dependency predicates. Phase 12D adds quadrant rules and a separate planning page (EISENHOWER.md). Recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work.
 
 Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** from the main task-list toolbar. This page provides a read-only explorer plus navigation to the normal task editor/workspace. Existing task-list filters and sync/reminder screens stay available.
 
@@ -45,7 +45,7 @@ Saved views do not sync between devices. Device-only definitions remain independ
 
 Domain/Views defines the immutable TaskViewDefinition, candidate snapshot, saved definition, and pure TaskViewQueries. Normalize validates bounds/enums and canonicalizes unused category input. Apply uses LINQ predicates followed by deterministic ordering and returns a materialized result without mutating source tasks.
 
-SqliteTaskViewStore initializes **views.db3 schema version 2**, independent of all existing task/sync/reminder schemas and server migrations. SavedTaskViews stores ID, scope, display/name key, revision, and JSON rule definition. SQL parameters protect names/search payloads; transactions serialize duplicate/quota/revision checks with writes. Corrupt/newer schema or definition data fails without reset. Opening/reading/applying a view does not emit a sync-store Written callback.
+SqliteTaskViewStore initializes **views.db3 schema version 3**, independent of task/sync/reminder schemas and server migrations. SavedTaskViews stores ID, scope, display/name key, revision, and JSON rule definition. SQL parameters protect names/search payloads; transactions serialize duplicate/quota/revision checks with writes. Corrupt/newer schema or definition data fails without reset. Opening/reading/applying a view does not emit a sync-store Written callback.
 
 TaskViewsViewModel separates editable rules from the applied definition, loads device tasks or account cache snapshots, and projects matching rows without creating task copies. Saved definitions and results are per-window state over the shared local store. The navigation service provides the new page and definition-delete confirmation; code-behind handles appearing/workspace-selection refresh only. Phase 12A added no package or task/API fields. Phase 12B adds the tag contract/migration described in TAGS.md; view definitions themselves remain local metadata.
 
@@ -67,3 +67,7 @@ Names, search text, category rules, and tag rules are ordinary **unencrypted loc
 Automated tests cover query combinations/date boundaries/sorting, SQLite reopen/uniqueness/quota/parameters/concurrency/corruption, and actual ViewModel scope/draft/navigation/race behavior. The full existing reminder/sync/JWT/PostgreSQL suite remains part of regression verification. See DEVELOPMENT_PROGRESS.md for measured results.
 
 Phase 12B upgrades old definition JSON without resetting IDs/revisions, adds exact tag-set predicates and literal tag search, and leaves other rule semantics intact. See [TAGS.md](TAGS.md) for canonical labels, explicit empty sets, compatibility, and the server/local upgrade sequence.
+
+## Quadrant rules (Phase 12D)
+
+Urgency/importance adds All quadrants, Unclassified, and four Eisenhower choices. A nullable rule means Any; explicit Unclassified matches only unclassified tasks. Rules combine with existing predicates using AND and persist in schema-3 views.db3 without changing tasks/queues. Old definitions retain Any and their IDs/revisions/JSON on read. Device candidates use stored classification; cached legacy snapshots missing Quadrant read as Unclassified. Priority/due date never derive classification. See EISENHOWER.md.

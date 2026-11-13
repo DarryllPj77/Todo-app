@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using TodoApp.Domain.Entities;
+using TodoApp.Domain.Enums;
 using TodoApp.Domain.Sync;
 using TodoApp.Domain.Relationships;
 
@@ -49,7 +50,7 @@ public sealed class SqliteSyncStore(string path)
         }
         else
         {
-            data = data with { Parent = data.Parent ?? row.Local?.Parent, Prerequisites = data.Prerequisites ?? row.Local?.Prerequisites };
+            data = data with { Parent = data.Parent ?? row.Local?.Parent, Prerequisites = data.Prerequisites ?? row.Local?.Prerequisites, Quadrant = data.Quadrant ?? row.Local?.Quadrant };
             var prerequisites = data.Prerequisites ?? TaskPrerequisites.Empty;
             TaskDependencies.ValidateChange(DependencyNodes(state).Where(t => t.Id != id).Append(new(id, TaskPrerequisites.Empty, false)), id, prerequisites,
                 data.IsCompleted && (row.Local?.IsCompleted != true || !(row.Local.Prerequisites ?? TaskPrerequisites.Empty).Equals(prerequisites)));
@@ -66,6 +67,23 @@ public sealed class SqliteSyncStore(string path)
 
     private static IEnumerable<DependencyNode> DependencyNodes(ReplicaState state) => state.Rows.Values.Where(r => r.Local is not null)
         .Select(r => new DependencyNode(r.Id, r.Local!.Prerequisites ?? TaskPrerequisites.Empty, r.Local.IsCompleted));
+
+    public Task SetQuadrantAsync(string partition, Guid id, EisenhowerQuadrant quadrant, long expectedRevision,
+        SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
+    {
+        if (!Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
+        if (!state.Rows.TryGetValue(id, out var row) || row.Local is null || row.Local != expectedLocal || (row.Remote?.Revision ?? 0) != expectedRevision)
+            throw new ArgumentException("This task changed. Refresh and review its planning before saving.");
+        if (row.Conflict && !keepLocalConflict) throw new ArgumentException("Review and confirm the conflict before keeping local fields.");
+        row.Local = row.Local with { Quadrant = quadrant };
+        if (row.Conflict)
+        {
+            row.Conflict = false; row.ConflictReason = null; row.Pending = Mutation(row);
+            row.Attempts = 0; row.RetryAt = default;
+        }
+        else row.Pending ??= Mutation(row);
+        return true;
+    });
 
     public Task SetPrerequisitesAsync(string partition, Guid id, TaskPrerequisites prerequisites, long expectedRevision,
         SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
@@ -151,7 +169,7 @@ public sealed class SqliteSyncStore(string path)
     {
         if (state.Cursor != fromCursor) throw new InvalidOperationException("The download cursor changed; retry sync.");
         if (page.Cursor < fromCursor || page.Changes.Any(e => e.Revision <= fromCursor || e.Revision > page.Cursor ||
-            e.TaskId == Guid.Empty || e.Task?.Parent?.Id == Guid.Empty || e.Task?.Parent?.Id == e.TaskId || (e.Task?.Prerequisites?.Contains(e.TaskId) ?? false) || e.Deleted != (e.Task is null)) ||
+            e.TaskId == Guid.Empty || (e.Task?.Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) || e.Task?.Parent?.Id == Guid.Empty || e.Task?.Parent?.Id == e.TaskId || (e.Task?.Prerequisites?.Contains(e.TaskId) ?? false) || e.Deleted != (e.Task is null)) ||
             page.Changes.Select(e => e.Revision).Distinct().Count() != page.Changes.Length ||
             (page.Changes.Length > 0 && page.Changes.Max(e => e.Revision) != page.Cursor) ||
             (page.Changes.Length == 0 && (page.Cursor != fromCursor || page.HasMore)))
@@ -174,7 +192,8 @@ public sealed class SqliteSyncStore(string path)
     public static void Validate(SyncTaskData? data)
     {
         if (data is null) return;
-        _ = new TaskItem(data.Title, data.Description, data.DueDate, data.Priority);
+        var validated = new TaskItem(data.Title, data.Description, data.DueDate, data.Priority);
+        if (data.Quadrant is { } quadrant) validated.SetQuadrant(quadrant);
         if (data.CategoryName?.Trim().Length > Category.MaxNameLength)
             throw new ArgumentException("Category must be at most 100 characters.");
     }
@@ -193,8 +212,8 @@ public sealed class SqliteSyncStore(string path)
             command.Transaction = transaction;
             command.CommandText = "PRAGMA user_version;";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version > 4) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=4;";
+            if (version > 5) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=5;";
             command.ExecuteNonQuery();
             command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
             command.Parameters.AddWithValue("$partition", partition);

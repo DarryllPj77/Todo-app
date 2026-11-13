@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TodoApp.Domain.Entities;
+using TodoApp.Domain.Enums;
 using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Infrastructure.Persistence.Server;
@@ -15,6 +16,7 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         {
             table.HasCheckConstraint("CK_Tasks_Title", "length(btrim(\"Title\")) BETWEEN 1 AND 200");
             table.HasCheckConstraint("CK_Tasks_Parent", "\"ParentTaskId\" IS NULL OR \"ParentTaskId\"<>\"Id\"");
+            table.HasCheckConstraint("CK_Tasks_Quadrant", "\"Quadrant\" IN (0, 1, 2, 3, 4)");
             table.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
         });
         builder.HasKey(task => task.Id);
@@ -30,6 +32,7 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasConversion(value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
                 json => JsonSerializer.Deserialize<TaskPrerequisites>(json, (JsonSerializerOptions?)null)!,
                 new ValueComparer<TaskPrerequisites>((a, b) => a!.Equals(b), value => value.GetHashCode(), value => value));
+        builder.Property(task => task.Quadrant).HasConversion<int>().HasDefaultValue(EisenhowerQuadrant.Unclassified).IsRequired();
         builder.Property(task => task.Priority).HasConversion<int>();
         builder.Property(task => task.CreatedAt).HasColumnType("timestamp with time zone");
         builder.Property(task => task.UpdatedAt).HasColumnType("timestamp with time zone");

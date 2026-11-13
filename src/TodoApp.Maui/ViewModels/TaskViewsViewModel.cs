@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using TodoApp.Domain.Entities;
+using TodoApp.Domain.Enums;
 using TodoApp.Domain.Services;
 using TodoApp.Domain.Views;
 using TodoApp.Infrastructure.Services;
@@ -31,6 +32,7 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     private ViewDue due;
     private ViewSort sort;
     private ViewTagMode tagMode;
+    private EisenhowerQuadrant? quadrant;
     private string tagsInput = "";
     public ObservableCollection<SavedTaskView> SavedViews { get; } = new();
     public ObservableCollection<TaskViewRow> Results { get; } = new();
@@ -41,6 +43,17 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     public IReadOnlyList<ViewDue> DueOptions { get; } = Enum.GetValues<ViewDue>();
     public IReadOnlyList<ViewTagMode> TagModes { get; } = Enum.GetValues<ViewTagMode>();
     public IReadOnlyList<ViewSort> SortOptions { get; } = Enum.GetValues<ViewSort>();
+    public IReadOnlyList<QuadrantOption> QuadrantOptions => QuadrantOption.Filters;
+    public EisenhowerQuadrant? Quadrant
+    {
+        get => quadrant;
+        set { if (SetProperty(ref quadrant, value)) OnPropertyChanged(nameof(SelectedQuadrantOption)); }
+    }
+    public QuadrantOption? SelectedQuadrantOption
+    {
+        get => QuadrantOptions.FirstOrDefault(q => q.Value == Quadrant);
+        set { if (value is not null) Quadrant = value.Value; }
+    }
     public bool IsIdle => !busy;
     public bool Available => !busy && (Workspace == TaskViewWorkspace.Device || session.Current is not null);
     public bool HasSelection => SelectedTask is not null;
@@ -94,9 +107,10 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
         OpenCommand = Command(OpenAsync, () => SelectedTask is not null);
         session.Changed += SessionChanged;
     }
-    private TaskViewDefinition Draft() => new(Search, Completion, Priority, Category, CategoryName, Due, Sort, TagMode, TagSet.Parse(TagsInput));
+    private TaskViewDefinition Draft() => new(Search, Completion, Priority, Category, CategoryName, Due, Sort, TagMode, TagSet.Parse(TagsInput), Quadrant);
     private void SetDraft(TaskViewDefinition value)
     {
+        Quadrant = value.Quadrant;
         TagMode = value.TagMode; TagsInput = value.Tags?.ToString() ?? "";
         Search = value.Search; Completion = value.Completion; Priority = value.Priority; Category = value.Category;
         CategoryName = value.CategoryName; Due = value.Due; Sort = value.Sort;
@@ -141,13 +155,13 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
         if (context.Workspace == TaskViewWorkspace.Device)
         {
             var tasks = await local.GetTasksAsync(); Ensure(context);
-            rows = tasks.Select(t => new TaskViewRow(new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDate, t.Priority, t.Category?.Name, t.Tags))).ToArray();
+            rows = tasks.Select(t => new TaskViewRow(new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDate, t.Priority, t.Category?.Name, t.Tags, t.Quadrant))).ToArray();
         }
         else
         {
             var state = await sync.ReadAsync(context.Scope); Ensure(context);
             rows = state.Rows.Values.Where(r => r.Local is not null).Select(r =>
-                new TaskViewRow(new(r.Id, r.Local!.Title, r.Local.Description, r.Local.IsCompleted, r.Local.DueDate, r.Local.Priority, r.Local.CategoryName, r.Local.Tags), r.Summary)).ToArray();
+                new TaskViewRow(new(r.Id, r.Local!.Title, r.Local.Description, r.Local.IsCompleted, r.Local.DueDate, r.Local.Priority, r.Local.CategoryName, r.Local.Tags, r.Local.Quadrant ?? EisenhowerQuadrant.Unclassified), r.Summary)).ToArray();
             syncSummary = $" {state.Rows.Values.Count(r => r.Pending is not null)} queued; {state.Rows.Values.Count(r => r.Conflict)} conflicts across the whole cache. Resolve them in Synced tasks.";
         }
         var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);

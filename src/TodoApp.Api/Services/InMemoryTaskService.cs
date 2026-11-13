@@ -54,6 +54,7 @@ public sealed class InMemoryTaskService : ITaskService
             var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
             if (request.Parent is { } parent) task.SetParent(parent);
             task.SetPrerequisites(request.Prerequisites ?? TaskPrerequisites.Empty);
+            if (request.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             tasks.Add(task.Id, task);
@@ -80,6 +81,7 @@ public sealed class InMemoryTaskService : ITaskService
             task.SetCategory(category);
             if (request.Parent is { } parent) task.SetParent(parent);
             task.SetPrerequisites(prerequisites);
+            if (request.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
@@ -106,6 +108,16 @@ public sealed class InMemoryTaskService : ITaskService
             if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
             TaskDependencies.ValidateChange(Nodes(), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
             task.SetPrerequisites(prerequisites); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
+        }
+    }
+
+    public Task<TaskResponse?> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default)
+    {
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
+            task.SetQuadrant(quadrant); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
         }
     }
 

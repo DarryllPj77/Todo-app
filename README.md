@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-13): Phase 12C.2 task dependencies implemented; native acceptance pending.** Open **Dependencies** from the task-list toolbar to manage device/account prerequisites. Cycles, blocked completion, incoming-link deletion, ordered sync, and reviewed conflicts have explicit policies. Apply AddTaskDependencies and rebuild client/API together using [DEPENDENCIES.md](docs/DEPENDENCIES.md). Local files upgrade automatically. All **315 tests passed, none skipped**; the Windows build has **0 warnings/errors**. Next is 12D urgency/importance; native notification/mobile/sync acceptance remains pending.
+**Current status (2026-11-13): Phase 12D urgency/importance implemented; native acceptance pending.** Open **Urgency & importance** to classify device/account tasks manually and filter by Eisenhower quadrant. Unclassified is distinct from Neither; priority and due dates stay independent. Saved views support quadrant rules. Apply AddTaskPlanning and rebuild client/API together using [EISENHOWER.md](docs/EISENHOWER.md); local files upgrade without reset. All **339 tests passed, none skipped**; the Windows build has **0 warnings/errors**. Next is 12E recurrence; native notification/mobile/sync acceptance remains pending.
 
 ## Technology and prerequisites
 
@@ -52,11 +52,11 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Forty-five PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The final Phase 12C.2 suite passed **315 tests, 0 skipped** (270 portable cases; 45 PostgreSQL facts). See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-one PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The final Phase 12D suite passed **339 tests, 0 skipped** (288 portable cases; 51 PostgreSQL facts). See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
-First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all six included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
+First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all seven included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -160,7 +160,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 
 ### Check account and server tasks
 
-1. Configure PostgreSQL, the JWT secret, and all six migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
+1. Configure PostgreSQL, the JWT secret, and all seven migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
 2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
 3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
 4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.

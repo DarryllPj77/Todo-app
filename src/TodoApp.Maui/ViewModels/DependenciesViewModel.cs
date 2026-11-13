@@ -115,7 +115,7 @@ public sealed class DependenciesViewModel : ObservableViewModel, IDisposable
         {
             var tasks = await device.GetTasksAsync(); Ensure(context);
             loaded.AddRange(tasks.Select(t => new DependencyTaskRow(t.Id, t.Title,
-                new(t.Title, t.Description, t.DueDate, t.Priority, t.Category?.Name, t.IsCompleted, t.Tags, new(t.ParentTaskId), t.Prerequisites), null, false, "Device")));
+                new(t.Title, t.Description, t.DueDate, t.Priority, t.Category?.Name, t.IsCompleted, t.Tags, new(t.ParentTaskId), t.Prerequisites, t.Quadrant), null, false, "Device")));
         }
         else
         {

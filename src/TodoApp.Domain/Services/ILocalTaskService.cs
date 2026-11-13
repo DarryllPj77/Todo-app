@@ -16,5 +16,6 @@ public interface ILocalTaskService
     Task<bool> SetCompletedAsync(Guid id, bool isCompleted, CancellationToken cancellationToken = default);
     Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default);
     Task<bool> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken cancellationToken = default);
+    Task<bool> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

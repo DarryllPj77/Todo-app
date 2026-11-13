@@ -19,6 +19,7 @@
     <VerticalStackLayout><Label Text="Completion" /><Picker ItemsSource="{Binding Completions}" SelectedItem="{Binding Completion}" /></VerticalStackLayout>
     <VerticalStackLayout Grid.Column="1"><Label Text="Priority" /><Picker ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}" /></VerticalStackLayout>
    </Grid>
+   <Label Text="Urgency / importance" /><Picker ItemsSource="{Binding QuadrantOptions}" ItemDisplayBinding="{Binding Label, x:DataType=models:QuadrantOption}" SelectedItem="{Binding SelectedQuadrantOption, Mode=TwoWay}" />
    <Label Text="Category rule" /><Picker ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" />
    <Entry Text="{Binding CategoryName}" MaxLength="100" Placeholder="Exact category name when Named is selected" />
    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">

@@ -157,7 +157,9 @@ public sealed class TaskViewsViewModelTests : IDisposable
         public Task<bool> ConfirmDeleteAsync(string name) => Task.FromResult(false);
         public Task EditTaskAsync(Guid? id) { EditedId = id; return Task.CompletedTask; }
         public Task OpenSyncAsync() { SyncOpened++; return Task.CompletedTask; }
-        public Task OpenDependenciesAsync() => Task.CompletedTask;
+        public Task OpenPlanningAsync() => Task.CompletedTask;
+    public Task<bool> ConfirmPlanningConflictAsync(string title) => Task.FromResult(false);
+    public Task OpenDependenciesAsync() => Task.CompletedTask;
     public Task<bool> ConfirmDependencyConflictAsync(string title) => Task.FromResult(false);
     public Task OpenHierarchyAsync() => Task.CompletedTask;
         public Task<bool> ConfirmHierarchyConflictAsync(string title) => Task.FromResult(false);
@@ -176,6 +178,7 @@ public sealed class TaskViewsViewModelTests : IDisposable
         public Task<TaskItem> CreateAsync(TaskDetails details, CancellationToken token = default) => inner.CreateAsync(details, token);
         public Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken token = default) => inner.UpdateAsync(id, details, token);
         public Task<bool> SetCompletedAsync(Guid id, bool completed, CancellationToken token = default) => inner.SetCompletedAsync(id, completed, token);
+        public Task<bool> SetQuadrantAsync(Guid id, TodoApp.Domain.Enums.EisenhowerQuadrant quadrant, CancellationToken token = default) => inner.SetQuadrantAsync(id, quadrant, token);
         public Task<bool> SetPrerequisitesAsync(Guid id, TodoApp.Domain.Relationships.TaskPrerequisites prerequisites, CancellationToken token = default) => inner.SetPrerequisitesAsync(id, prerequisites, token);
         public Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken token = default) => inner.SetParentAsync(id, parentId, token);
         public Task<bool> DeleteAsync(Guid id, CancellationToken token = default) => inner.DeleteAsync(id, token);

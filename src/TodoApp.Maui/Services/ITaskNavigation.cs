@@ -9,6 +9,8 @@ public interface ITaskNavigation
     Task OpenSyncAsync();
     Task OpenRemindersAsync();
     Task OpenTaskViewsAsync();
+    Task OpenPlanningAsync();
+    Task<bool> ConfirmPlanningConflictAsync(string title);
     Task OpenDependenciesAsync();
     Task<bool> ConfirmDependencyConflictAsync(string title);
     Task OpenHierarchyAsync();

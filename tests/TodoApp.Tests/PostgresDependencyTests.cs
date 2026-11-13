@@ -89,8 +89,8 @@ public sealed partial class PostgresAuthenticationTests
         await db.Database.MigrateAsync(); var restored = await db.Tasks.AsNoTracking().SingleAsync(t => t.Id == child);
         Assert.Empty(restored.Prerequisites); Assert.Equal(parent, restored.ParentTaskId); Assert.Equal(TagSet.Parse("work"), restored.Tags);
         Assert.Equal(now, restored.UpdatedAt); Assert.Equal(now, restored.CreatedAt); Assert.True(restored.IsCompleted);
-        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(6, (await db.Database.GetAppliedMigrationsAsync()).Count());
-        As(account); Assert.Equal(2, (await Download()).Changes.Length); Assert.Equal(4, (await Download()).ProtocolVersion);
+        Assert.False(db.Database.HasPendingModelChanges()); Assert.Equal(7, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        As(account); Assert.Equal(2, (await Download()).Changes.Length); Assert.Equal(5, (await Download()).ProtocolVersion);
     }
 
     [PostgresFact]

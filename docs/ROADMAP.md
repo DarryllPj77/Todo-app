@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 12C.2 dependencies are implemented separately from hierarchy, with same-workspace/account and cycle rules, explicit completion/deletion policy, protocol-4 sync, migration, and a dependency screen. Upgrade using DEPENDENCIES.md and complete native acceptance. Next is 12D urgency/importance; remaining Phase 12 increments stay open.
+Proceed one phase at a time after review. Phase 12D urgency/importance is implemented with explicit Unclassified/four-quadrant semantics, persistence, protocol-5 sync, planning UI, and saved-view rules. Upgrade using EISENHOWER.md and complete native acceptance. Next is 12E recurrence; the remaining Phase 12 increments stay open.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -224,12 +224,12 @@ Proceed one phase at a time after review. Phase 12C.2 dependencies are implement
 - [x] **12B - Tags:** immutable normalized tag sets, device version-2 upgrade, AddTaskTags server migration, API arrays, sync protocol-2 capability/legacy receipt handling, editors, summaries, and saved-view rules implemented; 25 added cases pass. Native acceptance remains in TAGS.md.
 - [x] **12C.1 - Parent hierarchy/subtasks:** optional parent, same-workspace/account validation, cycle/16-level checks, restricted parent deletion, additive migrations, protocol-3 ordering/conflicts, and hierarchy screen implemented. Native acceptance remains in HIERARCHY.md.
 - [x] **12C.2 - Dependencies:** separate immutable prerequisite graph, same-account/workspace and cycle checks, completion gate/reopen policy, incoming-delete restriction, transactional migration, protocol-4 ordering/conflicts, and dependency screen implemented. Native acceptance remains in DEPENDENCIES.md.
-- [ ] **12D - Urgency/importance:** add Eisenhower semantics through a reviewed model/storage/UI increment.
+- [x] **12D - Urgency/importance:** manual four-quadrant classification plus Unclassified, independent priority/due date, transactional upgrades, strict API enum, protocol-5 queue/receipt compatibility, scoped planning UI/conflict review, summaries, and saved-view rules implemented. Native acceptance remains in EISENHOWER.md.
 - [ ] **12E - Recurrence:** define calendar/time-zone, completion, idempotency, and scheduling policy before choosing a server scheduler such as Hangfire.
 - [ ] **12F - Focus/time history:** add Pomodoro, TimeSpent, and durable history with explicit timer/lifecycle behavior.
 - [ ] **12G - Adaptive workspace:** desktop categories/tasks/details panes and mobile navigation after each feature's data/UI boundaries are stable.
 
-A saved view remains a device-local query definition. Tags remain separate from categories; parent hierarchy and dependencies have separate models/screens. Urgency/importance, recurrence, focus history, adaptive layout, and server subscriptions remain later work. Phase 12 remains open until selected later increments and acceptance reviews are complete.
+A saved view remains a device-local query definition. Tags, hierarchy, dependencies, and urgency/importance have distinct semantics. Recurrence, focus history, adaptive layout, and server subscriptions remain later work. Phase 12 remains open until selected later increments and acceptance reviews are complete.
 
 ## Phase 13 — Calendar integration
 

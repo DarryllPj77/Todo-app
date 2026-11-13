@@ -87,6 +87,11 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Quadrant")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Tags")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -114,6 +119,8 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                             t.HasCheckConstraint("CK_Tasks_Parent", "\"ParentTaskId\" IS NULL OR \"ParentTaskId\"<>\"Id\"");
 
                             t.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
+
+                            t.HasCheckConstraint("CK_Tasks_Quadrant", "\"Quadrant\" IN (0, 1, 2, 3, 4)");
 
                             t.HasCheckConstraint("CK_Tasks_Title", "length(btrim(\"Title\")) BETWEEN 1 AND 200");
                         });

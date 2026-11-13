@@ -7,6 +7,7 @@
              x:DataType="vm:TaskListViewModel"
              Title="Todo" Style="{StaticResource TaskPage}">
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Urgency &amp; importance" Command="{Binding PlanningCommand}" />
         <ToolbarItem Text="Dependencies" Command="{Binding DependenciesCommand}" />
         <ToolbarItem Text="Task hierarchy" Command="{Binding HierarchyCommand}" />
         <ToolbarItem Text="Saved views" Command="{Binding TaskViewsCommand}" />

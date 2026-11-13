@@ -40,12 +40,14 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(details);
+        if (details.Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
         var id = Guid.NewGuid();
         TaskDependencies.ValidateChange(Nodes().Append(new(id, TaskPrerequisites.Empty, false)), id, details.Prerequisites ?? TaskPrerequisites.Empty);
         TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, details.Parent?.Id);
         var task = TaskItem.CreateWithId(id, details.Title, details.Description, details.DueDate, details.Priority, details.Category, details.Tags);
         task.SetParent(details.Parent ?? new TaskParent(null));
         task.SetPrerequisites(details.Prerequisites ?? TaskPrerequisites.Empty);
+        task.SetQuadrant(details.Quadrant ?? EisenhowerQuadrant.Unclassified);
         tasks.Add(task.Id, task);
         return Task.FromResult(task);
     }
@@ -60,11 +62,13 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
             return Task.FromResult(false);
         }
 
+        if (details.Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
         if (details.Prerequisites is { } prerequisites) TaskDependencies.ValidateChange(Nodes(), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
         if (details.Parent is { } parent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parent.Id);
         task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
         if (details.Parent is { } change) task.SetParent(change);
         if (details.Prerequisites is { } changed) task.SetPrerequisites(changed);
+        if (details.Quadrant is { } changeQuadrant) task.SetQuadrant(changeQuadrant);
         task.SetCategory(details.Category);
         return Task.FromResult(true);
     }
@@ -98,6 +102,13 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         if (!tasks.TryGetValue(id, out var task)) return Task.FromResult(false);
         TaskDependencies.ValidateChange(Nodes(), id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites));
         task.SetPrerequisites(prerequisites); return Task.FromResult(true);
+    }
+
+    public Task<bool> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!tasks.TryGetValue(id, out var task)) return Task.FromResult(false);
+        task.SetQuadrant(quadrant); return Task.FromResult(true);
     }
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

@@ -4,7 +4,7 @@
 
 The task-list toolbar now has **Synced tasks**, alongside the Phase 9 **Account & server** page. Sign in through Account first, then open Synced tasks. Device-only tasks in `todoapp.db3` remain separate and are never silently assigned, copied, or uploaded. Account & server remains a direct online workspace for testing the REST API. Synced tasks reads/writes its own account cache even when requests fail.
 
-`sync.db3` uses its own schema version 2 (upgraded without rewriting legacy requests) and a `ReplicaPartitions` table. A partition key combines the canonical HTTPS API origin and authenticated account ID. One partition state contains cached rows, the download cursor, immutable pending operations, latest local intent, conflicts, and retry state. A single SQLite transaction updates them together. This JSON state per partition is a deliberate small-dataset implementation; it avoids adding a second ORM. Larger datasets should use normalized replica/outbox tables and narrower queries.
+`sync.db3` uses its own schema version 5 (upgraded without rewriting legacy requests on read) and a `ReplicaPartitions` table. A partition key combines the canonical HTTPS API origin and authenticated account ID. One partition state contains cached rows, the download cursor, immutable pending operations, latest local intent, conflicts, and retry state. A single SQLite transaction updates them together. This JSON state per partition is a deliberate small-dataset implementation; it avoids adding a second ORM. Larger datasets should use normalized replica/outbox tables and narrower queries.
 
 Session tokens remain in SecureStorage. Task caches are ordinary SQLite files, **not encrypted**. Sign-out clears the visible account workspace but retains queued edits for reauthentication to the same origin/account. Different accounts/origins never load or send that partition. Cache hiding is an application boundary, not protection from someone with filesystem access to the same OS profile. There is no cache-purge UI in this phase; do not delete the cache to fix an error while it contains unacknowledged edits.
 
@@ -53,7 +53,7 @@ Automatic sync does not clear unsubmitted editor drafts. If the cached row chang
 
 ## Run and manually verify
 
-1. Stop your development API, apply all six migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
+1. Stop your development API, apply all seven migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
 2. Close the older MAUI app before using `scripts/Run-Windows.ps1` to rebuild/run the new version. The Phase 10 verification build used isolated output so the running older app was not stopped or overwritten.
 3. Sign in through Account & server and open Synced tasks. Sync once to download existing account tasks. Save a new task locally; verify queued count and then Sync acknowledgement.
 4. Stop the API, create/edit/complete/delete disposable cached tasks, and confirm errors retain the queue. Restart the client while its saved session is valid and confirm cached data/operations remain. Restart the API and use Retry now; verify a single resulting server task per create.
@@ -70,7 +70,7 @@ Reminder settings stay device-local and do not alter SyncTaskData, operation rec
 
 ## Tags and protocol 2 (Phase 12B)
 
-Phase 12B introduced protocol 2 for tags; the current API advertises 4 for dependencies. The engine checks capability before feature-aware writes; tags require at least 2 and Parent requires 3; Prerequisites requires 4. Older endpoints cause a blocked retained operation until upgrade/Retry now. Empty sets clear labels, while omitted/null sets preserve server tags on update. Missing legacy tags stay omitted during serialization to preserve old receipt bytes. Immutable TagSet equality prevents requeue loops. Tags retain whole-task conflict resolution without automatic unions. See [TAGS.md](TAGS.md). Upgrade client/API versions together.
+Phase 12B introduced protocol 2 for tags; dependencies introduced 4 and the current API advertises 5 for planning. The engine checks capability before feature-aware writes; tags require at least 2 and Parent requires 3; Prerequisites requires 4. Older endpoints cause a blocked retained operation until upgrade/Retry now. Empty sets clear labels, while omitted/null sets preserve server tags on update. Missing legacy tags stay omitted during serialization to preserve old receipt bytes. Immutable TagSet equality prevents requeue loops. Tags retain whole-task conflict resolution without automatic unions. See [TAGS.md](TAGS.md). Upgrade client/API versions together.
 
 ## Hierarchy and protocol 3 (Phase 12C.1)
 
@@ -83,3 +83,9 @@ Explicit Parent.Id=null means root; absent Parent preserves placement. Null oute
 Prerequisite-aware operations and every deletion require protocol 4, because deletes need the server incoming-link policy despite having no task snapshot. The engine waits for queued prerequisite creates/completion before dependent links/completion, and for known server incoming links to be removed before deletion. A bounded pass may need another Sync; server validation still detects missing tasks, cycles, and blocked completion. Rejection becomes a receipted conflict with local fields retained. Dependencies offers confirmed whole-local-task repair with a new prerequisite set, expected-local/server-revision guards, or Use server. Account changes clear drafts and reject old confirmations.
 
 sync.db3 uses schema 4; absent/null Prerequisites stays omitted from legacy serialized mutations to retain receipt bytes. New snapshots carry explicit empty sets. Ordinary editors preserve omitted links; [] clears them. Reopening does not cascade completed dependent state. See DEPENDENCIES.md for storage tradeoffs, full policy, coordinated migration, and native acceptance.
+
+## Planning and protocol 5 (Phase 12D)
+
+Explicit Quadrant requires protocol 5 before upload, including Unclassified. Earlier feature/deletion minimums stay unchanged. Null Quadrant is omitted from legacy serialized SyncTaskData so earlier receipt bytes replay unchanged. New snapshots carry explicit classification. Queued normal edits preserve omitted planning, immutable pending payloads remain frozen, and later changes chain after acknowledgement.
+
+Planning follows whole-task conflict semantics. The planning page displays both complete versions and offers confirmed Keep local fields with the chosen quadrant or Use server. Expected-local/revision checks and session guards reject stale/wrong-account actions. sync.db3 now uses schema 5; saved views use 3, reminders 1. See EISENHOWER.md for the coordinated migration, manual rules, and native acceptance.

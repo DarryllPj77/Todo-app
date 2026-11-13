@@ -20,7 +20,7 @@ public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
             .Where(t => EF.Property<Guid?>(t, "OwnerId") == owner && !known.Contains(t.Id)).ToListAsync(token);
         foreach (var task in legacy)
             await RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), token);
+                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), token);
     }
 
     public async Task<SyncEntry> RecordAsync(Guid id, SyncTaskData? data, CancellationToken token)

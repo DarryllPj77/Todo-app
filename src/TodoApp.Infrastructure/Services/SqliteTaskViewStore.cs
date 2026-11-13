@@ -10,7 +10,7 @@ public sealed class SavedViewConflictException : InvalidOperationException
 }
 
 // Definitions are local preferences; no task rows, server owners, or outbox
-// operations are changed. The independent file has schema version 1.
+// operations are changed. The independent file has schema version 3.
 public sealed class SqliteTaskViewStore(string path)
 {
     public Task<IReadOnlyList<SavedTaskView>> ReadAsync(string scope) => ExecuteAsync(scope, (connection, transaction) =>
@@ -80,12 +80,12 @@ public sealed class SqliteTaskViewStore(string path)
         using (var schema = connection.CreateCommand())
         {
             schema.Transaction = transaction; schema.CommandText = "PRAGMA user_version;";
-            if (Convert.ToInt32(schema.ExecuteScalar()) > 2) throw new InvalidDataException("Saved views require a newer app. Nothing was reset.");
+            if (Convert.ToInt32(schema.ExecuteScalar()) > 3) throw new InvalidDataException("Saved views require a newer app. Nothing was reset.");
             schema.CommandText = """
                 CREATE TABLE IF NOT EXISTS SavedTaskViews (
                     Id TEXT PRIMARY KEY, Scope TEXT NOT NULL, Name TEXT NOT NULL, NameKey TEXT NOT NULL,
                     Revision INTEGER NOT NULL CHECK(Revision>0), Definition TEXT NOT NULL,
-                    UNIQUE(Scope,NameKey)); PRAGMA user_version=2;
+                    UNIQUE(Scope,NameKey)); PRAGMA user_version=3;
                 """;
             schema.ExecuteNonQuery();
         }

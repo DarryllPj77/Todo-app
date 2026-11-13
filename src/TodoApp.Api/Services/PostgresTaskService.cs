@@ -54,12 +54,13 @@ public sealed class PostgresTaskService : ITaskService
         var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
         if (request.Parent is { } parent) task.SetParent(parent);
         task.SetPrerequisites(request.Prerequisites ?? TaskPrerequisites.Empty);
+        if (request.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
         task.SetCompleted(request.IsCompleted);
         database.Tasks.Add(task);
         database.Entry(task).Property<Guid?>("OwnerId").CurrentValue = currentUser.UserId;
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -83,10 +84,11 @@ public sealed class PostgresTaskService : ITaskService
         task.SetCategory(category);
         if (request.Parent is { } parent) task.SetParent(parent);
         task.SetPrerequisites(prerequisites);
+        if (request.Quadrant is { } quadrant) task.SetQuadrant(quadrant);
         task.SetCompleted(request.IsCompleted);
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -101,7 +103,7 @@ public sealed class PostgresTaskService : ITaskService
         await ValidateParentAsync(id, parentId, creating: false, cancellationToken);
         task.SetParent(new TaskParent(parentId)); await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(id, new(task.Title, task.Description, task.DueDate, task.Priority, task.Category?.Name,
-            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
+            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -127,7 +129,7 @@ public sealed class PostgresTaskService : ITaskService
         await ValidateDependenciesAsync(id, prerequisites, task.IsCompleted && !task.Prerequisites.Equals(prerequisites), false, cancellationToken);
         task.SetPrerequisites(prerequisites); await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(id, new(task.Title, task.Description, task.DueDate, task.Priority, task.Category?.Name,
-            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites), cancellationToken);
+            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -137,6 +139,20 @@ public sealed class PostgresTaskService : ITaskService
         var links = await OwnedTasks().AsNoTracking().Select(t => new TaskLink(t.Id, t.ParentTaskId)).ToListAsync(token);
         if (creating) links.Add(new TaskLink(id, null));
         TaskHierarchy.ValidateMove(links, id, parentId);
+    }
+
+    public async Task<TaskResponse?> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = database.Database.CurrentTransaction is null
+            ? await database.Database.BeginTransactionAsync(cancellationToken) : null;
+        var journal = new SyncJournal(database, currentUser); await journal.LockAsync(cancellationToken);
+        var task = await OwnedTasks().Include(t => t.Category).SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (task is null) return null;
+        task.SetQuadrant(quadrant); await database.SaveChangesAsync(cancellationToken);
+        await journal.RecordAsync(id, new(task.Title, task.Description, task.DueDate, task.Priority, task.Category?.Name,
+            task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId), task.Prerequisites, task.Quadrant), cancellationToken);
+        if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        return TaskResponse.FromEntity(task);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)

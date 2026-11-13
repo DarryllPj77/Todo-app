@@ -79,6 +79,13 @@ Content-Type: application/json
 
 {"id":null}
 
+### Change only manual urgency/importance; Unclassified explicitly clears
+PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/quadrant
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+"ImportantNotUrgent"
+
 ### Replace prerequisites only; [] clears, otherwise supply same-account task GUIDs
 PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/prerequisites
 Authorization: Bearer {{accessToken}}

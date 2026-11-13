@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Maui.Models"
+ x:Class="TodoApp.Maui.Views.PlanningPage" x:DataType="vm:PlanningViewModel" Title="Urgency &amp; importance" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Eisenhower planning" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="Choose urgency and importance manually. Priority and due date do not set them automatically. Suggestions below do not send messages, schedule events, or delete tasks." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Button Text="Refresh planning" Command="{Binding RefreshCommand}" />
+  <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <Border Style="{StaticResource TaskCard}"><Label Text="{Binding Counts}" /></Border>
+  <Picker Title="Show quadrant" ItemsSource="{Binding Filters}" ItemDisplayBinding="{Binding Label, x:DataType=models:QuadrantOption}" SelectedItem="{Binding Filter, Mode=TwoWay}" IsEnabled="{Binding Available}" />
+  <HorizontalStackLayout Spacing="8"><CheckBox IsChecked="{Binding IncludeCompleted}" IsEnabled="{Binding Available}" /><Label Text="Include completed tasks" VerticalOptions="Center" /></HorizontalStackLayout>
+  <Label Text="Selecting another task, filtering, or refreshing reloads saved classification and discards an unsaved selection." Style="{StaticResource TaskMuted}" />
+  <CollectionView HeightRequest="300" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
+   <CollectionView.EmptyView><Label Text="No tasks match. Change filters, create tasks, or sign in and sync first." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="vm:PlanningRow">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="4">
+     <Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding QuadrantLabel}" /><Label Text="{Binding Status}" />
+    </VerticalStackLayout></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
+   <Picker Title="Urgency and importance" ItemsSource="{Binding Quadrants}" ItemDisplayBinding="{Binding Label, x:DataType=models:QuadrantOption}" SelectedItem="{Binding SelectedQuadrant, Mode=TwoWay}" />
+   <Button Text="Save classification" Command="{Binding SaveCommand}" />
+   <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="Review both complete versions. Keeping local fields queues the whole local task with the chosen quadrant and may conflict again." Style="{StaticResource TaskError}" />
+    <Label Text="{Binding SelectedTask.LocalDetails}" /><Label Text="{Binding SelectedTask.ServerDetails}" />
+    <Button Text="Keep local fields &amp; save classification" Command="{Binding KeepLocalCommand}" />
+    <Button Text="Use server (discard local intent)" Command="{Binding UseServerCommand}" />
+   </VerticalStackLayout>
+  </VerticalStackLayout></Border>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

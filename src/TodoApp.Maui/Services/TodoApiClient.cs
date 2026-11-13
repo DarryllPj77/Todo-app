@@ -55,6 +55,9 @@ public sealed class TodoApiClient(HttpClient http, ClientSession session)
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ProtectedAsync<object>(HttpMethod.Delete, $"api/tasks/{id}", null, cancellationToken);
 
+    public Task<ApiTask> SetQuadrantAsync(Guid id, EisenhowerQuadrant quadrant, CancellationToken token = default) =>
+        ProtectedAsync<ApiTask>(HttpMethod.Put, $"api/tasks/{id}/quadrant", quadrant, token);
+
     public Task<ApiTask> SetPrerequisitesAsync(Guid id, TaskPrerequisites prerequisites, CancellationToken token = default) =>
         ProtectedAsync<ApiTask>(HttpMethod.Put, $"api/tasks/{id}/prerequisites", prerequisites, token);
 

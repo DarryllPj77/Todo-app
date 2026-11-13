@@ -20,7 +20,7 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
             .OrderBy(r => r.Revision).Take(101).ToListAsync(token);
         var changes = records.Take(100).Select(SyncJournal.Entry).ToArray();
         await tx.CommitAsync(token);
-        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 4);
+        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 5);
     }
 
     public async Task<SyncResult?> ApplyAsync(SyncMutation input, CancellationToken token)
@@ -53,7 +53,7 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
                     var data = input.Task!;
                     var write = new TaskWriteRequest { Title = data.Title, Description = data.Description,
                         DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName,
-                        IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent, Prerequisites = data.Prerequisites };
+                        IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent, Prerequisites = data.Prerequisites, Quadrant = data.Quadrant };
                     if (record is null || record.Deleted) await tasks.CreateWithIdAsync(input.TaskId, write, token);
                     else await tasks.UpdateAsync(input.TaskId, write, token);
                 }

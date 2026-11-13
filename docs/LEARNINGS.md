@@ -553,3 +553,15 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Multiple outgoing prerequisites form a directed graph, independently of a tree's one optional parent. Iterative active/finished traversal detects cycles while permitting shared prerequisites.
 
 **Short example:** A and B may both require C; D may require both A and B. Same-workspace membership and cycles are validated in the write transaction. JSON text stores a bounded immutable set but cannot provide per-ID foreign keys, so service validation/locking and administrative SQL discipline remain essential. Dependency-only operations preserve unrelated fields; null means preserve and [] means clear. See DEPENDENCIES.md.
+
+## Unknown is different from false
+
+**Definition:** An unset planning decision should not be stored as if both urgency and importance had already been answered No.
+
+**Short example:** Unclassified has unknown axes; Neither explicitly means not urgent and not important. A five-state enum stores valid combinations without partial Boolean states. Priority and deadline stay independent.
+
+## Additive classification across replicas
+
+**Definition:** Nullable command input distinguishes preserve from an intentional reset while a stable stored enum represents the actual task value.
+
+**Short example:** Omitted/null Quadrant preserves; explicit Unclassified clears. Old receipt bytes omit null Quadrant, protocol 5 guards new writes, and immutable outgoing payloads keep later classifications as separate operations. Saved-view Any is null, which differs from an Unclassified filter. See EISENHOWER.md.

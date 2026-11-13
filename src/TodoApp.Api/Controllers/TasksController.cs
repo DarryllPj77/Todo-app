@@ -68,6 +68,14 @@ public sealed class TasksController : ControllerBase
         return task is null ? NotFound() : Ok(task);
     }
 
+    [HttpPut("{id:guid}/quadrant")]
+    public async Task<ActionResult<TaskResponse>> SetQuadrant(Guid id, [FromBody] EisenhowerQuadrant request, CancellationToken cancellationToken)
+    {
+        if (!Enum.IsDefined(request)) return BadRequest();
+        var task = await tasks.SetQuadrantAsync(id, request, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
         await tasks.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();

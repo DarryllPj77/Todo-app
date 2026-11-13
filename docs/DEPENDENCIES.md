@@ -37,7 +37,7 @@ Content-Type: application/json
 
 Use `[]` to clear. Success returns the complete task (200); an unavailable target returns 404; invalid graph/completion/deletion returns safe 409 Problem Details. Malformed values, a null route body, objects instead of arrays, empty IDs, and over 32 submitted IDs return 400. A foreign prerequisite and nonexistent prerequisite return the same safe error; ownership comes from the bearer token.
 
-Sync now advertises protocol **4**. Any operation explicitly carrying prerequisites, and every deletion (which needs incoming-link validation), requires 4; parent-aware operations require 3 and tagged operations require 2. Capability checks run before writes, retain blocked operations, and Retry now uses their original IDs after the API upgrade. Null Prerequisites stays omitted during serialization, preserving pre-tag, tagged, and hierarchy-era request receipt bytes. New snapshots include an explicit empty set when there are no links.
+Dependencies introduced protocol **4**; current planning-aware snapshots advertise **5** (EISENHOWER.md). Any operation explicitly carrying prerequisites, and every deletion (which needs incoming-link validation), requires 4; parent-aware operations require 3 and tagged operations require 2. Capability checks run before writes, retain blocked operations, and Retry now uses their original IDs after the API upgrade. Null Prerequisites stays omitted during serialization, preserving pre-tag, tagged, and hierarchy-era request receipt bytes. New snapshots include an explicit empty set when there are no links.
 
 Uploads wait for queued new prerequisites to exist remotely, and for queued prerequisite completion before dependent completion. Known server incoming links must be removed/deleted remotely before prerequisite deletion uploads. Each pass is bounded; related work or newer remote changes may need another Sync. Ordering never replaces server validation. Structural invalidity produces a receipted whole-task conflict with current server state/reason, preserving local intent.
 
@@ -48,17 +48,17 @@ In Dependencies, review both full versions, edit the prerequisite draft, and cho
 | Store | Current version / change |
 | --- | --- |
 | PostgreSQL | Sixth migration AddTaskDependencies adds required Tasks.Prerequisites TEXT, default `[]` |
-| todoapp.db3 | Schema 4 adds required Prerequisites TEXT, default `[]`, transactionally after hierarchy |
-| sync.db3 | Schema 4 guards prerequisite-aware JSON; old pending payloads are not rewritten on read |
-| views.db3 | Schema 2, unchanged; saved views remain flat, without a dependency filter |
+| todoapp.db3 | Current schema 5; the 3-to-4 dependency upgrade adds required Prerequisites TEXT, default `[]`, transactionally after hierarchy |
+| sync.db3 | Current schema 5 adds planning after prerequisite-aware JSON; old pending payloads are not rewritten on read |
+| views.db3 | Current schema 3 adds quadrant rules; saved views remain flat, without a dependency filter |
 | reminders.db3 | Schema 1, unchanged; dependency-only edits retain reminder time |
 
 The bounded outgoing sets use JSON text with EF conversion/value comparison, matching immutable whole-task sync snapshots. There is no separate dependency table or per-edge sync revision in this increment. Membership, account ownership, cycles, incoming-delete restrictions, and completion gates are enforced by services inside transactions; **the JSON column has no per-ID database foreign keys**. Administrative SQL can violate these rules and must be reviewed. Normal category and parent FKs remain intact. A normalized edge table/index would be a separate migration if server-side graph querying/scale warrants it; current queries materialize this small workspace.
 
-Existing tasks receive empty prerequisites. IDs, parents, tags, owners, categories, timestamps, saved views, reminders, receipts, and queued requests remain. Do not downgrade active files: older clients reject schema 4, and migration Down removes all prerequisite sets. Upgrade API/client together; preserving old queued bytes does not make old strict binaries compatible with new snapshots.
+Existing tasks receive empty prerequisites. IDs, parents, tags, owners, categories, timestamps, saved views, reminders, receipts, and queued requests remain. Do not downgrade active files: older clients reject current schema 5, and migration Down removes all prerequisite sets. Upgrade API/client together; preserving old queued bytes does not make old strict binaries compatible with new snapshots.
 
 1. Stop the development API and close older clients. Retain/back up existing databases/files and queues; do not delete caches to upgrade.
-2. With your configured Development connection and JWT signing secret, apply all six migrations:
+2. With your configured Development connection and JWT signing secret, apply all seven migrations:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'

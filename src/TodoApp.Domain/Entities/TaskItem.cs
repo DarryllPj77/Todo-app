@@ -9,6 +9,7 @@ public sealed class TaskItem
     public const int MaxDescriptionLength = 4000;
 
     public TagSet Tags { get; private set; } = TagSet.Empty;
+    public EisenhowerQuadrant Quadrant { get; private set; } = EisenhowerQuadrant.Unclassified;
     public Guid? ParentTaskId { get; private set; }
     public TaskPrerequisites Prerequisites { get; private set; } = TaskPrerequisites.Empty;
     public Guid Id { get; private set; } = Guid.NewGuid();
@@ -57,7 +58,7 @@ public sealed class TaskItem
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified)
     {
         if (id == Guid.Empty)
         {
@@ -65,17 +66,18 @@ public sealed class TaskItem
         }
 
         return new TaskItem(id, title, description, dueDate, priority, category,
-            isCompleted, createdAt, updatedAt, tags, parentTaskId, prerequisites);
+            isCompleted, createdAt, updatedAt, tags, parentTaskId, prerequisites, quadrant);
     }
 
     private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null, TaskPrerequisites? prerequisites = null, EisenhowerQuadrant quadrant = EisenhowerQuadrant.Unclassified)
         : this(title, description, dueDate, priority, category, tags)
     {
         Id = id;
         SetParent(new TaskParent(parentTaskId));
         SetPrerequisites(prerequisites ?? TaskPrerequisites.Empty);
+        SetQuadrant(quadrant);
         IsCompleted = isCompleted;
         CreatedAt = createdAt.ToUniversalTime();
         UpdatedAt = updatedAt.ToUniversalTime();
@@ -107,6 +109,13 @@ public sealed class TaskItem
         if (parent.Id == Guid.Empty || parent.Id == Id) throw new TaskHierarchyException("A task cannot be its own parent or use an empty ID.");
         if (ParentTaskId == parent.Id) return;
         ParentTaskId = parent.Id; UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetQuadrant(EisenhowerQuadrant quadrant)
+    {
+        if (!Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant.");
+        if (Quadrant == quadrant) return;
+        Quadrant = quadrant; UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void SetPrerequisites(TaskPrerequisites prerequisites)

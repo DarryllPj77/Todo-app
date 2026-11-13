@@ -15,12 +15,14 @@ public enum ViewSort { Title, DueDate, Priority }
 public sealed record TaskViewDefinition(string Search = "", ViewCompletion Completion = ViewCompletion.Any,
     ViewPriority Priority = ViewPriority.Any, ViewCategory Category = ViewCategory.Any,
     string CategoryName = "", ViewDue Due = ViewDue.Any, ViewSort Sort = ViewSort.Title, ViewTagMode TagMode = ViewTagMode.Any,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TagSet? Tags = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TagSet? Tags = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] EisenhowerQuadrant? Quadrant = null)
 {
     public TaskViewDefinition Normalize()
     {
         if (!Enum.IsDefined(Completion) || !Enum.IsDefined(Priority) || !Enum.IsDefined(Category) ||
             !Enum.IsDefined(Due) || !Enum.IsDefined(Sort) || !Enum.IsDefined(TagMode)) throw new ArgumentException("Choose valid filter and sort options.");
+        if (Quadrant is { } quadrant && !Enum.IsDefined(quadrant)) throw new ArgumentException("Choose a valid urgency/importance quadrant filter.");
         var search = (Search ?? "").Trim(); var category = (CategoryName ?? "").Trim();
         if (search.Length > 200) throw new ArgumentException("Search must be at most 200 characters.");
         if (category.Length > 100 || (Category == ViewCategory.Named && category.Length == 0))
@@ -32,7 +34,7 @@ public sealed record TaskViewDefinition(string Search = "", ViewCompletion Compl
 }
 
 public sealed record TaskViewCandidate(Guid Id, string Title, string? Description, bool Completed,
-    DateOnly? DueDate, TaskPriority Priority, string? CategoryName, TagSet? Tags = null);
+    DateOnly? DueDate, TaskPriority Priority, string? CategoryName, TagSet? Tags = null, EisenhowerQuadrant Quadrant = EisenhowerQuadrant.Unclassified);
 public sealed record SavedTaskView(Guid Id, string Scope, string Name, long Revision, TaskViewDefinition Definition);
 
 public static class TaskViewQueries
@@ -48,7 +50,7 @@ public static class TaskViewQueries
                 { ViewPriority.Low => TaskPriority.Low, ViewPriority.Normal => TaskPriority.Normal, _ => TaskPriority.High })) &&
             (filter.Category == ViewCategory.Any || (filter.Category == ViewCategory.Uncategorized
                 ? string.IsNullOrWhiteSpace(task.CategoryName) : string.Equals(task.CategoryName?.Trim(), filter.CategoryName, StringComparison.OrdinalIgnoreCase))) &&
-            MatchesTags(task.Tags ?? TagSet.Empty, filter) && MatchesDue(task.DueDate, filter.Due, today));
+            (filter.Quadrant is null || task.Quadrant == filter.Quadrant) && MatchesTags(task.Tags ?? TagSet.Empty, filter) && MatchesDue(task.DueDate, filter.Due, today));
         IOrderedEnumerable<TaskViewCandidate> ordered = filter.Sort switch
         {
             ViewSort.DueDate => matches.OrderBy(t => t.DueDate is null).ThenBy(t => t.DueDate).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),

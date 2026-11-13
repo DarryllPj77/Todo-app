@@ -149,7 +149,7 @@ public sealed class DependencyTests : IDisposable
         Assert.Equal(bytes, JsonSerializer.Serialize((await new SqliteSyncStore(path).ReadAsync("a")).Rows[id].Pending));
         using var check = new SqliteConnection($"Data Source={path};Pooling=False"); check.Open(); using var query = check.CreateCommand();
         query.CommandText = "SELECT State FROM ReplicaPartitions"; Assert.Equal(json, query.ExecuteScalar());
-        query.CommandText = "PRAGMA user_version"; Assert.Equal(4L, query.ExecuteScalar());
+        query.CommandText = "PRAGMA user_version"; Assert.Equal(5L, query.ExecuteScalar());
     }
 
     [Fact]
