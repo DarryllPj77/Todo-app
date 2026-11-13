@@ -1,7 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 8 server authentication/ownership and secure token-storage foundations are implemented. Verification ran 127 tests with no skips and the Windows-targeted solution builds. Configure your development database/signing secret and apply both migrations. Next is Phase 9 client API integration; complex synchronization is still later.
-
+Proceed one phase at a time after review. Phase 9 client account/API integration is implemented: 163 tests pass with PostgreSQL enabled and the Windows-targeted solution builds without warnings/errors. Native HTTPS and secure-storage acceptance remains pending. Next is Phase 10 synchronization; no sync protocol or background upload is implemented.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -140,7 +139,7 @@ Proceed one phase at a time after review. Phase 8 server authentication/ownershi
 - [x] Ownership migration preserves anonymous rows without automatically assigning them; category names are per user.
 - [x] Signing key comes from validated secrets/configuration; HTTP samples contain placeholders only.
 - [x] MAUI SecureTokenStore uses platform SecureStorage with no plaintext/password fallback; Windows compilation passes.
-- [ ] Verify token storage on target devices when Phase 9 adds login/logout and real API calls.
+- [ ] Verify actual token storage/restoration/logout on target devices using the Phase 9 UI.
 - [ ] Configure the development signing secret and apply AddAuthenticationOwnership locally before using the API.
 
 ## Phase 9 — API integration
@@ -155,8 +154,12 @@ Proceed one phase at a time after review. Phase 8 server authentication/ownershi
 
 **Completion checklist:**
 
-- [ ] Device can reach development API with correct transport configuration.
-- [ ] Offline, unauthorized, and timeout behavior is understandable.
+- [x] Registration/sign-in/logout, configurable HTTPS origin, per-request bearer attachment, and verified session restoration implemented.
+- [x] Separate online server workspace supports CRUD, completion, filters, validation, and delete confirmation without assigning or uploading device tasks.
+- [x] Expiry, 401/403, storage failure, offline/timeout/cancellation, stale responses, overlapping login, and uncertain-write handling tested.
+- [x] Full suite: 163 passed, 0 skipped, including 19 PostgreSQL facts; native Windows solution build: 0 warnings/errors.
+- [ ] Device can reach the development API with trusted HTTPS and complete native account/layout acceptance.
+- [ ] Actual platform SecureStorage restoration, expiry, and logout survive app restart; mobile targets remain unverified.
 
 ## Phase 10 — Offline synchronization
 

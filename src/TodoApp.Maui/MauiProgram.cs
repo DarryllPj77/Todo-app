@@ -30,7 +30,17 @@ public static class MauiProgram
         builder.Services.AddSingleton<ILocalTaskService>(_ =>
             new SqliteLocalTaskService(
                 Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
-        builder.Services.AddSingleton<SecureTokenStore>();
+        builder.Services.AddSingleton<ISecureTokenStore, SecureTokenStore>();
+        builder.Services.AddSingleton<IClientSettings, ClientSettings>();
+        builder.Services.AddSingleton<ClientSession>();
+        builder.Services.AddSingleton(_ => new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        {
+            Timeout = TimeSpan.FromSeconds(15)
+        });
+        builder.Services.AddSingleton<TodoApiClient>();
+        builder.Services.AddScoped<ServerWorkspaceViewModel>();
+        builder.Services.AddScoped<AccountViewModel>();
+        builder.Services.AddTransient<AccountPage>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

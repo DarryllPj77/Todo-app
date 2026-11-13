@@ -2,7 +2,7 @@
 
 ## Current state
 
-Local tasks still use SQLite. The API uses PostgreSQL with two migrations: InitialCreate and AddAuthenticationOwnership. Phase 8 adds Users and owner-scoped server tasks/categories. Verification ran 127 tests with 18 PostgreSQL cases, including real registration/JWT/isolation checks. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply the migrations before running the API.
+Local tasks still use SQLite. The API uses PostgreSQL with two migrations: InitialCreate and AddAuthenticationOwnership. Phase 8 adds Users and owner-scoped server tasks/categories. Phase 9 adds the online client without changing either schema. Verification ran 163 tests with 19 PostgreSQL cases, including real client/JWT/isolation checks. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply the migrations before running the API.
 
 ## Initial entities and relationship
 
@@ -18,7 +18,7 @@ Category has a generated Guid Id, required trimmed Name, and a read-only task co
 Implemented rules:
 
 - Title: 1–200 characters after trimming. Description: optional, at most 4000 characters after trimming; whitespace-only becomes null.
-- Category name: 1–100 characters after trimming. Duplicate category names are currently allowed; no uniqueness policy has been introduced.
+- Category name: 1–100 characters after trimming. The domain constructor allows repeated names; local services reuse case-insensitive names, and the server enforces normalized uniqueness per owner.
 - Priority: Low = 0, Normal = 1 (default), High = 2. Undefined enum values are rejected.
 - Tasks start pending. SetCompleted supports completion/reopening; assigning the existing state does not change UpdatedAt.
 - UpdateDetails validates before mutation. IDs/CreatedAt stay fixed, and effective task edits update UpdatedAt with DateTimeOffset.UtcNow. Equivalent normalized edits are no-ops.
@@ -81,7 +81,7 @@ Server ownership uses shadow OwnerId fields referencing Users with restricted us
 
 ### Existing anonymous data
 
-AddAuthenticationOwnership preserves existing tasks/categories with null OwnerId. Authenticated queries exclude those rows, and registering a new account never claims them. If you need them, an administrator must explicitly map selected legacy tasks and their categories to a verified account, reconcile per-account category-name collisions, and review the assignment. No blanket first-user assignment or data-reset script is provided. Local MAUI SQLite data is unaffected and remains device-local until account-aware client integration is designed.
+AddAuthenticationOwnership preserves existing tasks/categories with null OwnerId. Authenticated queries exclude those rows, and registering a new account never claims them. If you need them, an administrator must explicitly map selected legacy tasks and their categories to a verified account, reconcile per-account category-name collisions, and review the assignment. No blanket first-user assignment or data-reset script is provided. Local MAUI SQLite data is unaffected and remains device-local. Phase 9 keeps it separate from each online server account; no automatic assignment, upload, or schema change occurs.
 
 PostgreSQL stores timestamp microseconds; .NET ticks have finer precision. SaveChangesAsync normalizes task timestamps to UTC microseconds before saving/returning DTOs, so POST/PUT responses match subsequent reads exactly. Dates remain date-only values. Create/update commit category/task changes together; failure disposes the uncommitted transaction. Native async EF/Npgsql calls receive cancellation tokens; no Task.Run wrapper is used. Concurrent edits currently use last-writer behavior, without a revision/conflict protocol.
 
@@ -129,7 +129,7 @@ Do not regenerate InitialCreate or downgrade the ownership migration against liv
 
 ### Real PostgreSQL tests
 
-Default dotnet test uses explicit in-memory REST/test-auth substitutes and skips 18 database cases unless TODOAPP_TEST_POSTGRES is configured. It does not treat fake authentication as JWT validation. Real auth tests use the normal JWT handler and scoped PostgreSQL service. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
+Default dotnet test uses explicit in-memory REST/test-auth substitutes and skips 19 database cases unless TODOAPP_TEST_POSTGRES is configured. It does not treat fake authentication as JWT validation. Real auth tests use the normal JWT handler and scoped PostgreSQL service. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
 
 ```powershell
 $env:TODOAPP_TEST_POSTGRES = 'Host=localhost;Port=5432;Database=postgres;Username=<test-role>;Password=<test-password>'
@@ -144,4 +144,12 @@ This run used PostgreSQL 18 binaries with a separate .tools/pg-tests cluster on 
 
 Local and server stores share logical task/category IDs but do not directly connect to one another. Only the API connects to PostgreSQL. Synchronization will need a transactional local outbox, deletion tombstones, server revisions, incremental download cursors, idempotency, retries, and explicit conflict resolution. UpdatedAt alone is insufficient for conflict ordering. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Authentication will add user ownership and server authorization before multi-user sync is released. Add each schema change through reviewed server migrations and local upgrades. SQLite files are not automatically encrypted; evaluate data protection when sensitive data and login arrive.
+Authentication and server ownership are implemented. Phase 9 introduces no database migration or SQLite schema change. Account-partitioned replicas must be designed before multi-user sync is released. Add each schema change through reviewed server migrations and local upgrades. SQLite files are not automatically encrypted; evaluate device data protection before storing sensitive task content.
+
+## Phase 9 client storage boundary
+
+The Account page reaches PostgreSQL only through the authenticated HTTPS API. Its server rows are memory-only; local SQLite remains the device task store. There is no download cache, outbox, tombstone, or automatic import. Account/address changes clear server rows/drafts without deleting device tasks.
+
+The protected session envelope contains API origin, bearer token, expiry, and public account fields in MAUI SecureStorage. Preferences contains only the API URL and restoration-block flag. Passwords and server database credentials never belong in client persistence. A restored token must pass `/api/auth/me` before the online workspace opens. See README for endpoint/certificate setup and native storage acceptance.
+
+The full Phase 9 run passed 163 tests with no skips, including 19 real PostgreSQL facts. The added client integration fact uses real API/JWT/database behavior with in-memory HTTP transport and a fake platform token store; actual native HTTPS and SecureStorage are separate checks. The isolated cluster was stopped after cleanup; the existing PostgreSQL Windows service was left running.

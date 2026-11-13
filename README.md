@@ -1,8 +1,8 @@
 # Todo App
 
-A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
+A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. Synchronization is planned next.
 
-**Current status (2026-11-13): Phase 8 server authentication and ownership implemented.** Registration/login issue short-lived JWTs; task/category access is scoped to the authenticated user. All 127 tests passed with PostgreSQL enabled, including real token/isolation tests. Windows-targeted solution build passed with zero warnings/errors. MAUI remains an offline app with a registered SecureStorage token wrapper; login screens/API calls are Phase 9. Configure the database, JWT signing secret, and migrations using [DATABASE.md](docs/DATABASE.md) before running the API.
+**Current status (2026-11-13): Phase 9 MAUI account and API integration implemented.** The client supports registration/sign-in, protected session restoration, logout, configurable HTTPS endpoints, and a separate online server-task workspace. All **163 tests passed, 0 skipped**, with PostgreSQL enabled; the Windows-targeted solution built with zero warnings/errors. Native device HTTPS and SecureStorage round trips remain manual acceptance checks. Configure the API using [DATABASE.md](docs/DATABASE.md). Synchronization is Phase 10 and is not implemented.
 
 ## Technology and prerequisites
 
@@ -14,7 +14,7 @@ A learning-focused C#/.NET Todo application, built one phase at a time. The firs
 - Microsoft.Data.Sqlite **10.0.15** for local SQLite storage, including its native SQLite dependency.
 - EF Core/Relational/Design **10.0.15**, local dotnet-ef **10.0.15**, and Npgsql.EntityFrameworkCore.PostgreSQL **10.0.3** for server PostgreSQL storage.
 - Microsoft.AspNetCore.Authentication.JwtBearer **10.0.15**, ASP.NET Core's password hasher, per-IP auth rate limiting, and per-user server ownership.
-- Planned: client login/API integration, then offline synchronization.
+- HttpClient, client DTOs, platform SecureStorage, and an online account workspace. Planned next: offline synchronization.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -51,7 +51,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter does not convert MAUI into a plain .NET library or claim to validate client code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Eighteen PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The full Phase 8 run used an isolated PostgreSQL 18 cluster: **127 passed, 0 skipped**. See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Nineteen PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The full Phase 9 run used an isolated PostgreSQL 18 cluster: **163 passed, 0 skipped** (default mode: 144 passed, 19 skipped). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -156,11 +156,27 @@ To provision the broader workload set, `dotnet workload install maui` is availab
 
 Use an existing category name to reuse a category visible among stored tasks, or enter a new name to create/assign one. Changing the name in a task editor reassigns that task; it does not rename a category globally. Category management and empty-category browsing are later work. Tasks are local to this device; no API or login is needed.
 
-Phase 8 adds a SecureTokenStore wrapper using MAUI SecureStorage and registers it in DI; no token is acquired by the client yet. It stores no passwords and has no Preferences/plaintext-file fallback. Phase 9 will add login/logout, storage failure handling, expiry behavior, and account-aware local data handling. Secure storage has compiled for Windows but actual token round trips on devices remain unverified.
+### Check account and server tasks
+
+1. Configure PostgreSQL, the JWT secret, and both migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
+2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
+3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
+4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.
+5. Stop the API and try Refresh. Check the friendly connection error, then go Back and confirm device-local CRUD still works. Restart the API and retry explicitly.
+6. Sign out and sign into another test account. Server rows/drafts must clear; each account sees only its own server tasks. Device tasks stay on this device and are not assigned to either account.
+7. Check expiry (the server defaults to 15 minutes), restart after sign-out, and an invalid HTTPS address. Changing the address signs out. No refresh token or automatic server-write retry exists.
+
+The server workspace is online only. It does not upload, merge, cache, or queue device tasks. After a write with an uncertain result, successfully **Refresh** before another write; the request may already have committed. A confirmed create clears its draft even if the following refresh fails.
+
+Passwords are cleared after attempts and never saved. Session token, account, expiry, and API origin are stored together in platform SecureStorage; Preferences stores only the API URL and a restoration-block flag. Storage errors show a message with no plaintext fallback. Failed token removal blocks automatic restoration on the next launch; retry clearing the session. Expiry is checked on protected operations. A current-session 401 signs out, while 403/network/timeout errors retain the session. Saved sessions require online verification after restart.
+
+Android emulators default to `https://10.0.2.2:7114/`. A physical phone needs the PC's reachable LAN hostname/address, the same Wi-Fi, an API listener on that interface, a private-network firewall rule, and a certificate trusted by the device whose names match the address. Desktop localhost trust alone does not establish emulator/device trust. Use a properly trusted development certificate or HTTPS tunnel; the client has **no certificate-validation bypass**. Only root HTTPS base URLs are accepted, and redirects are not automatically followed. See [Microsoft's local web-service guidance](https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/local-web-services?view=net-maui-10.0) and [SecureStorage platform requirements](https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/storage/secure-storage?view=net-maui-10.0).
+
+Windows compilation and the local task-list toolbar were verified. Native Account layout, socket HTTPS authentication, actual SecureStorage restart/logout, light/narrow layouts, and mobile acceptance remain pending. Automated client/API/PostgreSQL tests use WebApplicationFactory's in-memory HTTPS transport and a fake platform store, so they do not prove those device checks.
 
 ## Database setup
 
-**No database server or manual SQLite installation is required.** Package restore supplies the SQLite library. The MAUI registration chooses `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`; opening the task list queries the service and creates the directory, database, and version-1 schema when absent. Do not delete this file if you want to keep your tasks.
+**Device-local tasks need no database server or manual SQLite installation.** Package restore supplies the SQLite library. The MAUI registration chooses `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`; opening the task list queries the service and creates the directory, database, and version-1 schema when absent. Do not delete this file if you want to keep your tasks.
 
 Local storage tests create temporary SQLite files and remove them afterward. SQLite schema versioning remains independent of server EF migrations. The API now uses PostgreSQL through TodoDbContext and the included InitialCreate migration. [DATABASE.md](docs/DATABASE.md) contains separate local/server setup instructions and the PostgreSQL test procedure. Store server credentials in development user secrets or ConnectionStrings__TodoDatabase, never source or the MAUI app.
 

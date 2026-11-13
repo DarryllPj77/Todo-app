@@ -269,6 +269,7 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenAccountAsync() => Task.CompletedTask;
         public Guid? EditedId { get; private set; }
         public int CloseCount { get; private set; }
         public bool ConfirmDelete { get; set; }

@@ -16,6 +16,8 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using TodoApp.Api.Contracts;
 using TodoApp.Infrastructure.Persistence.Server;
+using TodoApp.Maui.Models;
+using TodoApp.Maui.Services;
 
 namespace TodoApp.Tests;
 
@@ -242,6 +244,41 @@ public sealed class PostgresAuthenticationTests : IAsyncLifetime
         using var exact = await client.PostAsJsonAsync("/api/auth/login", new { email = "spaces@example.invalid", password });
         Assert.Equal(HttpStatusCode.Unauthorized, trimmed.StatusCode);
         Assert.Equal(HttpStatusCode.OK, exact.StatusCode);
+    }
+
+    [PostgresFact]
+    public async Task MauiApiClient_CompletesAuthenticatedCrudAndRestoresAnOriginBoundSession()
+    {
+        var settings = new MemoryClientSettings();
+        var protectedStorage = new MemoryTokenStore();
+        var session = new ClientSession(settings, protectedStorage);
+        var api = new TodoApiClient(client, session);
+        await api.SignInAsync("maui-client@example.invalid", Password, register: true);
+        Assert.True(session.IsVerified);
+        var created = await api.CreateAsync(new ApiTaskWrite("Client task", "Client details",
+            new DateOnly(2026, 11, 20), TodoApp.Domain.Enums.TaskPriority.High, "Client category"));
+        Assert.Equal(created.Id, Assert.Single(await api.GetTasksAsync()).Id);
+        Assert.Equal("Client details", created.Description);
+        Assert.Equal(TodoApp.Domain.Enums.TaskPriority.High, created.Priority);
+
+        var restartedSession = new ClientSession(settings, protectedStorage);
+        await restartedSession.RestoreAsync();
+        Assert.False(restartedSession.IsVerified);
+        var restartedApi = new TodoApiClient(client, restartedSession);
+        await restartedApi.VerifySessionAsync();
+        Assert.True(restartedSession.IsVerified);
+        var updated = await restartedApi.UpdateAsync(created.Id, new ApiTaskWrite("Edited by client", IsCompleted: true));
+        Assert.True(updated.IsCompleted);
+        Assert.Null(updated.DueDate);
+        Assert.Null(updated.CategoryId);
+        Assert.Equal(created.CreatedAt, updated.CreatedAt);
+        await restartedApi.DeleteAsync(created.Id);
+        Assert.Empty(await restartedApi.GetTasksAsync());
+        await restartedSession.SignOutAsync();
+        Assert.Null(protectedStorage.Value);
+        var signedOutRestart = new ClientSession(settings, protectedStorage);
+        await signedOutRestart.RestoreAsync();
+        Assert.Null(signedOutRestart.Current);
     }
 
     private static string Token(Guid subject, string? key = null, string issuer = "TodoApp.Development",

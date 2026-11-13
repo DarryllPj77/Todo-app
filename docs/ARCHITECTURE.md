@@ -55,6 +55,9 @@ MauiProgram: register storage, navigation, pages, and ViewModels
   -> App.CreateWindow: create a DI scope for each window
      -> NavigationPage -> TaskListPage -> TaskListViewModel -> SQLite
           -> TaskEditorPage -> TaskEditorViewModel -> SQLite
+          -> AccountPage -> AccountViewModel / ServerWorkspaceViewModel
+               -> TodoApiClient -> HTTPS API -> PostgreSQL
+               -> ClientSession -> ISecureTokenStore -> MAUI SecureStorage
 ```
 
 ObservableViewModel implements INotifyPropertyChanged using a readable SetProperty helper. TaskListViewModel exposes ObservableCollection<TaskRow>, selection/filter state, busy/error messages, and commands. TaskEditorViewModel holds separate editable fields so typing or canceling does not mutate stored entities. TaskRow is a read-only display snapshot with a title and status/date/category summary. Refresh rebuilds the rows after writes.
@@ -66,6 +69,20 @@ Views contain bindings and presentation events only: appearing refreshes the lis
 Each window owns a DI scope for its navigation service and list ViewModel/page; the scope is disposed when its Window is destroyed. Editor pages/ViewModels are transient within that scope. The SQLite service is shared as a singleton and opens an independent connection/transaction per call. This prevents one window's navigation from targeting another window.
 
 NavigationPage provides normal list/editor navigation on both desktop and phone layouts. Maximum content widths and a scrollable editor keep the first UI modest; final desktop `Categories | Tasks | Task Details` panes remain future work. AppThemeBinding styles support both system themes. The native Windows dark empty state and editor have been inspected; light/narrow/mobile acceptance checks remain pending. The .NET 10 nullable DatePicker binds to DateTime? and converts to DateOnly? on save; Clear restores null.
+
+### Account and online workspace (Phase 9)
+
+TodoApiClient uses client-owned DTOs; MAUI does not reference the API project. A long-lived HttpClient has a 15-second timeout, normal TLS validation, and automatic redirects disabled. Each request captures its own origin/token and places Authorization on that request, never on shared default headers. HTTPS base URLs must be root URLs without credentials, paths, queries, or fragments. Credentials are sent only to the captured origin; no automatic retries are performed.
+
+Singleton ClientSession owns the shared session across windows. SecureTokenStore persists a protected JSON envelope containing origin, bearer token, account, and expiry, with no password/plaintext fallback. ClientSettings stores only the configured URL and restoration block in Preferences. Restoration rejects malformed, expired, or mismatched-origin envelopes and requires `/me` before protected workspace use. Expiry is checked on each protected operation, not by a background timer. A current-session 401 clears the session; 403 retains it. Offline verification preserves the unverified session for an explicit retry.
+
+A monotonic session version and serialized secure-storage operations prevent an old login/restore/response from overwriting a newer account or undoing logout. Logout clears memory immediately and persists a restoration block before removing the protected envelope. Failed removal cannot silently restore the account next launch; the UI offers retry. If settings and secure storage both fail, the error asks the user to keep the app open and retry. Endpoint changes sign out before saving the new origin.
+
+AccountViewModel and ServerWorkspaceViewModel are scoped per window and dispose session subscriptions. Session-version changes clear all server rows, selections, and drafts across windows; in-flight responses from earlier versions are discarded. Reverification alone does not discard drafts. Password drafts are cleared after every operation/attempt and session change. Friendly errors expose neither raw server payloads nor tokens.
+
+ServerWorkspaceViewModel handles online CRUD/filtering with separate editable drafts and native delete confirmation. After an uncertain write or a failed post-write refresh, further writes require an explicit successful refresh. An acknowledged create clears its draft before refreshing to prevent duplicate creation. No server operation reads/writes SQLite, queues an upload, or imports device tasks. Local task navigation/CRUD remains available without an account or network.
+
+The portable tests link these actual services/ViewModels and substitute only platform storage/settings/navigation and HTTP transport. A real JWT/PostgreSQL integration test runs the client through registration, CRUD, restored-session verification, and logout. This in-memory HTTP transport does not validate native socket TLS or platform SecureStorage; those remain manual acceptance checks.
 
 ## Project references and responsibility
 
@@ -136,7 +153,7 @@ For this small dataset, reads and task edits load the current graph, and both st
 
 Assigning a category saves its ID/name if new. Reusing an existing ID uses the stored name instead of overwriting it from a stale caller object. Inputs are not attached or mutated, including on failed writes. Category rename/delete operations remain outside ILocalTaskService. Task deletion retains the category row; SQLite's category FK uses ON DELETE SET NULL for any future category deletion operation.
 
-The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication is now implemented; client login/integration, notifications, synchronization, and advanced task relationships remain later work.
+The local MVP is create/view/edit/delete, completed/uncompleted, title/description, optional due date/category, priority, five basic filters, SQLite persistence, MVVM, DI, and light/dark themes. Server authentication and the separate online client workspace are implemented; notifications, synchronization, and advanced task relationships remain later work.
 
 ## Offline-first strategy (future)
 
@@ -152,9 +169,9 @@ SQLite is the task screens' persistent read/write source. ILocalTaskService sepa
 
 Later, write a task change and an outbox entry in one local transaction. Queue creates/edits/deletions, retain deletion tombstones until acknowledged, preserve client-generated IDs, and use idempotent uploads plus a server change cursor for downloads. Connectivity events can trigger attempts, but successful requests determine reachability. Add cancellation, retry/backoff, and sync status at that phase.
 
-Use server-issued revision tokens for optimistic concurrency. Do not decide conflicts solely from device timestamps: device clocks drift. Initially surface conflicting revisions for an explicit resolution policy. Server login/ownership now exist, and MAUI has a registered SecureTokenStore using SecureStorage. The client has no login flow or stored token yet; Phase 9 must handle acquisition, expiry, logout, storage failures, and local account partitioning before any multi-user sync. Never upload device-local unassigned tasks into whichever account happens to log in first.
+Use server-issued revision tokens for optimistic concurrency. Do not decide conflicts solely from device timestamps: device clocks drift. Initially surface conflicting revisions for an explicit resolution policy. Server login/ownership and client sessions now exist. Device SQLite tasks remain explicitly unassigned and separate from the online workspace. Phase 10 must design account-partitioned local replicas before downloading/queuing server work. Never upload device-local unassigned tasks into whichever account happens to log in first.
 
-No synchronization stubs, background jobs, or outbox tables exist in Phase 1. Parent/subtask hierarchy and task dependencies will be distinct relationships in future phases.
+No synchronization worker, background upload jobs, or outbox tables exist in Phase 9. Parent/subtask hierarchy and task dependencies will be distinct relationships in future phases.
 
 ## Build boundaries
 

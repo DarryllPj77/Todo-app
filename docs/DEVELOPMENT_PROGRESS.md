@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 8 — Server authentication and ownership implemented.** Register/login use framework password hashing and short-lived JWTs; all task/category operations are owner-scoped. AddAuthenticationOwnership preserves legacy anonymous rows without assigning them. Verification ran 127 tests, including 18 real PostgreSQL facts, with no skips. Windows-targeted solution builds with zero warnings/errors. MAUI has a registered SecureStorage wrapper but remains offline; client login/API integration is Phase 9. Your local API needs the database/signing-secret/migration setup in DATABASE.md.
+**Phase 9 ? MAUI account and API integration implemented; native acceptance pending.** Registration/sign-in, origin-bound secure sessions, restoration verified through `/me`, logout, and a separate online CRUD workspace are wired into the client. All 163 tests passed with PostgreSQL enabled (0 failed, 0 skipped; 19 database facts). The Windows-targeted solution build passed with zero warnings/errors. Device-local SQLite remains independent; no synchronization or schema change was added. Your API still needs the database/signing-secret/migration setup in DATABASE.md. Native HTTPS, actual SecureStorage restart/logout, and Account layout acceptance remain pending.
 
 ## Completed work
 
@@ -51,18 +51,26 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Added JWT bearer 10.0.15 with validated configured signing key, HS256/issuer/audience/lifetime checks, short expiry, and account-existence validation. Auth endpoints share a process-local per-IP limiter.
 - Added claim-derived current-user context, Authorize on task endpoints, owner filtering on every server task operation, and per-user category upserts/uniqueness.
 - Generated AddAuthenticationOwnership migration/designer/snapshot. Legacy anonymous rows retain null owners and remain hidden rather than being deleted or claimed by new accounts.
-- Added MAUI SecureTokenStore using SecureStorage, with no password/plaintext fallback; client login is not wired yet.
+- Added the Phase 8 MAUI SecureTokenStore foundation using SecureStorage, with no password/plaintext fallback; Phase 9 now wires login/session behavior.
 - Added nine real PostgreSQL authentication/isolation facts and five portable settings cases. Existing tests use explicit fake auth only in contract/persistence fixtures; actual JWT tests use real middleware.
 - Updated .http samples to placeholder credentials/private bearer-token variables and added signing-key generation/migration instructions.
+
+- Added client API DTOs, long-lived HttpClient, per-request bearer attachment, HTTPS-only origin validation, disabled automatic redirects, and friendly status/network/timeout/cancellation handling.
+- Added ClientSession with protected session-envelope persistence, online restoration verification, expiry, serialized storage operations, session-version guards, and a persisted restoration block for failed secure removal.
+- Added AccountPage/AccountViewModel and a separate ServerWorkspaceViewModel with registration/login/logout, address configuration, server CRUD/filter/completion, native delete confirmation, and uncertain-write refresh gating.
+- Added Account & server navigation from the local toolbar. Local SQLite is neither reassigned nor uploaded; server rows/drafts clear on session/address changes.
+- Added 36 client cases, including a real API/JWT/PostgreSQL round trip. Tests cover overlapping logins, restore/logout races, old responses, storage failures, endpoint validation, credentials, errors, and uncertain saves.
+- Rebuilt the native Windows solution and launched the client. The task-list Account toolbar was observed. UI interaction stopped when user input was detected; Account layout/native auth/storage are not claimed.
+- Updated README and all five documentation files. No new packages, migrations, Domain/API behavior, or SQLite schema changes were required.
 
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| `scripts/Test-Postgres.ps1` with TODOAPP_TEST_POSTGRES set to the isolated cluster | Passed: 127 tests, 0 failed, 0 skipped |
+| `scripts/Test-Postgres.ps1` with TODOAPP_TEST_POSTGRES set to the isolated cluster | Passed: 163 tests, 0 failed, 0 skipped |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Eighteen PostgreSQL facts are explicitly skipped; portable REST tests use explicit memory/auth substitutes |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Nineteen PostgreSQL facts are explicitly skipped (144 portable cases pass); portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -71,7 +79,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 | Windows native direct launch | Passed: task-list empty state and editor visible in dark mode; app left available for user testing |
 | Full native CRUD/restart, light/narrow/mobile acceptance | Pending README manual checklist; not claimed from ViewModel/storage tests |
 | SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
-| PostgreSQL 18 verification | Passed: 18 real-database facts, including real auth/JWT/isolation and legacy-migration checks; each fixture cleans up its own database |
+| PostgreSQL 18 verification | Passed: 19 real-database facts, including client/API round trip, real auth/JWT/isolation and legacy-migration checks; each fixture cleans up its own database |
 
 Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 compiled native Windows/XAML with a local workload. Phase 6 added 32 tests for the actual API pipeline: routes, response contracts, missing IDs, malformed JSON/values, length limits, unknown/server-owned fields, all filters, category reuse, parallel creates, cancellation, fresh server state, and refusal to start in Production. Integration tests use an in-memory HTTPS request host, not a deployed TLS certificate. A separate loopback HTTP listener passed real socket CRUD checks. The HTTP-only profile logged its expected missing HTTPS redirect-port warning. An initial smoke assertion mishandled PowerShell's empty-array wrapping; checking the final JSON body directly verified it was []. No application change was needed for that assertion correction.
 
@@ -79,7 +87,9 @@ Presentation tests retain their Phase 5 coverage of validation, draft isolation,
 
 In Phase 7, the running Phase 6 API initially locked normal build outputs. Tests and migration generation proceeded in isolated .tools/phase7-build output without stopping it. The user then reported stopping the API; the final Windows-targeted solution build used normal output successfully. Test factory configuration was moved to validation after host configuration was built, allowing an explicit test substitute while normal startup still rejects a missing connection. Final database tests used scripts/Test-Postgres.ps1 and did not touch the installed service's databases.
 
-Phase 8 tested hashed registration/login, unique email, password whitespace preservation, generic credential failure, auth rate limiting, missing/invalid/expired/unsigned/wrong-key/issuer/audience tokens, unknown/deleted accounts, every task route's authentication/ownership behavior, per-user categories, spoofed owner input, and migration preservation of legacy rows. No real signing secret/password/token was committed or printed. Native secure token round trips, login UI, refresh tokens, password reset/email verification, and production identity/deployment acceptance are not claimed.
+Phase 8 tested hashed registration/login, unique email, password whitespace preservation, generic credential failure, auth rate limiting, missing/invalid/expired/unsigned/wrong-key/issuer/audience tokens, unknown/deleted accounts, every task route's authentication/ownership behavior, per-user categories, spoofed owner input, and migration preservation of legacy rows. No real signing secret/password/token was committed or printed. Phase 8 did not add login UI; Phase 9 now implements it. Native secure token round trips, refresh tokens, password reset/email verification, and production identity/deployment acceptance are not claimed.
+
+Phase 9 adds 36 cases to the Phase 8 total of 127: 26 session/client cases, nine account/workspace cases, and one real PostgreSQL client/API fact. The full suite passed 163/163 with no skips. The client integration uses real JWT middleware and PostgreSQL with WebApplicationFactory's in-memory HTTPS transport and a fake platform store; it does not prove native socket TLS or OS SecureStorage. No certificate bypass was added. The isolated test cluster was stopped after verifying no generated test databases remained; the existing PostgreSQL 18 service remains running. The last production-code Windows build passed with zero warnings/errors; the final additional overlapping-login test then passed in the full suite.
 
 Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions. MVC.Testing, JwtBearer, EF Core/Relational/Design/tool are aligned at 10.0.15; Npgsql EF 10.0.3 supports the EF 10 version. Microsoft.Data.Sqlite remains 10.0.15. Password hashing/rate limiting come from ASP.NET Core, and SecureStorage from MAUI.
 
@@ -90,16 +100,16 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
 - Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply both migrations. No user credentials or persistent app connection were invented during this run.
 - Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
-- Review Phase 8 before client integration. No refresh token/revocation/password-reset/email-verification system is implemented, and the API remains Development-only pending hardening/acceptance.
-- SecureTokenStore compiles on Windows; actual device storage/acquisition/expiry/logout UI checks belong to Phase 9. No SQLite schema change or client login was introduced.
-- API DueToday currently follows the server's local date; define a per-user time-zone policy before multi-user integration. Authentication/ownership and production deployment remain later work.
+- Review Phase 9 and complete the README account/native acceptance checks before synchronization. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Client session/storage code compiles on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, and Account layout checks remain pending. No SQLite schema change was introduced.
+- API DueToday currently follows the server's local date; define a per-user time-zone policy before synchronization. Production deployment remains later work.
 
 ## Uncommitted changes
 
-Phase 8 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 7 recorded in local commit 5810242. Portable tools, test-cluster files, and build output remain ignored.
+Phase 9 changes are uncommitted; no commit or push has been performed for this phase. Phase 8 is recorded in local commit `c0fae61`. The user-added untracked `.vscode/` directory is outside this task and is excluded from the Git handoff. Portable tools, test-cluster files, and build output remain ignored.
 
-- New: UserAccount, AddAuthenticationOwnership migration/designer, AuthenticationConfiguration/JwtSettings, AuthRequests/AuthController/AuthService/JwtTokenService/ICurrentUser, SecureTokenStore, TestAuthentication/AuthenticationSettingsTests/PostgresAuthenticationTests.
-- Modified: server EF mappings/snapshot, PostgresTaskService owner scoping, TasksController/startup/API project/appsettings/HTTP samples, MAUI DI, existing test factories/persistence cases, README, and all five docs.
+- New: ApiModels; ApiClientException, IClientSettings, ClientSettings, ClientSession, TodoApiClient; AccountViewModel, ServerWorkspaceViewModel, AccountPage XAML/code; ClientTestSupport, ClientSessionTests, ServerWorkspaceTests.
+- Modified: MAUI DI/navigation/token store/local toolbar; test source links/navigation fake/PostgresAuthenticationTests; README and all five docs.
 - Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
@@ -114,7 +124,7 @@ Foundation file groups (historical):
 - Tests: project file and `ApiStartupTests.cs`.
 - Docs: README plus ROADMAP, ARCHITECTURE, DATABASE, LEARNINGS, and this progress file.
 
-Phase 8 preserves task editable/response DTOs and MAUI offline screen behavior, while task routes now require bearer authentication and enforce ownership. Shared Domain/SQLite source/schema remain unchanged. .tools, bin, obj, and SQLite files/journals remain excluded from Git scope.
+Phase 9 preserves the server contract and device-local CRUD while adding an independent authenticated online workspace. Shared Domain/SQLite source/schema remain unchanged. .tools, bin, obj, and SQLite files/journals remain excluded from Git scope.
 
 ## Committed milestones
 
@@ -126,12 +136,13 @@ Phase 8 preserves task editable/response DTOs and MAUI offline screen behavior, 
 - `7639dff` — `Implement Phase 5 offline MAUI task interface`: verified in local Git history at the start of Phase 6.
 - `9935192` — `Implement Phase 6 task REST API`: verified in local Git history at the start of Phase 7.
 - 5810242 — Implement Phase 7 PostgreSQL and EF Core persistence: verified in local Git history at the start of Phase 8.
-- Phase 8 has no committed milestone yet. No merge or force-push has been performed.
+- `c0fae61` ? `Implement Phase 8 authentication and user ownership`: verified in local Git history during Phase 9.
+- Phase 9 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Configure the database/JWT secret and apply pending migrations using DATABASE.md, then review Phase 8. Next is Phase 9 client API integration: login/logout, configurable endpoint, bearer attachment, secure-storage/expiry failures, and account-aware local boundaries. Keep offline CRUD usable and do not implement synchronization automatically.
+Configure the database/JWT secret and apply pending migrations using DATABASE.md, then complete README's native account acceptance checks and review Phase 9. Phase 10 is offline synchronization: design account-partitioned local replicas, revisions/cursors, transactional outbox/tombstones, idempotency, and conflict policy before implementation. No synchronization starts automatically.
 
 ## What to learn now
 
-Trace registration through framework hashing, JWT issue/validation, and claim-derived task ownership. Learn authentication versus authorization, why decoded claims alone are untrusted, why owner IDs never come from JSON, and how migration policy protects anonymous data. Understand short token lifetime/local logout and why platform SecureStorage has no plaintext fallback. See LEARNINGS for examples.
+Trace AccountPage commands through ClientSession and TodoApiClient to the authenticated API. Learn why bearer headers belong on individual requests, why tokens are bound to one HTTPS origin, and why stale asynchronous results need session-version checks. Understand the difference between server integration and synchronization, and why a lost response does not prove a write failed. See LEARNINGS for examples.

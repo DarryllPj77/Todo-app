@@ -366,10 +366,40 @@ Only concepts used in this project are recorded here. Examples describe the curr
 
 **Definition:** MAUI SecureStorage uses platform-protected storage for small sensitive values. Removing a local token does not invalidate every copy of an already issued JWT.
 
-**Short example:** SecureTokenStore stores/removes only an access token; it has no plaintext fallback or password storage. Actual login/storage UI arrives in Phase 9; server tokens expire after their short lifetime.
+**Short example:** SecureTokenStore stores/removes a protected session envelope containing token, expiry, account, and API origin. Phase 9 provides login/logout UI with no plaintext fallback or password storage; server tokens expire after their short lifetime.
 
 ## Preserving data during ownership migrations
 
 **Definition:** New ownership rules must not silently delete old rows or guess who owns anonymous data.
 
 **Short example:** AddAuthenticationOwnership leaves legacy OwnerId null and excludes those rows from account queries. An administrator must explicitly review any later assignment.
+
+## Per-request authentication and origin binding
+
+**Definition:** A shared HTTP transport can serve many operations, but credentials belong to one captured request/session and one trusted API origin.
+
+**Short example:** TodoApiClient sets Authorization on each HttpRequestMessage. Changing the HTTPS endpoint signs out; redirects are disabled so the handler cannot forward a request automatically. Client DTOs serialize only editable fields, not server ownership or IDs.
+
+## Stale asynchronous results
+
+**Definition:** An awaited operation may finish after the user has changed accounts. Its result must still belong to the active session before changing UI or storage.
+
+**Short example:** ClientSession increments a version on account changes; old task responses and old 401 failures cannot populate or sign out a new account. Secure-storage writes are serialized, and logout blocks restoration before attempting removal.
+
+## Uncertain write outcomes
+
+**Definition:** A timeout or lost response does not prove that the server failed to save a request. Blind retries can create duplicates.
+
+**Short example:** The server workspace requires a successful explicit refresh after an uncertain write. A confirmed create clears its draft before the follow-up read. Durable idempotency and reconciliation belong to Phase 10.
+
+## Online integration versus synchronization
+
+**Definition:** Calling a server from a client does not reconcile two databases or make server operations available offline.
+
+**Short example:** Account & server manages only online PostgreSQL tasks. Back returns to device-local SQLite tasks. Login does not claim or upload those tasks, and server rows are not stored as a local account replica.
+
+## Test transport boundaries
+
+**Definition:** An in-memory request host verifies HTTP contracts and middleware without proving certificates, native networking, or OS storage behavior.
+
+**Short example:** The real client passes registration/CRUD/JWT/PostgreSQL tests through WebApplicationFactory, while actual Windows/mobile HTTPS and SecureStorage restart acceptance remain manual checks.

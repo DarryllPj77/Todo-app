@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
+             xmlns:models="clr-namespace:TodoApp.Maui.Models"
+             x:Class="TodoApp.Maui.Views.AccountPage"
+             x:DataType="vm:AccountViewModel" Title="Account &amp; server" Style="{StaticResource TaskPage}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16" MaximumWidthRequest="800" HorizontalOptions="Fill">
+            <Label Text="Account &amp; server" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Server tasks are separate from your device tasks. Nothing is uploaded, merged, or queued for sync."
+                   Style="{StaticResource TaskMuted}" />
+            <Border Style="{StaticResource TaskCard}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="{Binding Status}" FontAttributes="Bold" />
+                    <Label Text="{Binding ActiveEndpoint, StringFormat='Active API: {0}'}" Style="{StaticResource TaskMuted}" />
+                    <VerticalStackLayout Spacing="8" IsEnabled="{Binding IsIdle}">
+                        <Label Text="API address (HTTPS)" />
+                        <Entry Text="{Binding Endpoint}" Keyboard="Url" IsTextPredictionEnabled="False"
+                               SemanticProperties.Description="HTTPS API base address" />
+                        <Button Text="Apply address &amp; sign out" Command="{Binding SaveEndpointCommand}" Style="{StaticResource TaskAction}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding IsSignedOut}" IsEnabled="{Binding IsIdle}" Spacing="8">
+                        <Label Text="Email" />
+                        <Entry Text="{Binding Email}" Keyboard="Email" MaxLength="254" IsTextPredictionEnabled="False"
+                               SemanticProperties.Description="Account email" />
+                        <Label Text="Password" />
+                        <Entry Text="{Binding Password}" IsPassword="True" MaxLength="128" IsTextPredictionEnabled="False"
+                               IsSpellCheckEnabled="False" SemanticProperties.Description="Account password" />
+                        <Label Text="Registration needs a password of 12–128 characters. Passwords are never saved on this device."
+                               Style="{StaticResource TaskMuted}" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button Text="Sign in" Command="{Binding LoginCommand}" Style="{StaticResource TaskAction}" />
+                            <Button Grid.Column="1" Text="Register" Command="{Binding RegisterCommand}" Style="{StaticResource TaskAction}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                    <Button Text="Verify saved session" Command="{Binding VerifyCommand}" IsVisible="{Binding HasSession}"
+                            Style="{StaticResource TaskAction}" />
+                    <Button Text="Sign out / clear session" Command="{Binding LogoutCommand}" Style="{StaticResource TaskAction}" />
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                    <Label Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Style="{StaticResource TaskError}" />
+                </VerticalStackLayout>
+            </Border>
+            <VerticalStackLayout BindingContext="{Binding Workspace}" x:DataType="vm:ServerWorkspaceViewModel" Spacing="14">
+                <Label Text="Server workspace (online only)" FontSize="21" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+                <Label Text="Sign in to view only your server account's tasks. Go Back for device-local tasks, which work offline."
+                       Style="{StaticResource TaskMuted}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Picker ItemsSource="{Binding Filters}" ItemDisplayBinding="{Binding Label, x:DataType=models:FilterOption}"
+                            SelectedItem="{Binding SelectedFilter, Mode=TwoWay}" Title="Server filter"
+                            IsEnabled="{Binding IsAvailable}" SelectedIndexChanged="OnServerFilterChanged" />
+                    <Button Grid.Column="1" Text="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
+                </Grid>
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                <Label Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Style="{StaticResource TaskError}" />
+                <Label Text="Refresh the server list before another write. The last request may already have been saved."
+                       IsVisible="{Binding NeedsRefresh}" Style="{StaticResource TaskError}" />
+                <CollectionView HeightRequest="280" ItemsSource="{Binding Tasks}" SelectionMode="Single"
+                                SelectedItem="{Binding SelectedTask, Mode=TwoWay}" IsEnabled="{Binding IsAvailable}">
+                    <CollectionView.EmptyView>
+                        <Label Text="No server tasks loaded." HorizontalTextAlignment="Center" Margin="12" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:ApiTask">
+                            <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup Name="CommonStates">
+                                        <VisualState Name="Normal" />
+                                        <VisualState Name="Selected"><VisualState.Setters>
+                                            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#DFEAFF, Dark=#243D60}" />
+                                        </VisualState.Setters></VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <VerticalStackLayout Spacing="6">
+                                    <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
+                                    <Label Text="{Binding Summary}" Style="{StaticResource TaskMuted}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                    <Button Text="New / discard" Command="{Binding NewCommand}" Style="{StaticResource TaskAction}" />
+                    <Button Grid.Column="1" Text="Toggle done" Command="{Binding ToggleCommand}" Style="{StaticResource TaskAction}" />
+                    <Button Grid.Column="2" Text="Delete" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
+                </Grid>
+                <Border Style="{StaticResource TaskCard}">
+                    <VerticalStackLayout Spacing="10" IsEnabled="{Binding IsAvailable}">
+                        <Label Text="{Binding EditorHeading}" FontSize="19" FontAttributes="Bold" />
+                        <Entry Text="{Binding Title}" Placeholder="Task title" MaxLength="200" SemanticProperties.Description="Server task title" />
+                        <Editor Text="{Binding Description}" Placeholder="Description (optional)" MaxLength="4000"
+                                AutoSize="TextChanges" MinimumHeightRequest="90" />
+                        <Picker Title="Priority" ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority, Mode=TwoWay}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <DatePicker Date="{Binding DueDate, Mode=TwoWay}" Format="ddd, dd MMM yyyy" />
+                            <Button Grid.Column="1" Text="Clear date" Command="{Binding ClearDateCommand}" Style="{StaticResource TaskAction}" />
+                        </Grid>
+                        <Entry Text="{Binding CategoryName}" Placeholder="Category (optional)" MaxLength="100" />
+                        <Button Text="Save to server" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
