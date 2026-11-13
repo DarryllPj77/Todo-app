@@ -46,6 +46,7 @@ Content-Type: application/json
   "dueDate": "2026-11-20",
   "priority": "High",
   "categoryName": "Learning",
+  "tags": ["learning", "api"],
   "isCompleted": false
 }
 
@@ -56,7 +57,7 @@ GET {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
 Authorization: Bearer {{accessToken}}
 Accept: application/json
 
-### Full replacement: omitted optional fields reset to their defaults
+### Replace editable fields; omitted/null tags preserve tags, [] explicitly clears them
 PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -67,6 +68,7 @@ Content-Type: application/json
   "dueDate": null,
   "priority": "Normal",
   "categoryName": null,
+  "tags": [],
   "isCompleted": true
 }
 

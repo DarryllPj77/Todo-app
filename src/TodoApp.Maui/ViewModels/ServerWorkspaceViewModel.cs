@@ -18,6 +18,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
     private string title = "";
     private string description = "";
     private string categoryName = "";
+    private string tagsInput = "";
     private DateTime? dueDate;
     private TaskPriority priority = TaskPriority.Normal;
     private FilterOption selectedFilter;
@@ -38,6 +39,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
     public string EditorHeading => SelectedTask is null ? "New server task" : "Edit server task";
     public string Title { get => title; set => SetProperty(ref title, value ?? ""); }
     public string Description { get => description; set => SetProperty(ref description, value ?? ""); }
+    public string TagsInput { get => tagsInput; set => SetProperty(ref tagsInput, value ?? ""); }
     public string CategoryName { get => categoryName; set => SetProperty(ref categoryName, value ?? ""); }
     public DateTime? DueDate { get => dueDate; set => SetProperty(ref dueDate, value); }
     public TaskPriority Priority { get => priority; set => SetProperty(ref priority, value); }
@@ -53,6 +55,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
         set
         {
             if (!SetProperty(ref selectedTask, value)) return;
+            TagsInput = value?.Tags?.ToString() ?? "";
             Title = value?.Title ?? "";
             Description = value?.Description ?? "";
             CategoryName = value?.CategoryName ?? "";
@@ -123,6 +126,8 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
 
     private async Task SaveAsync()
     {
+        TagSet tags;
+        try { tags = TagSet.Parse(TagsInput); } catch (ArgumentException error) { ErrorMessage = error.Message; return; }
         if (string.IsNullOrWhiteSpace(Title) || Title.Trim().Length > TaskItem.MaxTitleLength ||
             Description.Trim().Length > TaskItem.MaxDescriptionLength || CategoryName.Trim().Length > Category.MaxNameLength ||
             !Enum.IsDefined(Priority))
@@ -132,7 +137,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
         }
 
         var input = new ApiTaskWrite(Title, Description, DueDate.HasValue ? DateOnly.FromDateTime(DueDate.Value) : null,
-            Priority, CategoryName, SelectedTask?.IsCompleted ?? false);
+            Priority, CategoryName, SelectedTask?.IsCompleted ?? false, tags);
         var version = session.Version;
         if (SelectedTask is null) await api.CreateAsync(input);
         else await api.UpdateAsync(SelectedTask.Id, input);
@@ -146,7 +151,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
         var task = SelectedTask!;
         var version = session.Version;
         await api.UpdateAsync(task.Id, new ApiTaskWrite(task.Title, task.Description, task.DueDate,
-            task.Priority, task.CategoryName, !task.IsCompleted));
+            task.Priority, task.CategoryName, !task.IsCompleted, task.Tags));
         session.EnsureVersion(version);
         await RefreshAsync();
     }
@@ -165,7 +170,7 @@ public sealed class ServerWorkspaceViewModel : ObservableViewModel, IDisposable
     private void ResetEditor()
     {
         SelectedTask = null;
-        Title = Description = CategoryName = "";
+        Title = Description = CategoryName = TagsInput = "";
         DueDate = null;
         Priority = TaskPriority.Normal;
     }

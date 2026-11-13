@@ -1,8 +1,8 @@
-# Custom filters and saved views (Phase 12A)
+# Custom filters and saved views (Phase 12A + 12B tags)
 
 ## Scope
 
-Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Tags, hierarchy, dependencies, urgency/importance, recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work. This increment does not claim those features or skip ahead to calendar integration.
+Phase 12 is deliberately split into reviewable increments. Phase 12A adds custom filters, search, sorting, and named views. Phase 12B adds tags and tag rules; hierarchy, dependencies, urgency/importance, recurrence, time tracking, and the full desktop three-pane layout remain later Phase 12 work. This increment does not claim those features or skip ahead to calendar integration.
 
 Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** from the main task-list toolbar. This page provides a read-only explorer plus navigation to the normal task editor/workspace. Existing task-list filters and sync/reminder screens stay available.
 
@@ -12,7 +12,7 @@ Choose **Device** or **SyncedAccount**. Device views use the unassigned device-o
 
 Change fields, then **Apply filters**. Typing or choosing a saved view changes the draft controls but does not silently change the applied results. **Reset to all tasks** clears the draft/applied rules and selected view. **Refresh saved views & current results** reloads saved definitions and recomputes the currently applied results; it does not implicitly apply an unfinished filter draft.
 
-All selected rules combine with AND. Literal search matches a case-insensitive substring in the title, description, or category (OR across those fields). It is not a regular expression, SQL predicate, or tokenized language. Search is trimmed and limited to 200 characters.
+All selected rules combine with AND. Literal search matches a case-insensitive substring in the title, description, category, or tag labels (OR across those fields). It is not a regular expression, SQL predicate, or tokenized language. Search is trimmed and limited to 200 characters.
 
 | Rule | Behavior |
 | --- | --- |
@@ -20,6 +20,7 @@ All selected rules combine with AND. Literal search matches a case-insensitive s
 | Priority | Any, Low, Normal, High |
 | Category | Any; Named with an exact case-insensitive trimmed name; or Uncategorized |
 | Due | Any, Today, Overdue, NextSevenDays, Undated, Dated |
+| Tags | Any, AllListed, AnyListed, Untagged; listed rules need at least one normalized tag |
 | Sort | Title ascending; DueDate ascending with undated last; Priority descending (High first) |
 
 A Named category requires 1-100 characters. Category matching is exact; Work does not include Workshop. A category need not already exist, so a rule can be saved before matching tasks exist.
@@ -44,11 +45,11 @@ Saved views do not sync between devices. Device-only definitions remain independ
 
 Domain/Views defines the immutable TaskViewDefinition, candidate snapshot, saved definition, and pure TaskViewQueries. Normalize validates bounds/enums and canonicalizes unused category input. Apply uses LINQ predicates followed by deterministic ordering and returns a materialized result without mutating source tasks.
 
-SqliteTaskViewStore initializes **views.db3 schema version 1**, independent of all existing task/sync/reminder schemas and server migrations. SavedTaskViews stores ID, scope, display/name key, revision, and JSON rule definition. SQL parameters protect names/search payloads; transactions serialize duplicate/quota/revision checks with writes. Corrupt/newer schema or definition data fails without reset. Opening/reading/applying a view does not emit a sync-store Written callback.
+SqliteTaskViewStore initializes **views.db3 schema version 2**, independent of all existing task/sync/reminder schemas and server migrations. SavedTaskViews stores ID, scope, display/name key, revision, and JSON rule definition. SQL parameters protect names/search payloads; transactions serialize duplicate/quota/revision checks with writes. Corrupt/newer schema or definition data fails without reset. Opening/reading/applying a view does not emit a sync-store Written callback.
 
-TaskViewsViewModel separates editable rules from the applied definition, loads device tasks or account cache snapshots, and projects matching rows without creating task copies. Saved definitions and results are per-window state over the shared local store. The navigation service provides the new page and definition-delete confirmation; code-behind handles appearing/workspace-selection refresh only. No new package, EF migration, API input property, or sync payload field is added.
+TaskViewsViewModel separates editable rules from the applied definition, loads device tasks or account cache snapshots, and projects matching rows without creating task copies. Saved definitions and results are per-window state over the shared local store. The navigation service provides the new page and definition-delete confirmation; code-behind handles appearing/workspace-selection refresh only. Phase 12A added no package or task/API fields. Phase 12B adds the tag contract/migration described in TAGS.md; view definitions themselves remain local metadata.
 
-Names, search text, and category rules are ordinary **unencrypted local metadata** in the app's OS-user profile, like the existing caches. They never contain authentication tokens by design. Application account partitioning is not filesystem encryption or a separate local user-authentication system. Cache selection retains Phase 10 session behavior; after session expiry/sign-out, account selection may require signing in again.
+Names, search text, category rules, and tag rules are ordinary **unencrypted local metadata** in the app's OS-user profile, like the existing caches. They never contain authentication tokens by design. Application account partitioning is not filesystem encryption or a separate local user-authentication system. Cache selection retains Phase 10 session behavior; after session expiry/sign-out, account selection may require signing in again.
 
 ## Manual acceptance (pending)
 
@@ -64,3 +65,5 @@ Names, search text, and category rules are ordinary **unencrypted local metadata
 10. Check scrolling, toolbar overflow, screen readers, light/dark themes, and narrow/mobile layouts. Native view interaction and mobile target builds remain pending; compilation and portable tests do not prove them.
 
 Automated tests cover query combinations/date boundaries/sorting, SQLite reopen/uniqueness/quota/parameters/concurrency/corruption, and actual ViewModel scope/draft/navigation/race behavior. The full existing reminder/sync/JWT/PostgreSQL suite remains part of regression verification. See DEVELOPMENT_PROGRESS.md for measured results.
+
+Phase 12B upgrades old definition JSON without resetting IDs/revisions, adds exact tag-set predicates and literal tag search, and leaves other rule semantics intact. See [TAGS.md](TAGS.md) for canonical labels, explicit empty sets, compatibility, and the server/local upgrade sequence.

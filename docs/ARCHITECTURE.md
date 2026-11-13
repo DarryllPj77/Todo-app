@@ -28,7 +28,7 @@ The host remains Development-only until deployment hardening/acceptance is compl
 
 TodoDbContext, Fluent entity configurations, and the generated InitialCreate migration/model snapshot live in Infrastructure/Persistence/Server. API/Configuration owns host registration; API/Data remains reserved. Migrations are applied explicitly with the pinned local EF tool, not automatically during API startup. See DATABASE.md for commands and role/secret setup.
 
-Domain remains framework-independent. TaskItem now has a scalar CategoryId so a foreign key survives loading without navigation. Private materialization constructors/setters let EF restore IDs/creation timestamps; public constructors/mutation methods retain validation. SetCategory clears even an unloaded relationship's scalar ID. Category's read-only collection maps through its private tasks field. SQLite's Restore factories and schema remain unchanged, and its regression tests still pass.
+Domain remains framework-independent. TaskItem now has a scalar CategoryId so a foreign key survives loading without navigation. Private materialization constructors/setters let EF restore IDs/creation timestamps; public constructors/mutation methods retain validation. SetCategory clears even an unloaded relationship's scalar ID. Category's read-only collection maps through its private tasks field. Phase 7 preserved SQLite's restoration/schema; Phase 12B later adds tags through an explicit version-2 upgrade, with regressions passing.
 
 The server stores uppercase-invariant category NameKey and nullable legacy OwnerId as EF shadow properties. A unique (OwnerId, NameKey) index allows separate users to use the same name. Parameterized INSERT ... ON CONFLICT DO NOTHING plus an owner-scoped query creates/reuses a category atomically within the authenticated account. Existing casing is retained; category rename would need to update NameKey. Concurrent task edits remain last-writer behavior; sync revisions/conflicts are future work.
 
@@ -157,7 +157,7 @@ The local MVP is create/view/edit/delete, completed/uncompleted, title/descripti
 
 ## Offline account synchronization (Phase 10)
 
-The main local task flow stays on `todoapp.db3`. The new toolbar route is `SyncPage -> SyncWorkspaceViewModel -> SqliteSyncStore (sync.db3)` for cached reads/writes and `SyncEngine -> TodoApiClient -> SyncController/SyncService -> PostgreSQL` for reconciliation. Account & server retains its direct online workspace. No device-only task is automatically imported or assigned.
+The main local task flow stays on `todoapp.db3`. The synced toolbar route is `SyncPage -> SyncWorkspaceViewModel -> SqliteSyncStore (sync.db3)` for cached reads/writes and `SyncEngine -> TodoApiClient -> SyncController/SyncService -> PostgreSQL` for reconciliation. Account & server retains its direct online workspace. No device-only task is automatically imported or assigned.
 
 Shared `Domain/Sync` records define the small wire protocol without adding another project/package. SqliteSyncStore is an Infrastructure adapter with transactional account/origin partition state: local intent, immutable pending operation, latest server entry, conflicts, retry time, and download cursor. Acknowledgements preserve later local edits; stale receipt responses cannot regress newer downloads or silently rebase over another device's work. Separate store instances serialize SQLite transactions, and stale editors are rejected instead of overwriting newer cache rows.
 
@@ -181,13 +181,23 @@ Windows uses AppNotificationManager with running-app evaluation rather than clai
 
 ## Custom filters and saved views (Phase 12A)
 
-The server and sync contracts stay unchanged. Domain/Views defines immutable filter/candidate/saved-definition records plus pure normalization and LINQ query rules. Search is literal and ordinal case-insensitive across title/description/category; combined filters use AND. Relative dates use the device day at load time. Ordering is deterministic, with task-ID tie-breakers and undated-last due ordering.
+Phase 12A kept the server/sync contracts unchanged; Phase 12B adds tags to them. Domain/Views defines immutable filter/candidate/saved-definition records plus pure normalization and LINQ query rules. Search is literal and ordinal case-insensitive across title/description/category; combined filters use AND. Relative dates use the device day at load time. Ordering is deterministic, with task-ID tie-breakers and undated-last due ordering.
 
 `TaskViewsPage -> TaskViewsViewModel -> SqliteTaskViewStore (views.db3)` manages named definitions. Results read ILocalTaskService or only the active API/account's SqliteSyncStore partition. Applying a view projects existing snapshots; it never writes task, outbox, conflict, or reminder state. Device rows navigate to the existing editor; cached rows explicitly open the Synced tasks workspace. Global queue/conflict counts remain visible outside result filters.
 
 Editable filter controls and applied rules are separate. Selecting a definition fills the draft; Apply or an explicit successful save changes applied results. Source generations/session versions reject stale asynchronous results, and account changes clear account names/drafts/rows. Device-only views remain independent of server login. Saved-definition revisions reject stale edits/deletes from other windows; deletion rechecks the scope after native confirmation and leaves tasks unchanged.
 
-The independent views.db3 version-1 schema stores ID/scope/name key/revision/JSON definition. Transactions protect duplicate names, a 50-view scope quota, revision checks, and writes. Metadata stays local and unencrypted; no package, server migration, or existing task schema changes. See [SAVED_VIEWS.md](SAVED_VIEWS.md). Tags and the remaining Phase 12 model/layout work are deliberately not implemented in this increment.
+The independent views.db3 version-1 schema stores ID/scope/name key/revision/JSON definition. Transactions protect duplicate names, a 50-view scope quota, revision checks, and writes. Metadata stays local and unencrypted; no package, server migration, or existing task schema changes. See [SAVED_VIEWS.md](SAVED_VIEWS.md). Tags are added by Phase 12B below; the remaining Phase 12 model/layout work stays pending.
+
+## Task tags (Phase 12B)
+
+TagSet is an immutable, normalized, value-equal collection of at most ten labels (1-32 characters each). It has an explicit JSON array converter and is independent of EF/MAUI. TaskItem stores a non-null set, updates it atomically with editable fields, and preserves tags when legacy callers omit them. Explicit empty sets clear them. Categories remain a separate single assignment; tag labels are per-task values rather than a global catalog/entity graph.
+
+SQLite stores tags as JSON text in a new TaskItems.Tags column through its atomic 1-to-2 schema upgrade. PostgreSQL's AddTaskTags migration adds Tasks.Tags with [] default, explicit EF JSON conversion, and immutable value comparison. Normal API/sync writes journal complete tag sets with their existing owner/revision rules. No tag IDs or owner IDs are accepted from callers, and invalid tag arrays fail before mutation.
+
+SyncPage advertises protocol 2; the engine probes capability before any tag-aware upload and blocks old APIs while retaining the same operation. Null tags are omitted from legacy serialized SyncTaskData so pre-upgrade receipt request bytes remain stable. TagSet's deep equality prevents deserialized collections from causing endless acknowledgement/requeue cycles. Tags follow whole-task conflicts, without automatic set unions. sync.db3/views.db3 advance to schema 2 without rewriting legacy pending payloads; coordinated client/API upgrades are required.
+
+All editors accept comma-separated labels and explicitly clear with an empty set. Saved-view search includes tag substrings; exact AllListed/AnyListed/Untagged rules combine with existing predicates. Notifications remain generic and tag-only edits do not cancel a reminder. See [TAGS.md](TAGS.md) for storage tradeoffs, compatibility, migration ordering, and native acceptance.
 
 ## Build boundaries
 

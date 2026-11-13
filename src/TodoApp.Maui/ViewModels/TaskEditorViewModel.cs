@@ -17,6 +17,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
     private string title = "";
     private string description = "";
     private string categoryName = "";
+    private string tagsInput = "";
     private string errorMessage = "";
     private DateTime? dueDate;
     private TaskPriority priority = TaskPriority.Normal;
@@ -31,6 +32,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
     public bool HasError => ErrorMessage.Length > 0;
     public string Title { get => title; set => SetProperty(ref title, value ?? ""); }
     public string Description { get => description; set => SetProperty(ref description, value ?? ""); }
+    public string TagsInput { get => tagsInput; set => SetProperty(ref tagsInput, value ?? ""); }
     public string CategoryName { get => categoryName; set => SetProperty(ref categoryName, value ?? ""); }
     public DateTime? DueDate { get => dueDate; set => SetProperty(ref dueDate, value); }
     public TaskPriority Priority { get => priority; set => SetProperty(ref priority, value); }
@@ -73,6 +75,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
                 return;
             }
 
+            TagsInput = task?.Tags.ToString() ?? "";
             Title = task?.Title ?? "";
             Description = task?.Description ?? "";
             CategoryName = task?.Category?.Name ?? "";
@@ -105,7 +108,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
             var category = name.Length == 0 ? null : knownCategories.FirstOrDefault(item =>
                 string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)) ?? new Category(name);
             var details = new TaskDetails(Title, Description,
-                DueDate.HasValue ? DateOnly.FromDateTime(DueDate.Value) : null, Priority, category);
+                DueDate.HasValue ? DateOnly.FromDateTime(DueDate.Value) : null, Priority, category, TagSet.Parse(TagsInput));
 
             if (taskId.HasValue)
             {
@@ -144,6 +147,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
 
     private string Validate()
     {
+        try { _ = TagSet.Parse(TagsInput); } catch (ArgumentException error) { return error.Message; }
         if (string.IsNullOrWhiteSpace(Title) || Title.Trim().Length > TaskItem.MaxTitleLength)
             return $"Enter a title between 1 and {TaskItem.MaxTitleLength} characters.";
         if (Description.Trim().Length > TaskItem.MaxDescriptionLength)

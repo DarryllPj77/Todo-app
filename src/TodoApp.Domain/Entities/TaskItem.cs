@@ -7,6 +7,7 @@ public sealed class TaskItem
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 4000;
 
+    public TagSet Tags { get; private set; } = TagSet.Empty;
     public Guid Id { get; private set; } = Guid.NewGuid();
     public string Title { get; private set; }
     public string? Description { get; private set; }
@@ -23,8 +24,9 @@ public sealed class TaskItem
         string? description = null,
         DateOnly? dueDate = null,
         TaskPriority priority = TaskPriority.Normal,
-        Category? category = null)
+        Category? category = null, TagSet? tags = null)
     {
+        Tags = tags ?? TagSet.Empty;
         Title = NormalizeTitle(title);
         Description = NormalizeDescription(description);
         ValidatePriority(priority);
@@ -38,10 +40,10 @@ public sealed class TaskItem
     }
 
     public static TaskItem CreateWithId(Guid id, string title, string? description = null,
-        DateOnly? dueDate = null, TaskPriority priority = TaskPriority.Normal, Category? category = null)
+        DateOnly? dueDate = null, TaskPriority priority = TaskPriority.Normal, Category? category = null, TagSet? tags = null)
     {
         if (id == Guid.Empty) throw new ArgumentException("A task must have an ID.", nameof(id));
-        return new TaskItem(title, description, dueDate, priority, category) { Id = id };
+        return new TaskItem(title, description, dueDate, priority, category, tags) { Id = id };
     }
 
     // EF materialization only; application code uses the validating constructor.
@@ -52,7 +54,7 @@ public sealed class TaskItem
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null)
     {
         if (id == Guid.Empty)
         {
@@ -60,13 +62,13 @@ public sealed class TaskItem
         }
 
         return new TaskItem(id, title, description, dueDate, priority, category,
-            isCompleted, createdAt, updatedAt);
+            isCompleted, createdAt, updatedAt, tags);
     }
 
     private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt)
-        : this(title, description, dueDate, priority, category)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null)
+        : this(title, description, dueDate, priority, category, tags)
     {
         Id = id;
         IsCompleted = isCompleted;
@@ -74,7 +76,7 @@ public sealed class TaskItem
         UpdatedAt = updatedAt.ToUniversalTime();
     }
 
-    public void UpdateDetails(string title, string? description, DateOnly? dueDate, TaskPriority priority)
+    public void UpdateDetails(string title, string? description, DateOnly? dueDate, TaskPriority priority, TagSet? tags = null)
     {
         // Validate everything first: a rejected edit must not partially change the task.
         var normalizedTitle = NormalizeTitle(title);
@@ -82,16 +84,24 @@ public sealed class TaskItem
         ValidatePriority(priority);
 
         if (Title == normalizedTitle && Description == normalizedDescription &&
-            DueDate == dueDate && Priority == priority)
+            DueDate == dueDate && Priority == priority && (tags is null || Tags.Equals(tags)))
         {
             return;
         }
 
+        if (tags is not null) Tags = tags;
         Title = normalizedTitle;
         Description = normalizedDescription;
         DueDate = dueDate;
         Priority = priority;
         UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetTags(TagSet tags)
+    {
+        ArgumentNullException.ThrowIfNull(tags);
+        if (Tags.Equals(tags)) return;
+        Tags = tags; UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void SetCompleted(bool isCompleted)

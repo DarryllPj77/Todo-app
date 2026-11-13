@@ -45,7 +45,7 @@ internal sealed class SqliteTaskDatabase
         command.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(command.ExecuteScalar());
 
-        if (version > 1)
+        if (version > 2)
         {
             throw new InvalidOperationException("This database was created by a newer app. Update the app before opening it.");
         }
@@ -71,6 +71,12 @@ internal sealed class SqliteTaskDatabase
                 CREATE INDEX IX_TaskItems_CategoryId ON TaskItems(CategoryId);
                 PRAGMA user_version = 1;
                 """;
+            command.ExecuteNonQuery();
+        }
+
+        if (version < 2)
+        {
+            command.CommandText = "ALTER TABLE TaskItems ADD COLUMN Tags TEXT NOT NULL DEFAULT '[]'; PRAGMA user_version=2;";
             command.ExecuteNonQuery();
         }
 

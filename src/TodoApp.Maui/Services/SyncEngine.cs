@@ -20,6 +20,7 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
             session.EnsureVersion(version);
             var partition = SqliteSyncStore.Partition(saved.Origin, saved.User.Id);
             // Bound one pass; further edits/large downloads continue on the next attempt.
+            var tagSupportChecked = false;
             for (var sent = 0; sent < 100; sent++)
             {
                 session.EnsureVersion(version);
@@ -28,6 +29,17 @@ public sealed class SyncEngine(ClientSession session, TodoApiClient api, SqliteS
                 var row = state.Rows.Values.FirstOrDefault(r => r.Pending is not null && !r.Conflict &&
                     (retryNow || r.RetryAt <= time.GetUtcNow()));
                 if (row?.Pending is not { } pending) break;
+                if (pending.Task?.Tags is not null && !tagSupportChecked)
+                {
+                    var capability = await api.DownloadAsync(0, token);
+                    session.EnsureVersion(version);
+                    if (capability.ProtocolVersion < 2)
+                    {
+                        await store.FailedAsync(partition, pending, time.GetUtcNow(), permanent: true);
+                        throw new ApiClientException("This API does not support tags. Upgrade the API, apply its migration, then Retry now. Your queue was retained.");
+                    }
+                    tagSupportChecked = true;
+                }
                 try
                 {
                     var result = await api.UploadAsync(pending, token);

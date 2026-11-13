@@ -95,6 +95,8 @@
                             <DatePicker Date="{Binding DueDate, Mode=TwoWay}" Format="ddd, dd MMM yyyy" />
                             <Button Grid.Column="1" Text="Clear date" Command="{Binding ClearDateCommand}" Style="{StaticResource TaskAction}" />
                         </Grid>
+                        <Label Text="Tags (comma-separated, up to 10; 1-32 characters each)" />
+                        <Entry Text="{Binding TagsInput}" MaxLength="350" Placeholder="work, urgent" SemanticProperties.Description="Comma-separated task tags" />
                         <Entry Text="{Binding CategoryName}" Placeholder="Category (optional)" MaxLength="100" />
                         <Button Text="Save to server" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
                     </VerticalStackLayout>

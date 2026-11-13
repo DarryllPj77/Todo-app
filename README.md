@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-13): Phase 12A custom filters and saved views implemented; native acceptance pending.** **Saved views** combines literal search, completion, priority, exact category, date rules, and three sort orders, with named definitions stored separately for device tasks and each API/account cache. Phase 12 continues in small increments; tags and the other advanced features are still pending. No server migration, sync payload, or task/reminder schema change is needed. All **251 tests passed with no skips**, and the Windows build has **0 warnings/errors**. See [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for behavior and hands-on checks and [DEVELOPMENT_PROGRESS.md](docs/DEVELOPMENT_PROGRESS.md) for verification. Windows reminders still require the app running; mobile notification acceptance remains pending.
+**Current status (2026-11-13): Phase 12B tags implemented; native acceptance pending.** Tasks now carry up to ten normalized labels through device SQLite, the API/PostgreSQL, offline sync, editors, and saved-view tag rules. All **276 tests passed, none skipped**; the Windows build has **0 warnings/errors**. Apply the new AddTaskTags migration and use the updated client/API together; local files upgrade automatically without deleting pending work. See [TAGS.md](docs/TAGS.md) for upgrade/compatibility rules and hands-on checks. Next is Phase 12C task relationships. Existing native notification/mobile/sync acceptance remains pending.
 
 ## Technology and prerequisites
 
@@ -52,11 +52,11 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Twenty-seven PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 12A suite passed **251 tests, 0 skipped** (224 portable cases; 27 PostgreSQL facts are skipped only when the test connection is absent). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Thirty-two PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 12B suite passed **276 tests, 0 skipped** (244 portable cases; 32 PostgreSQL facts are skipped only when the test connection is absent). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
-First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all three included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
+First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all four included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -102,11 +102,12 @@ POST/PUT accept only these fields:
   "dueDate": "2026-11-20",
   "priority": "High",
   "categoryName": "Learning",
+  "tags": ["learning", "api"],
   "isCompleted": false
 }
 ```
 
-Priority is a JSON string: Low, Normal, or High; numeric values are rejected. DueDate is a nullable ISO calendar date. PUT is a full replacement: omitted description/dueDate/categoryName become null, priority defaults to Normal, and isCompleted defaults to false (reopens a completed task). Include every editable field whose value you want to retain. POST may also create an already completed task by explicitly setting isCompleted.
+Priority is a JSON string: Low, Normal, or High; numeric values are rejected. DueDate is a nullable ISO calendar date. PUT replaces the original editable fields: omitted description/dueDate/categoryName become null, priority defaults to Normal, and isCompleted defaults to false (reopens a completed task). Tags are compatibility-aware: omitted/null tags preserve the set; [] explicitly clears it. Include every editable field whose value you want to retain. POST may also create an already completed task by explicitly setting isCompleted.
 
 IDs/timestamps are server-generated response fields; categoryId is read-only. Unknown JSON properties (including id/createdAt/updatedAt/categoryId/navigation objects) return 400 instead of being silently accepted. Titles, descriptions, and category names use the existing trimmed domain length rules. Existing category names are reused case-insensitively; category management is not exposed yet. Responses are flat DTOs with categoryId/categoryName and no entity navigation graph. Validation errors return Problem Details with field errors; missing tasks return 404 Problem Details.
 
@@ -159,7 +160,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 
 ### Check account and server tasks
 
-1. Configure PostgreSQL, the JWT secret, and all three migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
+1. Configure PostgreSQL, the JWT secret, and all four migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
 2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
 3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
 4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.
@@ -191,7 +192,11 @@ Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Reminder
 
 Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** in the main toolbar. Choose Device or SyncedAccount, combine search/completion/priority/category/due rules, and click **Apply filters**. Enter a name and **Save as new view & apply** to reuse those rules later. Update/rename and confirmed deletion affect only the definition.
 
-Device views read device tasks; account views read only that API/account's current cache, so sync first to fetch server changes. Date rules use this device's day and recalculate on Apply/Refresh. Named views are local preferences, not task copies or cross-device subscriptions. Applying/deleting one does not change tasks, queues, conflicts, or reminders. Follow [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for the full checklist. Next increment: **Phase 12B tags**; the rest of Phase 12 remains open.
+Device views read device tasks; account views read only that API/account's current cache, so sync first to fetch server changes. Date rules use this device's day and recalculate on Apply/Refresh. Named views are local preferences, not task copies or cross-device subscriptions. Applying/deleting one does not change tasks, queues, conflicts, or reminders. Follow [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for the full checklist. Phase 12B now adds AllListed/AnyListed/Untagged rules and literal tag search; the rest of Phase 12 remains open.
+
+### Check tags
+
+Follow [TAGS.md](docs/TAGS.md) to stop/upgrade the API with AddTaskTags and rebuild the client after closing older builds. Use comma-separated labels in any task editor, then save/reopen or sync. Clear the field to explicitly remove all tags. In Saved views, combine AllListed/AnyListed/Untagged with existing filters. No category renaming or global tag catalog is implied.
 
 ## Database setup
 

@@ -78,6 +78,12 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValueSql("'[]'");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)

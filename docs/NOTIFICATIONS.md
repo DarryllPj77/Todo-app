@@ -58,3 +58,5 @@ ReminderRuntime restores the saved session and reconciles on window creation/res
 8. Test DST gaps/repeats, travel between time zones, 33+ future reminders, native failures, screen-reader labels, light/dark themes, and narrow/mobile layouts. OS delivery remains best effort.
 
 Automated verification uses real temporary SQLite files and actual portable services/ViewModels with a fake notification adapter. It verifies policy/persistence, UTC/DST rules, permissions, task mutation hooks, caps, races, account isolation, uncertain attempts, and cancellation failures. Windows compilation verifies native API/XAML references. Neither proves a toast displayed or that mobile source compiled/ran. Follow this checklist before relying on native delivery.
+
+Phase 12B adds tags to task storage and sync, but does not add tag names to native notification payloads or change reminder schema 1. A tag-only edit retains a reminder's instant. Completion, deletion, and due-date changes keep their existing cancellation policy.

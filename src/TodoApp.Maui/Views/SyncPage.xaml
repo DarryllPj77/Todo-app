@@ -18,13 +18,15 @@
    <CollectionView HeightRequest="260" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding IsIdle}">
     <CollectionView.EmptyView><Label Text="No account tasks cached. Sign in through Account &amp; server, then Sync or create a task here." /></CollectionView.EmptyView>
     <CollectionView.ItemTemplate><DataTemplate x:DataType="storage:ReplicaRow">
-     <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Summary}" /></VerticalStackLayout></Border>
+     <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout><Label Text="{Binding Title}" FontAttributes="Bold" /><Label Text="{Binding Summary}" /><Label Text="{Binding Local.Tags, StringFormat='Tags: {0}'}" /></VerticalStackLayout></Border>
     </DataTemplate></CollectionView.ItemTemplate>
    </CollectionView>
    <Button Text="New synced task" Command="{Binding NewCommand}" />
    <VerticalStackLayout IsEnabled="{Binding CanEdit}" Spacing="8">
     <Entry Placeholder="Title" Text="{Binding Title}" MaxLength="200" />
     <Editor Placeholder="Description" Text="{Binding Description}" MaxLength="4000" AutoSize="TextChanges" MinimumHeightRequest="90" />
+    <Label Text="Tags (comma-separated, up to 10; 1-32 characters each)" />
+    <Entry Text="{Binding TagsInput}" MaxLength="350" Placeholder="work, urgent" SemanticProperties.Description="Comma-separated task tags" />
     <Entry Placeholder="Category" Text="{Binding CategoryName}" MaxLength="100" />
     <Picker Title="Priority" ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}" />
     <DatePicker Date="{Binding DueDate, Mode=TwoWay}" />

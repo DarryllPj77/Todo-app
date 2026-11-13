@@ -48,13 +48,13 @@ public sealed class PostgresTaskService : ITaskService
         var journal = new SyncJournal(database, currentUser);
         await journal.LockAsync(cancellationToken);
         var category = await ResolveCategoryAsync(request.CategoryName, cancellationToken);
-        var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category);
+        var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
         task.SetCompleted(request.IsCompleted);
         database.Tasks.Add(task);
         database.Entry(task).Property<Guid?>("OwnerId").CurrentValue = currentUser.UserId;
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }
@@ -71,12 +71,12 @@ public sealed class PostgresTaskService : ITaskService
         if (task is null) return null;
 
         var category = await ResolveCategoryAsync(request.CategoryName, cancellationToken);
-        task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority);
+        task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
         task.SetCategory(category);
         task.SetCompleted(request.IsCompleted);
         await database.SaveChangesAsync(cancellationToken);
         await journal.RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-            task.Priority, task.Category?.Name, task.IsCompleted), cancellationToken);
+            task.Priority, task.Category?.Name, task.IsCompleted, task.Tags), cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         return TaskResponse.FromEntity(task);
     }

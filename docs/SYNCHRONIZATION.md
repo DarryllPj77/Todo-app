@@ -4,7 +4,7 @@
 
 The task-list toolbar now has **Synced tasks**, alongside the Phase 9 **Account & server** page. Sign in through Account first, then open Synced tasks. Device-only tasks in `todoapp.db3` remain separate and are never silently assigned, copied, or uploaded. Account & server remains a direct online workspace for testing the REST API. Synced tasks reads/writes its own account cache even when requests fail.
 
-`sync.db3` uses its own schema version 1 and a `ReplicaPartitions` table. A partition key combines the canonical HTTPS API origin and authenticated account ID. One partition state contains cached rows, the download cursor, immutable pending operations, latest local intent, conflicts, and retry state. A single SQLite transaction updates them together. This JSON state per partition is a deliberate small-dataset implementation; it avoids adding a second ORM. Larger datasets should use normalized replica/outbox tables and narrower queries.
+`sync.db3` uses its own schema version 2 (upgraded without rewriting legacy requests) and a `ReplicaPartitions` table. A partition key combines the canonical HTTPS API origin and authenticated account ID. One partition state contains cached rows, the download cursor, immutable pending operations, latest local intent, conflicts, and retry state. A single SQLite transaction updates them together. This JSON state per partition is a deliberate small-dataset implementation; it avoids adding a second ORM. Larger datasets should use normalized replica/outbox tables and narrower queries.
 
 Session tokens remain in SecureStorage. Task caches are ordinary SQLite files, **not encrypted**. Sign-out clears the visible account workspace but retains queued edits for reauthentication to the same origin/account. Different accounts/origins never load or send that partition. Cache hiding is an application boundary, not protection from someone with filesystem access to the same OS profile. There is no cache-purge UI in this phase; do not delete the cache to fix an error while it contains unacknowledged edits.
 
@@ -19,7 +19,7 @@ All routes require the usual JWT/account validation. Ownership always comes from
 | `GET /api/sync?cursor=0` | Latest changed entries, ordered by increasing revision; at most 100 per page, with Cursor and HasMore |
 | `POST /api/sync` | One immutable operation: OperationId, TaskId, BaseRevision, Deleted, and Task editable fields |
 
-`SyncEntry` contains TaskId, Revision, Deleted, and Task (null for a deletion). Task contains title, description, date, priority, category name, and completion. The API retains category reuse/validation rules; category management is still outside scope. Priority remains named JSON, unknown properties are rejected, IDs must be nonempty, revisions nonnegative, and deletion must have null Task. Sync creates preserve the client-generated task ID; ordinary REST creates still generate IDs on the server.
+`SyncEntry` contains TaskId, Revision, Deleted, and Task (null for a deletion). Task contains title, description, date, priority, category name, completion, and optional tags. The API retains category reuse/validation rules; category management is still outside scope. Priority remains named JSON, unknown properties are rejected, IDs must be nonempty, revisions nonnegative, and deletion must have null Task. Sync creates preserve the client-generated task ID; ordinary REST creates still generate IDs on the server.
 
 `SyncRecords` stores the latest revision/payload or deletion tombstone per account/task. `SyncReceipts` stores each account/operation's request and exact response. Both tables belong to Users. Receipts/tombstones are retained indefinitely in this learning implementation; pruning them would break retries/offline clients without a reviewed retention/reset protocol.
 
@@ -53,7 +53,7 @@ Automatic sync does not clear unsubmitted editor drafts. If the cached row chang
 
 ## Run and manually verify
 
-1. Stop your development API, apply all three migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
+1. Stop your development API, apply all four migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
 2. Close the older MAUI app before using `scripts/Run-Windows.ps1` to rebuild/run the new version. The Phase 10 verification build used isolated output so the running older app was not stopped or overwritten.
 3. Sign in through Account & server and open Synced tasks. Sync once to download existing account tasks. Save a new task locally; verify queued count and then Sync acknowledgement.
 4. Stop the API, create/edit/complete/delete disposable cached tasks, and confirm errors retain the queue. Restart the client while its saved session is valid and confirm cached data/operations remain. Restart the API and use Retry now; verify a single resulting server task per create.
@@ -67,3 +67,7 @@ Automated checks cover actual client services/ViewModels, temporary SQLite files
 ## Reminder integration (Phase 11)
 
 Reminder settings stay device-local and do not alter SyncTaskData, operation receipts, server revisions, or migrations. After a committed sync-store write, MAUI's Written callback reconciles reminders against the latest cached task state. Completion/deletion/due-date changes cancel alerts when the change reaches this device. A reminder failure cannot fail or roll back a committed upload acknowledgement/download; no remote push cancellation is claimed. See [NOTIFICATIONS.md](NOTIFICATIONS.md).
+
+## Tags and protocol 2 (Phase 12B)
+
+SyncPage now advertises ProtocolVersion=2. The engine checks this before uploading any operation whose Task explicitly includes Tags; older endpoints cause a blocked retained operation until upgrade/Retry now. Empty sets clear labels, while omitted/null sets preserve server tags on update. Missing legacy tags stay omitted during JSON serialization to preserve old receipt request bytes. Immutable TagSet value equality prevents requeue loops after JSON reload. Tags use existing whole-task conflict resolution; both sets are shown and never automatically unioned. See [TAGS.md](TAGS.md). Upgrade client/API versions together; old strict sync binaries are not claimed compatible with tagged snapshots.

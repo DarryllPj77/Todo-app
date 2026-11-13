@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
@@ -46,7 +47,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         {
             ArgumentNullException.ThrowIfNull(details);
             var category = ResolveCategory(connection, transaction, details.Category);
-            var task = new TaskItem(details.Title, details.Description, details.DueDate, details.Priority, category);
+            var task = new TaskItem(details.Title, details.Description, details.DueDate, details.Priority, category, details.Tags);
             SaveCategory(connection, transaction, category);
             SaveTask(connection, transaction, task, insert: true);
             return task;
@@ -64,7 +65,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 return false;
             }
 
-            task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority);
+            task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
             var category = task.CategoryId == details.Category?.Id
                 ? task.Category
                 : ResolveCategory(connection, transaction, details.Category);
@@ -139,7 +140,7 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
 
         var tasks = new Dictionary<Guid, TaskItem>();
         command.CommandText = """
-            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt
+            SELECT Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags
             FROM TaskItems;
             """;
         using var taskReader = command.ExecuteReader();
@@ -152,7 +153,8 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
                 taskReader.IsDBNull(4) ? null : DateOnly.ParseExact(taskReader.GetString(4), "yyyy-MM-dd", CultureInfo.InvariantCulture),
                 (TaskPriority)taskReader.GetInt32(5), category, taskReader.GetBoolean(3),
                 DateTimeOffset.ParseExact(taskReader.GetString(7), "O", CultureInfo.InvariantCulture),
-                DateTimeOffset.ParseExact(taskReader.GetString(8), "O", CultureInfo.InvariantCulture));
+                DateTimeOffset.ParseExact(taskReader.GetString(8), "O", CultureInfo.InvariantCulture),
+                JsonSerializer.Deserialize<TagSet>(taskReader.GetString(9)) ?? throw new InvalidDataException("Unreadable task tags."));
             tasks.Add(task.Id, task);
         }
 
@@ -196,15 +198,16 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         command.Transaction = transaction;
         command.CommandText = insert
             ? """
-                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt)
-                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated);
+                INSERT INTO TaskItems (Id, Title, Description, IsCompleted, DueDate, Priority, CategoryId, CreatedAt, UpdatedAt, Tags)
+                VALUES ($id, $title, $description, $completed, $due, $priority, $category, $created, $updated, $tags);
                 """
             : """
                 UPDATE TaskItems SET Title = $title, Description = $description, IsCompleted = $completed,
-                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated
+                    DueDate = $due, Priority = $priority, CategoryId = $category, CreatedAt = $created, UpdatedAt = $updated, Tags = $tags
                 WHERE Id = $id;
                 """;
         command.Parameters.AddWithValue("$id", task.Id.ToString());
+        command.Parameters.AddWithValue("$tags", JsonSerializer.Serialize(task.Tags));
         command.Parameters.AddWithValue("$title", task.Title);
         command.Parameters.AddWithValue("$description", (object?)task.Description ?? DBNull.Value);
         command.Parameters.AddWithValue("$completed", task.IsCompleted);

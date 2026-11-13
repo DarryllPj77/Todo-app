@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TodoApp.Domain.Entities;
 using TodoApp.Domain.Services;
 using TodoApp.Domain.Views;
 using TodoApp.Infrastructure.Services;
@@ -29,6 +30,8 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     private ViewCategory category;
     private ViewDue due;
     private ViewSort sort;
+    private ViewTagMode tagMode;
+    private string tagsInput = "";
     public ObservableCollection<SavedTaskView> SavedViews { get; } = new();
     public ObservableCollection<TaskViewRow> Results { get; } = new();
     public IReadOnlyList<TaskViewWorkspace> Workspaces { get; } = Enum.GetValues<TaskViewWorkspace>();
@@ -36,6 +39,7 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     public IReadOnlyList<ViewPriority> Priorities { get; } = Enum.GetValues<ViewPriority>();
     public IReadOnlyList<ViewCategory> Categories { get; } = Enum.GetValues<ViewCategory>();
     public IReadOnlyList<ViewDue> DueOptions { get; } = Enum.GetValues<ViewDue>();
+    public IReadOnlyList<ViewTagMode> TagModes { get; } = Enum.GetValues<ViewTagMode>();
     public IReadOnlyList<ViewSort> SortOptions { get; } = Enum.GetValues<ViewSort>();
     public bool IsIdle => !busy;
     public bool Available => !busy && (Workspace == TaskViewWorkspace.Device || session.Current is not null);
@@ -44,6 +48,8 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     public string Error { get => error; private set => SetProperty(ref error, value); }
     public string Status { get => status; private set => SetProperty(ref status, value); }
     public string TodayText => $"Date filters use this device's day: {DateOnly.FromDateTime(clock.GetLocalNow().DateTime):d}. NextSevenDays includes today plus six days.";
+    public ViewTagMode TagMode { get => tagMode; set => SetProperty(ref tagMode, value); }
+    public string TagsInput { get => tagsInput; set => SetProperty(ref tagsInput, value ?? ""); }
     public string Search { get => search; set => SetProperty(ref search, value ?? ""); }
     public string CategoryName { get => categoryName; set => SetProperty(ref categoryName, value ?? ""); }
     public string ViewName { get => viewName; set => SetProperty(ref viewName, value ?? ""); }
@@ -88,9 +94,10 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
         OpenCommand = Command(OpenAsync, () => SelectedTask is not null);
         session.Changed += SessionChanged;
     }
-    private TaskViewDefinition Draft() => new(Search, Completion, Priority, Category, CategoryName, Due, Sort);
+    private TaskViewDefinition Draft() => new(Search, Completion, Priority, Category, CategoryName, Due, Sort, TagMode, TagSet.Parse(TagsInput));
     private void SetDraft(TaskViewDefinition value)
     {
+        TagMode = value.TagMode; TagsInput = value.Tags?.ToString() ?? "";
         Search = value.Search; Completion = value.Completion; Priority = value.Priority; Category = value.Category;
         CategoryName = value.CategoryName; Due = value.Due; Sort = value.Sort;
     }
@@ -134,13 +141,13 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
         if (context.Workspace == TaskViewWorkspace.Device)
         {
             var tasks = await local.GetTasksAsync(); Ensure(context);
-            rows = tasks.Select(t => new TaskViewRow(new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDate, t.Priority, t.Category?.Name))).ToArray();
+            rows = tasks.Select(t => new TaskViewRow(new(t.Id, t.Title, t.Description, t.IsCompleted, t.DueDate, t.Priority, t.Category?.Name, t.Tags))).ToArray();
         }
         else
         {
             var state = await sync.ReadAsync(context.Scope); Ensure(context);
             rows = state.Rows.Values.Where(r => r.Local is not null).Select(r =>
-                new TaskViewRow(new(r.Id, r.Local!.Title, r.Local.Description, r.Local.IsCompleted, r.Local.DueDate, r.Local.Priority, r.Local.CategoryName), r.Summary)).ToArray();
+                new TaskViewRow(new(r.Id, r.Local!.Title, r.Local.Description, r.Local.IsCompleted, r.Local.DueDate, r.Local.Priority, r.Local.CategoryName, r.Local.Tags), r.Summary)).ToArray();
             syncSummary = $" {state.Rows.Values.Count(r => r.Pending is not null)} queued; {state.Rows.Values.Count(r => r.Conflict)} conflicts across the whole cache. Resolve them in Synced tasks.";
         }
         var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);

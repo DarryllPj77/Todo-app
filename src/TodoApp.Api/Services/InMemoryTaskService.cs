@@ -47,7 +47,7 @@ public sealed class InMemoryTaskService : ITaskService
             cancellationToken.ThrowIfCancellationRequested();
             Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
             var category = ResolveCategory(request.CategoryName);
-            var task = new TaskItem(request.Title!, request.Description, request.DueDate, request.Priority, category);
+            var task = new TaskItem(request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             tasks.Add(task.Id, task);
@@ -67,7 +67,7 @@ public sealed class InMemoryTaskService : ITaskService
             }
 
             var category = ResolveCategory(request.CategoryName);
-            task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority);
+            task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
             task.SetCategory(category);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);

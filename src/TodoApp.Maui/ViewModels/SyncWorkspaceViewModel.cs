@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Entities;
 using TodoApp.Domain.Sync;
 using TodoApp.Infrastructure.Services;
 using TodoApp.Maui.Services;
@@ -21,6 +22,7 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
     private DateTime? due;
     private TaskPriority priority = TaskPriority.Normal;
     private bool completed;
+    private string tagsInput = "";
     public ObservableCollection<ReplicaRow> Tasks { get; } = new();
     public IReadOnlyList<TaskPriority> Priorities { get; } = Enum.GetValues<TaskPriority>();
     public bool IsIdle => !busy;
@@ -30,13 +32,14 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
     public string Error { get => error; private set => SetProperty(ref error, value); }
     public string Title { get => title; set => SetProperty(ref title, value ?? ""); }
     public string Description { get => description; set => SetProperty(ref description, value ?? ""); }
+    public string TagsInput { get => tagsInput; set => SetProperty(ref tagsInput, value ?? ""); }
     public string CategoryName { get => category; set => SetProperty(ref category, value ?? ""); }
     public DateTime? DueDate { get => due; set => SetProperty(ref due, value); }
     public TaskPriority Priority { get => priority; set => SetProperty(ref priority, value); }
     public bool IsCompleted { get => completed; set => SetProperty(ref completed, value); }
-    public string LocalVersion => selected?.Local is { } local ? $"Saved local: {local.Title}; {local.Description}; {local.Priority}; {local.DueDate}; {local.CategoryName}; {(local.IsCompleted ? "Completed" : "Pending")}" : "Saved local: deletion";
+    public string LocalVersion => selected?.Local is { } local ? $"Saved local: {local.Title}; {local.Description}; {local.Priority}; {local.DueDate}; {local.CategoryName}; {(local.IsCompleted ? "Completed" : "Pending")}; Tags: {local.Tags}" : "Saved local: deletion";
     public string ServerVersion => selected?.Remote?.Task is { } task
-        ? $"Server: {task.Title}\n{task.Description}\n{task.Priority}; {task.DueDate}; {task.CategoryName}; {(task.IsCompleted ? "Completed" : "Pending")}"
+        ? $"Server: {task.Title}\n{task.Description}\n{task.Priority}; {task.DueDate}; {task.CategoryName}; {(task.IsCompleted ? "Completed" : "Pending")}; Tags: {task.Tags}"
         : "Server: deleted";
     public ReplicaRow? SelectedTask
     {
@@ -47,6 +50,7 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
             editorRevision = value?.Remote?.Revision ?? 0;
             editorLocal = value?.Local;
             var task = value?.Local;
+            TagsInput = task?.Tags?.ToString() ?? "";
             Title = task?.Title ?? ""; Description = task?.Description ?? ""; CategoryName = task?.CategoryName ?? "";
             DueDate = task?.DueDate?.ToDateTime(TimeOnly.MinValue); Priority = task?.Priority ?? TaskPriority.Normal;
             IsCompleted = task?.IsCompleted ?? false;
@@ -117,19 +121,21 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
     }
     private bool DraftChanged()
     {
+        TagSet draftTags;
+        try { draftTags = TagSet.Parse(TagsInput); } catch (ArgumentException) { return true; }
         var current = new SyncTaskData(Title, Description, DueDate is { } date ? DateOnly.FromDateTime(date) : null,
-            Priority, CategoryName, IsCompleted);
+            Priority, CategoryName, IsCompleted, draftTags);
         if (selected?.Local is not { } original)
             return Title.Length > 0 || Description.Length > 0 || CategoryName.Length > 0 || DueDate is not null ||
-                Priority != TaskPriority.Normal || IsCompleted;
-        return current != original with { Description = original.Description ?? "", CategoryName = original.CategoryName ?? "" };
+                Priority != TaskPriority.Normal || IsCompleted || TagsInput.Length > 0;
+        return current != original with { Description = original.Description ?? "", CategoryName = original.CategoryName ?? "", Tags = original.Tags ?? TagSet.Empty };
     }
 
     private async Task SaveAsync()
     {
         var version = session.Version;
         await store.QueueAsync(Partition, SelectedTask?.Id ?? Guid.NewGuid(), new SyncTaskData(Title, Description,
-            DueDate is { } date ? DateOnly.FromDateTime(date) : null, Priority, CategoryName, IsCompleted), SelectedTask is null ? null : editorRevision, editorLocal);
+            DueDate is { } date ? DateOnly.FromDateTime(date) : null, Priority, CategoryName, IsCompleted, TagSet.Parse(TagsInput)), SelectedTask is null ? null : editorRevision, editorLocal);
         session.EnsureVersion(version);
         await LoadAsync();
         Status += " - Saved locally. Sync sends queued changes.";

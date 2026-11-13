@@ -29,6 +29,8 @@
                         <Button Grid.Column="1" Text="Clear" Command="{Binding ClearDueDateCommand}"
                                 Style="{StaticResource TaskAction}" />
                     </Grid>
+                    <Label Text="Tags (comma-separated, up to 10; 1-32 characters each)" />
+                    <Entry Text="{Binding TagsInput}" MaxLength="350" Placeholder="work, urgent" SemanticProperties.Description="Comma-separated task tags" />
                     <Label Text="Category (optional)" FontAttributes="Bold" />
                     <Entry Text="{Binding CategoryName}" MaxLength="100" Placeholder="For example, Work or Personal"
                            SemanticProperties.Description="Optional category name" />

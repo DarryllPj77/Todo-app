@@ -493,3 +493,27 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A large roadmap phase can consist of independently reviewable model/storage/UI increments.
 
 **Short example:** Phase 12A adds saved rules over existing task fields. Tags, hierarchy, dependency cycles, recurrence, focus history, and desktop panes each still need their own design and validation; category text is not used to pretend tags already exist.
+
+## Immutable collections with value equality
+
+**Definition:** A collection used as a value should compare its contents and should not change through a retained array/list reference.
+
+**Short example:** TagSet normalizes and privately copies labels, serializes as a JSON array, and compares canonical contents. A new deserialized tag set equals the acknowledged intent, so sync does not queue another operation indefinitely.
+
+## Absent fields versus explicit clearing
+
+**Definition:** Versioned contracts need an explicit policy for fields older callers do not send.
+
+**Short example:** Omitted/null tags preserve existing values on update; [] clears them. Null tags are omitted from legacy sync serialization, keeping stored receipt request bytes compatible. This exception is deliberate and differs from the other PUT fields' original defaulting rules.
+
+## Capability checks before writes
+
+**Definition:** A client should know that an endpoint understands a feature before sending a feature-specific write.
+
+**Short example:** Tagged sync operations require ProtocolVersion 2. An older API causes a retained, blocked operation and an upgrade message; Retry now reuses its operation ID after upgrading.
+
+## Per-task labels versus global entities
+
+**Definition:** A bounded label set need not imply a global catalog with IDs, ownership, rename, and deletion relationships.
+
+**Short example:** Tags are normalized task values stored as JSON text. Categories keep their existing entity relationship, and tag filtering uses exact set membership. A global tag-management feature would need its own reviewed model and migration.

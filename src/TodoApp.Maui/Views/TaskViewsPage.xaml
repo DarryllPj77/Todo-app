@@ -25,6 +25,8 @@
     <VerticalStackLayout><Label Text="Due date rule" /><Picker ItemsSource="{Binding DueOptions}" SelectedItem="{Binding Due}" /></VerticalStackLayout>
     <VerticalStackLayout Grid.Column="1"><Label Text="Sort by" /><Picker ItemsSource="{Binding SortOptions}" SelectedItem="{Binding Sort}" /></VerticalStackLayout>
    </Grid>
+   <Label Text="Tag rule (exact normalized names)" /><Picker ItemsSource="{Binding TagModes}" SelectedItem="{Binding TagMode}" />
+   <Entry Text="{Binding TagsInput}" MaxLength="350" Placeholder="Tags for AllListed / AnyListed, for example work, urgent" />
    <Label Text="{Binding TodayText}" Style="{StaticResource TaskMuted}" />
    <Label Text="Due rules include completed tasks unless Completion is Pending. DueDate sort places undated tasks last; Priority sort places High first." Style="{StaticResource TaskMuted}" />
    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">

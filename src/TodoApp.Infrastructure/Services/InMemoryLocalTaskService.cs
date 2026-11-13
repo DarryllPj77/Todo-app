@@ -40,7 +40,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(details);
         var task = new TaskItem(details.Title, details.Description, details.DueDate,
-            details.Priority, details.Category);
+            details.Priority, details.Category, details.Tags);
         tasks.Add(task.Id, task);
         return Task.FromResult(task);
     }
@@ -55,7 +55,7 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
             return Task.FromResult(false);
         }
 
-        task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority);
+        task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
         task.SetCategory(details.Category);
         return Task.FromResult(true);
     }

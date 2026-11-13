@@ -77,10 +77,10 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     public async Task InitialMigration_IsRepeatableAndMatchesCurrentModel()
     {
         await using var context = OpenContext();
-        Assert.Equal(3, (await context.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(4, (await context.Database.GetAppliedMigrationsAsync()).Count());
         Assert.False(context.Database.HasPendingModelChanges());
         await context.Database.MigrateAsync();
-        Assert.Equal(3, (await context.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(4, (await context.Database.GetAppliedMigrationsAsync()).Count());
     }
 
     [PostgresFact]

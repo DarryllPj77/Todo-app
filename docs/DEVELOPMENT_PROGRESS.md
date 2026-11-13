@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 12A - Custom filters and saved views implemented; native acceptance pending.** The Saved views page supports literal search, combined completion/priority/category/date rules, deterministic sorting, and named create/update/rename/delete for device or active API/account cache scopes. All **251 tests passed, 0 failed, 0 skipped**, including the existing 27 PostgreSQL facts. The Windows-targeted solution/XAML build has **0 warnings/errors**. Definitions use independent views.db3 schema version 1; existing task/sync/reminder schemas, API/sync payloads, server migrations, and packages are unchanged. This is the first Phase 12 increment, not completion of the whole advanced-feature phase. Next is 12B tags. Native saved-view layout/interaction and previous notification/mobile/sync acceptance remain pending.
+**Phase 12B - Tags implemented; native acceptance pending.** Tasks now carry immutable normalized tag sets through device SQLite, PostgreSQL/API, offline sync, editors, summaries, and saved-view tag rules. All **276 tests passed, 0 failed, 0 skipped**, including **32 PostgreSQL facts**. Windows-targeted solution/XAML build: **0 warnings/errors**. AddTaskTags is the fourth server migration; device/sync/view files upgrade to schema 2 without deleting rows or rewriting legacy pending requests. Reminders remain schema 1 and generic. Upgrade client/API together using TAGS.md. Next is 12C task relationships; other advanced/native platform acceptance remains pending.
 
 ## Completed work
 
@@ -97,16 +97,28 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Verified zero generated test databases after the final run, stopped the isolated cluster, and confirmed the installed PostgreSQL 18 service remains running.
 - Added SAVED_VIEWS.md and updated README/architecture/database/learnings/roadmap/progress. Split Phase 12 into explicit A-G increments; tags, relationships, urgency/importance, recurrence, focus history, and the full adaptive workspace remain pending.
 
+- Added immutable TagSet with bounded canonical labels, NFC/lowercase normalization, duplicate removal, ordinal ordering, value equality/hash, CSV parsing, and an explicit JSON-array converter. Record equality now compares tag contents rather than mutable list references.
+- Extended TaskItem/TaskDetails and local/API models with tag sets. Omitted/null tags preserve existing values on update; explicit empty sets clear them. New task editors always submit an explicit set, while completion toggles preserve it.
+- Added atomic SQLite device schema 1-to-2 Tags column/default upgrade, tag hydration/writes, and no-reset future-version checks. Added EF immutable JSON conversion/comparer and generated 20261113092317_AddTaskTags migration/designer/snapshot; existing rows get []. No package was added.
+- Extended authenticated API DTOs, PostgreSQL/in-memory services, journal snapshots, sync apply, and response models. Validation rejects malformed/over-limit tag arrays before mutation; task ownership remains claim-derived.
+- Added SyncPage ProtocolVersion=2 and a capability gate before tag-aware uploads. Unsupported APIs block the same retained operation for explicit Retry now after upgrade. Null Tags remain omitted from old serialized operations so stored receipt request bytes still match.
+- Upgraded sync.db3/views.db3 format versions to 2 without rewriting old pending or definition JSON. Deep tag equality keeps acknowledgements finite; later explicit clears remain separate from immutable in-flight creates.
+- Added tag inputs/summaries/conflict-set display in device/server/sync editors and saved-view Any/AllListed/AnyListed/Untagged rules plus literal tag search. Existing categories, whole-task conflict policy, and reminder cancellation semantics remain independent.
+- Added 25 cases: 20 portable tag/domain/SQLite/query/editor/queue/compatibility checks and five real PostgreSQL REST/migration/receipt/two-replica cases. Targeted checks passed 20/20, including final frozen-payload/clear chaining assertions.
+- Complete suite passed 276/276 with no skips; final Windows solution/XAML build passed with 0 warnings/errors in .tools/phase12b-native. A sandbox-only startup test encountered the known Windows EventLog permission error; normal-access full verification passed without weakening the assertion.
+- Verified zero generated test databases, stopped the isolated cluster, and confirmed the installed PostgreSQL 18 service remains running.
+- Added TAGS.md, updated HTTP samples/README and all relevant docs with migration/contract/local-format upgrade rules. Existing user databases/app processes were not modified; native UI/mobile/TLS acceptance remains separate from test-host behavior.
+
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| Full CLI suite using TODOAPP_TEST_POSTGRES and the script's isolated artifacts path | Passed: 251 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection/artifacts path) |
+| Full CLI suite using TODOAPP_TEST_POSTGRES and the script's isolated artifacts path | Passed: 276 tests, 0 failed, 0 skipped (normal-access CLI with the isolated test connection/artifacts path) |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Final Phase 12A native build output | Passed: isolated .tools/phase12a-native, all five projects, 0 warnings/errors; old app was not stopped |
-| Final test result | .tools/phase12a-results/phase12a.trx: 251 passed, 0 failed, 0 skipped |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Twenty-seven PostgreSQL facts are explicitly skipped (224 portable cases); portable REST tests use explicit memory/auth substitutes |
+| Final Phase 12B native build output | Passed: isolated .tools/phase12b-native, all five projects, 0 warnings/errors; old app was not stopped |
+| Final test result | .tools/phase12b-results/phase12b.trx: 276 passed, 0 failed, 0 skipped |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Thirty-two PostgreSQL facts are explicitly skipped (244 portable cases); portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -115,7 +127,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 | Windows native direct launch | Passed: task-list empty state and editor visible in dark mode; app left available for user testing |
 | Full native CRUD/restart, light/narrow/mobile acceptance | Pending README manual checklist; not claimed from ViewModel/storage tests |
 | SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
-| PostgreSQL 18 verification | Passed: 27 real-database facts, including sync/receipt/concurrency/two-replica checks and existing client/auth/isolation/migration coverage; each fixture cleans up its own database |
+| PostgreSQL 18 verification | Passed: 32 real-database facts, including tags/migration/legacy-receipt checks plus existing sync/client/auth/isolation coverage; each fixture cleans up its own database |
 
 Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 compiled native Windows/XAML with a local workload. Phase 6 added 32 tests for the actual API pipeline: routes, response contracts, missing IDs, malformed JSON/values, length limits, unknown/server-owned fields, all filters, category reuse, parallel creates, cancellation, fresh server state, and refusal to start in Production. Integration tests use an in-memory HTTPS request host, not a deployed TLS certificate. A separate loopback HTTP listener passed real socket CRUD checks. The HTTP-only profile logged its expected missing HTTPS redirect-port warning. An initial smoke assertion mishandled PowerShell's empty-array wrapping; checking the final JSON body directly verified it was []. No application change was needed for that assertion correction.
 
@@ -132,21 +144,21 @@ Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 temp
 ## Work in progress / pending verification
 
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
-- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12A; the saved-view UI and prior reminder native delivery have not been exercised on devices here. The older app was left running.
+- Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows was compiled in Phase 12B; the saved-view UI and prior reminder native delivery have not been exercised on devices here. The older app was left running.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
-- Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all three migrations. No user credentials or persistent app connection were invented during this run.
+- Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply all four migrations. No user credentials or persistent app connection were invented during this run.
 - Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
-- Review Phase 12A using SAVED_VIEWS.md and retain the NOTIFICATIONS.md/SYNCHRONIZATION.md native acceptance gates before relying on platform behavior. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
+- Review Phase 12B using TAGS.md and SAVED_VIEWS.md and retain the NOTIFICATIONS.md/SYNCHRONIZATION.md native acceptance gates before relying on platform behavior. No refresh token/revocation/password-reset/email-verification system is implemented; the API remains Development-only.
 - Verify Reminders native permission/display/cancellation/time/account behavior using NOTIFICATIONS.md. Android/Apple adapters need compilation/device checks, and Windows closed-app delivery remains outside this unpackaged implementation.
-- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device-only SQLite schema is unchanged; sync.db3 is a separate version-1 cache.
+- Session and synced UI/storage code compile on Windows; actual device HTTPS, acquisition/restoration/expiry/logout, native layout/connectivity/timer, and two-device acceptance remain pending. Device tasks, sync, and saved-view files now use schema 2 for tags; reminders remain schema 1.
 - API DueToday currently follows the server's local date; define a per-user time-zone policy before release; sync dates are calendar values. Production deployment remains later work.
 
 ## Uncommitted changes
 
-Phase 12A changes are uncommitted; no commit or push was performed for this increment. Phase 11 is recorded in local commit `ab07130`, verified at the start. The user-added untracked `.vscode/` directory remains outside scope. Portable tools, logs, test-cluster files, and build output remain ignored.
+Phase 12B changes are uncommitted; no commit or push was performed for this increment. Phase 12A is recorded in local commit `b2d860e`, verified at the start. User-added untracked `.vscode/` remains excluded. Build/test/tool/cluster files stay ignored.
 
-- New: Domain/Views models/query rules, SqliteTaskViewStore, TaskViewRow, TaskViewsViewModel/TaskViewsPage, TaskViewQueryTests/TaskViewStoreTests/TaskViewsViewModelTests, docs/SAVED_VIEWS.md.
-- Modified: MAUI DI/navigation/main toolbar, navigation test fakes, README and five existing core docs.
+- New: TagSet/converter, AddTaskTags migration/designer, TagTests/PostgresTagTests, docs/TAGS.md.
+- Modified: domain task/local/sync/view contracts, SQLite task/sync/view formats, EF mapping/snapshot, API DTO/services/journal/sync/HTTP samples, MAUI models/editors/saved views/engine, schema-count regression expectations, README and docs.
 - Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
@@ -177,12 +189,13 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - `079753a` - `Implement Phase 9 MAUI account and API integration`: committed and pushed to origin/main in the preceding user-authorized turn.
 - `2a7fe54` - `Implement Phase 10 offline account synchronization`: verified in local Git history at the start of Phase 11.
 - `ab07130` - `Implement Phase 11 device-local task reminders`: verified in local Git history at the start of Phase 12A.
-- Phase 12A has no committed milestone yet. No merge or force-push has been performed.
+- `b2d860e` - `Implement Phase 12A custom filters and saved views`: verified in local Git history at the start of Phase 12B.
+- Phase 12B has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Close the older app, rebuild with scripts/Run-Windows.ps1, and follow SAVED_VIEWS.md's filter/name/restart/scope/navigation/concurrent-window checklist. No new server migration is required. Review Phase 12A before **12B tags**; continue Phase 12's later increments separately rather than skipping to Phase 13. Existing native reminder/mobile/HTTPS/sync acceptance and durable Windows closed-app notification delivery remain open platform milestones.
+Follow TAGS.md to stop the development API/older client, apply AddTaskTags through the configured Development secrets, restart HTTPS, and rebuild the client. Preserve all local queues/caches. Complete tag editor/restart/two-device/saved-view native acceptance. Review 12B before 12C task relationships; hierarchy and dependencies need separate models/rules before implementation. Existing mobile/notification/TLS/sync acceptance remains open; Windows reminders still require the app running.
 
 ## What to learn now
 
-Distinguish query rules from task copies, editable controls from an applied query, and local preference revisions from server task revisions. Trace literal search and combined predicates through stable sort/tie-break rules. Learn why relative dates recompute from the device day, why account-scope generations reject stale reads, and why deleting a view must never delete tasks. See LEARNINGS.md and SAVED_VIEWS.md.
+Trace a canonical immutable TagSet through JSON, SQLite/EF, an immutable outbox operation, server receipt, and acknowledgement equality. Understand absent versus explicit-empty fields, why capability checks happen before writes, and why a data upgrade must preserve old operation bytes. Compare per-task values with a global tag entity/catalog and exact set membership with substring search. See LEARNINGS.md and TAGS.md.
