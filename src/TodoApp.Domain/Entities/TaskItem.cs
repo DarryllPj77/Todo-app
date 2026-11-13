@@ -1,4 +1,5 @@
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Domain.Entities;
 
@@ -8,6 +9,7 @@ public sealed class TaskItem
     public const int MaxDescriptionLength = 4000;
 
     public TagSet Tags { get; private set; } = TagSet.Empty;
+    public Guid? ParentTaskId { get; private set; }
     public Guid Id { get; private set; } = Guid.NewGuid();
     public string Title { get; private set; }
     public string? Description { get; private set; }
@@ -54,7 +56,7 @@ public sealed class TaskItem
 
     internal static TaskItem Restore(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null)
     {
         if (id == Guid.Empty)
         {
@@ -62,15 +64,16 @@ public sealed class TaskItem
         }
 
         return new TaskItem(id, title, description, dueDate, priority, category,
-            isCompleted, createdAt, updatedAt, tags);
+            isCompleted, createdAt, updatedAt, tags, parentTaskId);
     }
 
     private TaskItem(Guid id, string title, string? description, DateOnly? dueDate,
         TaskPriority priority, Category? category, bool isCompleted,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null)
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, TagSet? tags = null, Guid? parentTaskId = null)
         : this(title, description, dueDate, priority, category, tags)
     {
         Id = id;
+        SetParent(new TaskParent(parentTaskId));
         IsCompleted = isCompleted;
         CreatedAt = createdAt.ToUniversalTime();
         UpdatedAt = updatedAt.ToUniversalTime();
@@ -95,6 +98,13 @@ public sealed class TaskItem
         DueDate = dueDate;
         Priority = priority;
         UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetParent(TaskParent parent)
+    {
+        if (parent.Id == Guid.Empty || parent.Id == Id) throw new TaskHierarchyException("A task cannot be its own parent or use an empty ID.");
+        if (ParentTaskId == parent.Id) return;
+        ParentTaskId = parent.Id; UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void SetTags(TagSet tags)

@@ -53,7 +53,7 @@ Automatic sync does not clear unsubmitted editor drafts. If the cached row chang
 
 ## Run and manually verify
 
-1. Stop your development API, apply all four migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
+1. Stop your development API, apply all five migrations using DATABASE.md, then restart its HTTPS profile. Trust the matching certificate on each test device; certificate validation remains enabled.
 2. Close the older MAUI app before using `scripts/Run-Windows.ps1` to rebuild/run the new version. The Phase 10 verification build used isolated output so the running older app was not stopped or overwritten.
 3. Sign in through Account & server and open Synced tasks. Sync once to download existing account tasks. Save a new task locally; verify queued count and then Sync acknowledgement.
 4. Stop the API, create/edit/complete/delete disposable cached tasks, and confirm errors retain the queue. Restart the client while its saved session is valid and confirm cached data/operations remain. Restart the API and use Retry now; verify a single resulting server task per create.
@@ -70,4 +70,10 @@ Reminder settings stay device-local and do not alter SyncTaskData, operation rec
 
 ## Tags and protocol 2 (Phase 12B)
 
-SyncPage now advertises ProtocolVersion=2. The engine checks this before uploading any operation whose Task explicitly includes Tags; older endpoints cause a blocked retained operation until upgrade/Retry now. Empty sets clear labels, while omitted/null sets preserve server tags on update. Missing legacy tags stay omitted during JSON serialization to preserve old receipt request bytes. Immutable TagSet value equality prevents requeue loops after JSON reload. Tags use existing whole-task conflict resolution; both sets are shown and never automatically unioned. See [TAGS.md](TAGS.md). Upgrade client/API versions together; old strict sync binaries are not claimed compatible with tagged snapshots.
+Phase 12B introduced protocol 2 for tags; the current API advertises 3 for hierarchy. The engine checks capability before feature-aware writes; tags require at least 2 and Parent requires 3. Older endpoints cause a blocked retained operation until upgrade/Retry now. Empty sets clear labels, while omitted/null sets preserve server tags on update. Missing legacy tags stay omitted during serialization to preserve old receipt bytes. Immutable TagSet equality prevents requeue loops. Tags retain whole-task conflict resolution without automatic unions. See [TAGS.md](TAGS.md). Upgrade client/API versions together.
+
+## Hierarchy and protocol 3 (Phase 12C.1)
+
+Parent creates precede child links; known live server children must detach/delete before a parent deletion uploads. A bounded pass or concurrent server changes may require another Sync. Missing ancestors and conflicting concurrent moves still undergo server validation. A structural rejection is a receipted conflict with current server state and a safe reason; local fields remain. Task hierarchy offers confirmed Keep local fields with a valid parent, guarded by expected local snapshot/server revision, or Use server. The ordinary whole-task Keep mine may conflict again if placement remains invalid.
+
+Explicit Parent.Id=null means root; absent Parent preserves placement. Null outer Parent is omitted from legacy request serialization, so both pre-tag and tagged receipts can replay unchanged. sync.db3 now uses schema 3 without rewriting old pending payloads on read. See [HIERARCHY.md](HIERARCHY.md) for migration commands and native acceptance. No dependency edges are included.

@@ -3,6 +3,7 @@ using TodoApp.Api.Contracts;
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Rules;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Api.Services;
 
@@ -46,8 +47,11 @@ public sealed class InMemoryTaskService : ITaskService
         {
             cancellationToken.ThrowIfCancellationRequested();
             Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
+            var id = Guid.NewGuid();
+            TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, request.Parent?.Id);
             var category = ResolveCategory(request.CategoryName);
-            var task = new TaskItem(request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
+            var task = TaskItem.CreateWithId(id, request.Title!, request.Description, request.DueDate, request.Priority, category, request.Tags);
+            if (request.Parent is { } parent) task.SetParent(parent);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             tasks.Add(task.Id, task);
@@ -66,12 +70,25 @@ public sealed class InMemoryTaskService : ITaskService
                 return Task.FromResult<TaskResponse?>(null);
             }
 
+            if (request.Parent is { } requestedParent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, requestedParent.Id);
             var category = ResolveCategory(request.CategoryName);
             task.UpdateDetails(request.Title!, request.Description, request.DueDate, request.Priority, request.Tags);
             task.SetCategory(category);
+            if (request.Parent is { } parent) task.SetParent(parent);
             task.SetCompleted(request.IsCompleted);
             RememberCategory(category);
             return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
+        }
+    }
+
+    public Task<TaskResponse?> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken)
+    {
+        lock (gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!tasks.TryGetValue(id, out var task)) return Task.FromResult<TaskResponse?>(null);
+            TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parentId);
+            task.SetParent(new TaskParent(parentId)); return Task.FromResult<TaskResponse?>(TaskResponse.FromEntity(task));
         }
     }
 
@@ -80,6 +97,7 @@ public sealed class InMemoryTaskService : ITaskService
         lock (gate)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            TaskHierarchy.ValidateDelete(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id);
             if (!tasks.Remove(id, out var task))
             {
                 return Task.FromResult(false);

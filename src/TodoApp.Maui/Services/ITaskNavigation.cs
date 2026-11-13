@@ -9,5 +9,7 @@ public interface ITaskNavigation
     Task OpenSyncAsync();
     Task OpenRemindersAsync();
     Task OpenTaskViewsAsync();
+    Task OpenHierarchyAsync();
+    Task<bool> ConfirmHierarchyConflictAsync(string title);
     Task<bool> ConfirmDeleteViewAsync(string name);
 }

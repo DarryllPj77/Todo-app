@@ -13,5 +13,6 @@ public interface ILocalTaskService
     Task<TaskItem> CreateAsync(TaskDetails details, CancellationToken cancellationToken = default);
     Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken cancellationToken = default);
     Task<bool> SetCompletedAsync(Guid id, bool isCompleted, CancellationToken cancellationToken = default);
+    Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

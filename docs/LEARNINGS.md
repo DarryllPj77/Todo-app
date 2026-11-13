@@ -517,3 +517,27 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A bounded label set need not imply a global catalog with IDs, ownership, rename, and deletion relationships.
 
 **Short example:** Tags are normalized task values stored as JSON text. Categories keep their existing entity relationship, and tag filtering uses exact set membership. A global tag-management feature would need its own reviewed model and migration.
+
+## A hierarchy is different from a dependency graph
+
+**Definition:** A hierarchy gives each task one optional parent; a dependency graph models prerequisites, potentially with multiple edges.
+
+**Short example:** A child under Project can be completed independently. A future blocked-by edge needs a separate completion/blocking policy. Parent nesting does not imply a dependency.
+
+## Foreign keys do not prevent cycles
+
+**Definition:** A self FK ensures a referenced task exists, but cannot alone reject A-under-B/B-under-A or enforce an ancestor depth limit.
+
+**Short example:** Validate the moved subtree and ancestor paths inside the write transaction. The server's per-owner lock ensures a concurrent opposite move sees the first committed move and rejects the cycle. Count descendants when enforcing the 16-level limit.
+
+## Missing input versus explicit root
+
+**Definition:** An additive nullable wrapper distinguishes an old caller omitting a feature from an intentional relationship clear.
+
+**Short example:** Missing Parent preserves placement; TaskParent(null) detaches. Omitting absent Parent from legacy JSON also preserves exact receipt request bytes.
+
+## Order operations and preserve rejected intent
+
+**Definition:** Related writes need ordering, while concurrent invalid structure needs review rather than an endless blind retry.
+
+**Short example:** Upload a new parent before its child link and delete children before the parent. If another replica makes a move cyclic, keep its local fields as a conflict. Confirm a valid new parent against the displayed revision, then queue a fresh operation. See HIERARCHY.md.

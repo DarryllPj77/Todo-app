@@ -2,7 +2,7 @@
 
 ## Current state
 
-Device tasks use todoapp.db3 schema **2** with normalized tag JSON. The API has four migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, and AddTaskTags. The last adds required Tasks.Tags text defaulting to []. sync.db3 and views.db3 use schema **2** for tag-aware JSON; reminders.db3 stays at **1**. Existing local rows, account ownership, queues, receipts, and saved definitions are retained. Verification used isolated test databases, not your development database. Follow TAGS.md to stop/upgrade the API and client together.
+Device tasks use todoapp.db3 schema **3** with tag JSON and nullable ParentTaskId. The API has five migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, and AddTaskHierarchy. The last adds an indexed nullable self FK with restricted deletion and a non-self check. sync.db3 uses schema **3**, views.db3 remains **2**, and reminders.db3 stays at **1**. Existing tasks become roots; fields, ownership, queues, receipts, and saved definitions are retained. Verification used isolated test databases, not your development database. Follow HIERARCHY.md to upgrade the API and client together.
 
 ## Initial entities and relationship
 
@@ -30,7 +30,7 @@ SQLite configures and tests category deletion with ON DELETE SET NULL, preservin
 
 ## SQLite: local device storage
 
-The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list performs the first query, creating the directory/file and current schema version 2 when absent (initial creation followed by the explicit tag upgrade). SQLite data/journal files are ignored by Git. Windows native build/initial access passes; mobile packaging remains unverified.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 3 when absent (initial creation followed by explicit tag/parent upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
 
 The editor keeps title/description/category/date/priority fields separate from loaded entities until Save. It matches an entered category name case-insensitively against categories visible among existing tasks; new names create a new category on save. Blank category clears the association. Empty stored categories have no browsing/management UI yet. Cancel/Back discards fields without a write. Completion is changed from the list separately, and deleting a task requires a native confirmation.
 
@@ -55,9 +55,9 @@ Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](http
 
 ### Schema version and upgrade strategy
 
-`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates both tables/index and changes it to 1 in one transaction. Version 1 is reopened without recreating tables or deleting data. A version above 1 is rejected with a clear exception, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
+`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2) and parent (2-to-3) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 3 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
 
-Initialization plus the tested version-1-to-2 tag upgrade exist today. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
+Initialization and both incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
 
@@ -166,7 +166,7 @@ Phase 10 introduces the separate synced cache described above; Phase 9's direct 
 
 Desired choices and cancellations persist before native side effects. A failed notification call does not roll back or misreport an already committed task/sync write. Windows saves its one-attempt marker before showing an alert, so an uncertain delivery/crash is not automatically retried. This is best effort, not a distributed transaction with the OS.
 
-Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all four migrations including Phase 12B AddTaskTags.
+Task/reminder captions are unencrypted local data; tokens remain in SecureStorage. Reminder settings are not server entities, EF migrations, outbox operations, or automatic cross-device subscriptions. Android keeps only nonsecret active-scope metadata in Preferences for its receiver. No Phase 11 EF update is needed; current API users need all five migrations including Phase 12C.1 AddTaskHierarchy.
 
 ## Saved-view metadata (Phase 12A)
 
@@ -179,3 +179,9 @@ The stored JSON contains validated existing-field query rules, not task snapshot
 The device schema-2 upgrade ALTERs TaskItems with required Tags TEXT DEFAULT '[]' inside initialization's transaction. Reads restore a validated immutable TagSet; writes serialize it with the task's other fields in the same transaction. AddTaskTags applies the equivalent required Tasks.Tags text column/default in PostgreSQL through EF JSON conversion/value comparison. No global Tags/TaskTags tables or global tag rename policy is introduced for this bounded per-task value model.
 
 sync.db3 and views.db3 advance from version 1 to 2 for the extended task/definition formats. Read-time upgrades do not rewrite legacy pending requests or saved-definition JSON. Old operations with null/absent Tags continue omitting that property for receipt matching; explicit empty sets mean clear. Old client binaries reject newer local versions. No reset, cache deletion, receipt pruning, or automatic server migration runs. No new package is needed. See TAGS.md for coordinated upgrade commands and rollback limits; dropping the server Tags column would lose tag data.
+
+## Parent hierarchy (Phase 12C.1)
+
+AddTaskHierarchy adds nullable Tasks.ParentTaskId uuid, an index, a non-self check, and a self FK with ON DELETE RESTRICT. The device's transactional 2-to-3 upgrade adds the equivalent nullable TEXT column/index/FK/check. Existing rows become roots with all tags/timestamps retained. Services enforce same-workspace/account parents, cycles, and the 16-level limit inside the write transaction; direct SQL must preserve these rules too.
+
+sync.db3 advances to schema 3 without rewriting old pending JSON on read. Parent is an optional change wrapper: omitted/null outer Parent preserves placement, explicit Id=null moves to root. Legacy receipt bytes remain stable through null-property omission. Views remain schema 2 and reminders remain schema 1. HIERARCHY.md contains upgrade/compatibility/repair rules; migration Down loses parent relationships and is not a safe active-data downgrade.

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Sync;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Infrastructure.Services;
 
@@ -11,10 +12,11 @@ public sealed class ReplicaRow
     public SyncTaskData? Local { get; set; }
     public SyncEntry? Remote { get; set; }
     public SyncMutation? Pending { get; set; }
+    public string? ConflictReason { get; set; }
     public bool Conflict { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset RetryAt { get; set; }
-    public string Summary => Conflict ? "Conflict: choose Keep mine or Use server" :
+    public string Summary => Conflict ? ConflictReason ?? "Conflict: choose Keep mine or Use server" :
         Pending is not null ? Local is null ? "Deletion queued" : "Changes queued" : "Synced";
     public string Title => Local?.Title ?? Remote?.Task?.Title ?? Pending?.Task?.Title ?? "Deleted task";
 }
@@ -40,9 +42,36 @@ public sealed class SqliteSyncStore(string path)
         if (expectedRevision is { } expected && ((row.Remote?.Revision ?? 0) != expected || row.Local != expectedLocal))
             throw new ArgumentException("This cached task changed while you were editing. Copy your draft, then reload and review it before saving.");
         if (row.Conflict) throw new InvalidOperationException("Resolve this task's conflict before editing it.");
+        if (data is null) TaskHierarchy.ValidateDelete(Links(state), id);
+        else
+        {
+            data = data with { Parent = data.Parent ?? row.Local?.Parent };
+            if (data.Parent is { } placement) TaskHierarchy.ValidateMove(Links(state).Where(t => t.Id != id).Append(new TaskLink(id, null)), id, placement.Id);
+        }
         row.Local = data;
         // Never replace an outgoing payload: a lost response may already have committed it.
         row.Pending ??= Mutation(row);
+        return true;
+    });
+
+    private static IEnumerable<TaskLink> Links(ReplicaState state) => state.Rows.Values.Where(r => r.Local is not null)
+        .Select(r => new TaskLink(r.Id, r.Local!.Parent?.Id));
+
+    public Task ReparentAsync(string partition, Guid id, Guid? parentId, long expectedRevision,
+        SyncTaskData expectedLocal, bool keepLocalConflict = false) => ExecuteAsync(partition, state =>
+    {
+        var row = state.Rows[id];
+        if (row.Local is null || row.Local != expectedLocal || (row.Remote?.Revision ?? 0) != expectedRevision)
+            throw new TaskHierarchyException("This task changed. Refresh and review the hierarchy before moving it.");
+        if (row.Conflict && !keepLocalConflict) throw new TaskHierarchyException("Review the conflict before choosing Keep local fields with a new parent.");
+        TaskHierarchy.ValidateMove(Links(state), id, parentId);
+        row.Local = row.Local with { Parent = new TaskParent(parentId) };
+        if (row.Conflict)
+        {
+            row.Conflict = false; row.ConflictReason = null; row.Pending = Mutation(row);
+            row.Attempts = 0; row.RetryAt = default;
+        }
+        else row.Pending ??= Mutation(row);
         return true;
     });
 
@@ -52,7 +81,7 @@ public sealed class SqliteSyncStore(string path)
         if (!row.Conflict) throw new InvalidOperationException("This task has no conflict.");
         if (expectedRevision is { } expected && row.Remote?.Revision != expected)
             throw new ArgumentException("The server version changed. Reload and review both versions before resolving this conflict.");
-        row.Conflict = false;
+        row.Conflict = false; row.ConflictReason = null;
         row.Pending = keepMine ? Mutation(row) : null;
         if (!keepMine) row.Local = row.Remote?.Task;
         row.Attempts = 0; row.RetryAt = default;
@@ -71,6 +100,7 @@ public sealed class SqliteSyncStore(string path)
         row.Remote = latest;
         row.Pending = null;
         row.Attempts = 0; row.RetryAt = default;
+        row.ConflictReason = result.ConflictReason;
         if (result.Conflict) row.Conflict = true;
         else if (row.Local == sent.Task) row.Local = latest.Task;
         else if (latest.Revision > result.Current.Revision) row.Conflict = true;
@@ -91,7 +121,7 @@ public sealed class SqliteSyncStore(string path)
     {
         if (state.Cursor != fromCursor) throw new InvalidOperationException("The download cursor changed; retry sync.");
         if (page.Cursor < fromCursor || page.Changes.Any(e => e.Revision <= fromCursor || e.Revision > page.Cursor ||
-            e.TaskId == Guid.Empty || e.Deleted != (e.Task is null)) ||
+            e.TaskId == Guid.Empty || e.Task?.Parent?.Id == Guid.Empty || e.Task?.Parent?.Id == e.TaskId || e.Deleted != (e.Task is null)) ||
             page.Changes.Select(e => e.Revision).Distinct().Count() != page.Changes.Length ||
             (page.Changes.Length > 0 && page.Changes.Max(e => e.Revision) != page.Cursor) ||
             (page.Changes.Length == 0 && (page.Cursor != fromCursor || page.HasMore)))
@@ -133,8 +163,8 @@ public sealed class SqliteSyncStore(string path)
             command.Transaction = transaction;
             command.CommandText = "PRAGMA user_version;";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version > 2) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=2;";
+            if (version > 3) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=3;";
             command.ExecuteNonQuery();
             command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
             command.Parameters.AddWithValue("$partition", partition);

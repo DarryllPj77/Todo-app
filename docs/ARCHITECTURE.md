@@ -195,9 +195,17 @@ TagSet is an immutable, normalized, value-equal collection of at most ten labels
 
 SQLite stores tags as JSON text in a new TaskItems.Tags column through its atomic 1-to-2 schema upgrade. PostgreSQL's AddTaskTags migration adds Tasks.Tags with [] default, explicit EF JSON conversion, and immutable value comparison. Normal API/sync writes journal complete tag sets with their existing owner/revision rules. No tag IDs or owner IDs are accepted from callers, and invalid tag arrays fail before mutation.
 
-SyncPage advertises protocol 2; the engine probes capability before any tag-aware upload and blocks old APIs while retaining the same operation. Null tags are omitted from legacy serialized SyncTaskData so pre-upgrade receipt request bytes remain stable. TagSet's deep equality prevents deserialized collections from causing endless acknowledgement/requeue cycles. Tags follow whole-task conflicts, without automatic set unions. sync.db3/views.db3 advance to schema 2 without rewriting legacy pending payloads; coordinated client/API upgrades are required.
+Phase 12B introduced protocol 2 for tags; current protocol 3 also supports hierarchy. The engine probes capability before feature-aware upload and blocks old APIs while retaining the same operation. Null tags/Parent are omitted from legacy serialized SyncTaskData so old receipt request bytes remain stable. TagSet's deep equality prevents deserialized collections from causing endless acknowledgement/requeue cycles. Tags follow whole-task conflicts, without automatic set unions. The tag upgrade introduced schema 2 for sync/views; hierarchy advances only sync to 3. Coordinated client/API upgrades are required.
 
 All editors accept comma-separated labels and explicitly clear with an empty set. Saved-view search includes tag substrings; exact AllListed/AnyListed/Untagged rules combine with existing predicates. Notifications remain generic and tag-only edits do not cancel a reminder. See [TAGS.md](TAGS.md) for storage tradeoffs, compatibility, migration ordering, and native acceptance.
+
+## Parent hierarchy (Phase 12C.1)
+
+Domain/Relationships defines TaskParent (an optional change wrapper), TaskLink, and shared pure cycle/depth/delete validation. TaskItem stores scalar ParentTaskId; services validate the workspace graph transactionally. SetParentAsync changes only placement. The server retains its per-owner advisory lock through validation/write/journal, preventing opposite concurrent moves from creating a cycle. Self FKs/checks/indexes add storage guards but do not replace ownership/cycle/depth checks.
+
+Device schema 3 and AddTaskHierarchy preserve existing rows as roots. Sync schema 3 retains immutable old pending operations; protocol 3 guards new parent intent. The engine orders parent creation/child links and known child detach/delete/parent deletion. Structural rejection becomes a receipted whole-task conflict with a safe reason, preserving local intent. ReparentAsync repairs against expected local fields and remote revision after explicit confirmation; normal edits never replace an in-flight payload.
+
+HierarchyViewModel reads one selected device/account scope, defensively flattens trees, excludes descendant parent choices, and clears account results when session context changes. The native Task hierarchy page and parent-only service keep ordinary editors simple and preserve unrelated fields. Parent completion does not cascade; parent deletion is restricted. Saved views remain flat, reminders remain independent, and blocking dependencies are deferred to 12C.2. See [HIERARCHY.md](HIERARCHY.md).
 
 ## Build boundaries
 

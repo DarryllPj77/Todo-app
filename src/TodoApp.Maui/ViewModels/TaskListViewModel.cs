@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Relationships;
 using TodoApp.Domain.Services;
 using TodoApp.Maui.Models;
 using TodoApp.Maui.Services;
@@ -29,6 +30,7 @@ public sealed class TaskListViewModel : ObservableViewModel
     public AsyncCommand EditCommand { get; }
     public AsyncCommand ToggleCommand { get; }
     public AsyncCommand DeleteCommand { get; }
+    public AsyncCommand HierarchyCommand { get; }
     public AsyncCommand TaskViewsCommand { get; }
     public AsyncCommand RemindersCommand { get; }
     public AsyncCommand SyncCommand { get; }
@@ -82,6 +84,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         EditCommand = Command(() => navigation.EditTaskAsync(SelectedTask!.Id), needsSelection: true);
         ToggleCommand = Command(ToggleAsync, needsSelection: true);
         DeleteCommand = Command(DeleteAsync, needsSelection: true);
+        HierarchyCommand = Command(navigation.OpenHierarchyAsync);
         TaskViewsCommand = Command(navigation.OpenTaskViewsAsync);
         RemindersCommand = Command(navigation.OpenRemindersAsync);
         SyncCommand = Command(navigation.OpenSyncAsync);
@@ -102,6 +105,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         {
             await action();
         }
+        catch (TaskHierarchyException error) { ErrorMessage = error.Message; }
         catch (Exception)
         {
             ErrorMessage = "Couldn't finish the request. Refresh to check your saved tasks, then try again.";
@@ -171,5 +175,6 @@ public sealed class TaskListViewModel : ObservableViewModel
         SyncCommand.NotifyCanExecuteChanged();
         RemindersCommand.NotifyCanExecuteChanged();
         TaskViewsCommand.NotifyCanExecuteChanged();
+        HierarchyCommand.NotifyCanExecuteChanged();
     }
 }

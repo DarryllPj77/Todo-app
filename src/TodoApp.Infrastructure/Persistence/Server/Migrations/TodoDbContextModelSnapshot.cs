@@ -75,6 +75,9 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<Guid?>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ParentTaskId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -98,8 +101,12 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
 
                     b.HasIndex("OwnerId");
 
+                    b.HasIndex("ParentTaskId");
+
                     b.ToTable("Tasks", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Tasks_Parent", "\"ParentTaskId\" IS NULL OR \"ParentTaskId\"<>\"Id\"");
+
                             t.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
 
                             t.HasCheckConstraint("CK_Tasks_Title", "length(btrim(\"Title\")) BETWEEN 1 AND 200");
@@ -198,6 +205,11 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.HasOne("TodoApp.Infrastructure.Persistence.Server.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TodoApp.Domain.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("ParentTaskId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Category");

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Maui.Models"
+ x:Class="TodoApp.Maui.Views.HierarchyPage" x:DataType="vm:HierarchyViewModel" Title="Task hierarchy" Style="{StaticResource TaskPage}">
+ <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+  <Label Text="Parents &amp; subtasks" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+  <Label Text="Create tasks in the normal editor first, then move them here. Parents organize tasks; they do not block work or automatically complete children. Dependencies are a later feature." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Label Text="Sign in and sync first for account tasks. Device tasks remain separate; this screen does not upload them." Style="{StaticResource TaskMuted}" />
+  <Button Text="Refresh hierarchy" Command="{Binding RefreshCommand}" />
+  <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+  <CollectionView HeightRequest="340" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
+   <CollectionView.EmptyView><Label Text="No tasks cached. Create tasks or sync, then Refresh." /></CollectionView.EmptyView>
+   <CollectionView.ItemTemplate><DataTemplate x:DataType="models:HierarchyRow">
+    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,6"><VerticalStackLayout Spacing="4">
+     <Label Text="{Binding IndentedTitle}" FontAttributes="Bold" SemanticProperties.Description="{Binding AccessibleTitle}" />
+     <Label Text="{Binding Level, StringFormat='Level {0}'}" Style="{StaticResource TaskMuted}" /><Label Text="{Binding Status}" />
+    </VerticalStackLayout></Border>
+   </DataTemplate></CollectionView.ItemTemplate>
+  </CollectionView>
+  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+   <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
+   <Label Text="Choose a parent, or Root task to detach. Self/descendant choices are excluded; all moves are validated again when saved." Style="{StaticResource TaskMuted}" />
+   <Picker Title="New parent" ItemsSource="{Binding Parents}" ItemDisplayBinding="{Binding Label, x:DataType=models:ParentChoice}" SelectedItem="{Binding SelectedParent, Mode=TwoWay}" />
+   <Button Text="Apply parent change" Command="{Binding MoveCommand}" />
+   <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="Review both versions. Keep local fields with a new parent queues the whole local task against the displayed server revision; it may conflict again." Style="{StaticResource TaskError}" />
+    <Label Text="{Binding SelectedTask.LocalDetails}" /><Label Text="{Binding SelectedTask.ServerDetails}" />
+    <Button Text="Keep local fields &amp; apply parent" Command="{Binding KeepLocalMoveCommand}" />
+    <Button Text="Use server (discard local intent)" Command="{Binding UseServerCommand}" />
+   </VerticalStackLayout>
+  </VerticalStackLayout></Border>
+ </VerticalStackLayout></ScrollView>
+</ContentPage>

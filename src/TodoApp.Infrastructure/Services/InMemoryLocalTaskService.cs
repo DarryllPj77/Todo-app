@@ -1,6 +1,7 @@
 using TodoApp.Domain.Entities;
 using TodoApp.Domain.Enums;
 using TodoApp.Domain.Rules;
+using TodoApp.Domain.Relationships;
 using TodoApp.Domain.Services;
 
 namespace TodoApp.Infrastructure.Services;
@@ -39,8 +40,10 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(details);
-        var task = new TaskItem(details.Title, details.Description, details.DueDate,
-            details.Priority, details.Category, details.Tags);
+        var id = Guid.NewGuid();
+        TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)).Append(new TaskLink(id, null)), id, details.Parent?.Id);
+        var task = TaskItem.CreateWithId(id, details.Title, details.Description, details.DueDate, details.Priority, details.Category, details.Tags);
+        task.SetParent(details.Parent ?? new TaskParent(null));
         tasks.Add(task.Id, task);
         return Task.FromResult(task);
     }
@@ -55,7 +58,9 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
             return Task.FromResult(false);
         }
 
+        if (details.Parent is { } parent) TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parent.Id);
         task.UpdateDetails(details.Title, details.Description, details.DueDate, details.Priority, details.Tags);
+        if (details.Parent is { } change) task.SetParent(change);
         task.SetCategory(details.Category);
         return Task.FromResult(true);
     }
@@ -73,10 +78,19 @@ public sealed class InMemoryLocalTaskService : ILocalTaskService
         return Task.FromResult(true);
     }
 
+    public Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!tasks.TryGetValue(id, out var task)) return Task.FromResult(false);
+        TaskHierarchy.ValidateMove(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id, parentId);
+        task.SetParent(new TaskParent(parentId)); return Task.FromResult(true);
+    }
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        TaskHierarchy.ValidateDelete(tasks.Values.Select(t => new TaskLink(t.Id, t.ParentTaskId)), id);
         if (!tasks.Remove(id, out var task))
         {
             return Task.FromResult(false);

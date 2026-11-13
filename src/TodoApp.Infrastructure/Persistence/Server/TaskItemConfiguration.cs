@@ -13,9 +13,11 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.ToTable("Tasks", table =>
         {
             table.HasCheckConstraint("CK_Tasks_Title", "length(btrim(\"Title\")) BETWEEN 1 AND 200");
+            table.HasCheckConstraint("CK_Tasks_Parent", "\"ParentTaskId\" IS NULL OR \"ParentTaskId\"<>\"Id\"");
             table.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
         });
         builder.HasKey(task => task.Id);
+        builder.HasOne<TaskItem>().WithMany().HasForeignKey(task => task.ParentTaskId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(task => task.Id).ValueGeneratedNever();
         builder.Property(task => task.Title).HasMaxLength(TaskItem.MaxTitleLength).IsRequired();
         builder.Property(task => task.Description).HasMaxLength(TaskItem.MaxDescriptionLength);

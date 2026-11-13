@@ -9,5 +9,6 @@ public interface ITaskService
     Task<TaskResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<TaskResponse> CreateAsync(TaskWriteRequest request, CancellationToken cancellationToken);
     Task<TaskResponse?> UpdateAsync(Guid id, TaskWriteRequest request, CancellationToken cancellationToken);
+    Task<TaskResponse?> SetParentAsync(Guid id, Guid? parentId, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }

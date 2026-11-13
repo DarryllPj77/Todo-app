@@ -9,7 +9,7 @@ if (!builder.Environment.IsDevelopment())
     throw new InvalidOperationException("The API supports Development only until deployment hardening and acceptance are completed.");
 }
 
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers(options => options.Filters.Add<HierarchyExceptionFilter>()).AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter<TaskPriority>(allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 builder.Services.AddServerDatabase();

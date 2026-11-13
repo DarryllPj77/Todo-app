@@ -36,6 +36,7 @@
     <Button Text="Queue deletion" Command="{Binding DeleteCommand}" />
    </VerticalStackLayout>
    <VerticalStackLayout IsVisible="{Binding HasConflict}" Spacing="8">
+    <Label Text="{Binding SelectedTask.ConflictReason}" Style="{StaticResource TaskError}" />
     <Label Text="Both sides changed. Your saved local version is retained above; resolve this conflict before editing it." Style="{StaticResource TaskError}" />
     <Label Text="{Binding LocalVersion}" />
     <Label Text="{Binding ServerVersion}" />

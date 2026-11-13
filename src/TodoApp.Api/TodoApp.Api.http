@@ -72,6 +72,13 @@ Content-Type: application/json
   "isCompleted": true
 }
 
-### Delete a disposable test task
+### Change only the parent; null detaches, otherwise use an existing same-account task ID
+PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}/parent
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"id":null}
+
+### Delete a disposable test task; move/delete its children first
 DELETE {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
 Authorization: Bearer {{accessToken}}

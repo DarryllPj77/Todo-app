@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TodoApp.Domain.Sync;
+using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Persistence.Server;
 
 namespace TodoApp.Api.Services;
@@ -19,7 +20,7 @@ public sealed class SyncJournal(TodoDbContext database, ICurrentUser user)
             .Where(t => EF.Property<Guid?>(t, "OwnerId") == owner && !known.Contains(t.Id)).ToListAsync(token);
         foreach (var task in legacy)
             await RecordAsync(task.Id, new SyncTaskData(task.Title, task.Description, task.DueDate,
-                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags), token);
+                task.Priority, task.Category?.Name, task.IsCompleted, task.Tags, new TaskParent(task.ParentTaskId)), token);
     }
 
     public async Task<SyncEntry> RecordAsync(Guid id, SyncTaskData? data, CancellationToken token)

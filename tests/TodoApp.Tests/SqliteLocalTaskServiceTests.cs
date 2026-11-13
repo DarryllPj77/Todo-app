@@ -226,7 +226,7 @@ public sealed class SqliteLocalTaskServiceTests : IDisposable
         await OpenService().GetTasksAsync();
         await OpenService().GetTasksAsync();
 
-        Assert.Equal(2L, Scalar("PRAGMA user_version;"));
+        Assert.Equal(3L, Scalar("PRAGMA user_version;"));
         Assert.Equal(task.Id, Assert.Single(await OpenService().GetTasksAsync()).Id);
     }
 
@@ -234,11 +234,11 @@ public sealed class SqliteLocalTaskServiceTests : IDisposable
     public async Task NewerSchema_IsRejectedWithoutChangingItsDataOrVersion()
     {
         Directory.CreateDirectory(directory);
-        Execute("CREATE TABLE Sentinel (Value TEXT); INSERT INTO Sentinel VALUES ('Keep'); PRAGMA user_version = 3;");
+        Execute("CREATE TABLE Sentinel (Value TEXT); INSERT INTO Sentinel VALUES ('Keep'); PRAGMA user_version = 4;");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => OpenService().GetTasksAsync());
 
-        Assert.Equal(3L, Scalar("PRAGMA user_version;"));
+        Assert.Equal(4L, Scalar("PRAGMA user_version;"));
         Assert.Equal("Keep", Scalar("SELECT Value FROM Sentinel;"));
         Assert.Equal(0L, Scalar("SELECT COUNT(*) FROM sqlite_master WHERE name = 'TaskItems';"));
     }

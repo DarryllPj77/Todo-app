@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TodoApp.Api.Contracts;
 using TodoApp.Domain.Sync;
+using TodoApp.Domain.Relationships;
 using TodoApp.Infrastructure.Persistence.Server;
 
 namespace TodoApp.Api.Services;
@@ -19,7 +20,7 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
             .OrderBy(r => r.Revision).Take(101).ToListAsync(token);
         var changes = records.Take(100).Select(SyncJournal.Entry).ToArray();
         await tx.CommitAsync(token);
-        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 2);
+        return new SyncPage(changes, changes.LastOrDefault()?.Revision ?? cursor, records.Count > 100, ProtocolVersion: 3);
     }
 
     public async Task<SyncResult?> ApplyAsync(SyncMutation input, CancellationToken token)
@@ -40,22 +41,31 @@ public sealed class SyncService(TodoDbContext database, ICurrentUser user, Postg
         {
             // A global task ID belonging to another account is never read or changed.
             if (record is null && await database.Tasks.AnyAsync(t => t.Id == input.TaskId, token)) return null;
-            if (input.Deleted)
+            try
             {
-                if (!await tasks.DeleteAsync(input.TaskId, token))
-                    await journal.RecordAsync(input.TaskId, null, token);
+                if (input.Deleted)
+                {
+                    if (!await tasks.DeleteAsync(input.TaskId, token))
+                        await journal.RecordAsync(input.TaskId, null, token);
+                }
+                else
+                {
+                    var data = input.Task!;
+                    var write = new TaskWriteRequest { Title = data.Title, Description = data.Description,
+                        DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName,
+                        IsCompleted = data.IsCompleted, Tags = data.Tags, Parent = data.Parent };
+                    if (record is null || record.Deleted) await tasks.CreateWithIdAsync(input.TaskId, write, token);
+                    else await tasks.UpdateAsync(input.TaskId, write, token);
+                }
+                record = await database.SyncRecords.FindAsync([owner, input.TaskId], token);
+                result = new SyncResult(false, SyncJournal.Entry(record!));
             }
-            else
+            catch (TaskHierarchyException error)
             {
-                var data = input.Task!;
-                var write = new TaskWriteRequest { Title = data.Title, Description = data.Description,
-                    DueDate = data.DueDate, Priority = data.Priority, CategoryName = data.CategoryName,
-                    IsCompleted = data.IsCompleted, Tags = data.Tags };
-                if (record is null || record.Deleted) await tasks.CreateWithIdAsync(input.TaskId, write, token);
-                else await tasks.UpdateAsync(input.TaskId, write, token);
+                // Structural checks happen before task/category mutation. Preserve
+                // the local intent as a resolvable conflict rather than a blind retry.
+                result = new SyncResult(true, current, error.Message);
             }
-            record = await database.SyncRecords.FindAsync([owner, input.TaskId], token);
-            result = new SyncResult(false, SyncJournal.Entry(record!));
         }
         database.SyncReceipts.Add(new SyncReceipt { OwnerId = owner, OperationId = input.OperationId,
             Request = request, Response = JsonSerializer.Serialize(result) });

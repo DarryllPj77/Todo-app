@@ -55,6 +55,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(FileSystem.AppDataDirectory, "views.db3")));
+        builder.Services.AddScoped<HierarchyViewModel>();
+        builder.Services.AddTransient<HierarchyPage>();
         builder.Services.AddScoped<TaskViewsViewModel>();
         builder.Services.AddTransient<TaskViewsPage>();
         builder.Services.AddScoped<RemindersViewModel>();

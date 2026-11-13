@@ -16,6 +16,7 @@ public sealed class TaskRow
         IsCompleted = task.IsCompleted;
         var due = task.DueDate is { } date ? $"Due {date:d}" : "No due date";
         Summary = $"{(task.IsCompleted ? "Completed" : "Pending")} · {task.Priority} · {due}";
+        if (task.ParentTaskId is not null) Summary += " | Subtask";
         if (task.Tags.Count > 0) Summary += " | Tags: " + task.Tags;
         if (task.Category is not null)
         {

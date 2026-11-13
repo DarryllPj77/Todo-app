@@ -7,6 +7,7 @@
              x:DataType="vm:TaskListViewModel"
              Title="Todo" Style="{StaticResource TaskPage}">
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Task hierarchy" Command="{Binding HierarchyCommand}" />
         <ToolbarItem Text="Saved views" Command="{Binding TaskViewsCommand}" />
         <ToolbarItem Text="Reminders" Command="{Binding RemindersCommand}" />
         <ToolbarItem Text="Synced tasks" Command="{Binding SyncCommand}" />

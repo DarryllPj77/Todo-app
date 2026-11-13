@@ -17,6 +17,8 @@ public sealed class ReminderAwareTaskService(SqliteLocalTaskService tasks, Remin
     { var result = await tasks.UpdateAsync(id, details, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> SetCompletedAsync(Guid id, bool completed, CancellationToken token = default)
     { var result = await tasks.SetCompletedAsync(id, completed, token); await reminders.RefreshSafelyAsync(); return result; }
+    public async Task<bool> SetParentAsync(Guid id, Guid? parentId, CancellationToken token = default)
+    { var result = await tasks.SetParentAsync(id, parentId, token); await reminders.RefreshSafelyAsync(); return result; }
     public async Task<bool> DeleteAsync(Guid id, CancellationToken token = default)
     { var result = await tasks.DeleteAsync(id, token); await reminders.RefreshSafelyAsync(); return result; }
 }

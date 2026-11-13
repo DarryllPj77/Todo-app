@@ -124,7 +124,7 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
         TagSet draftTags;
         try { draftTags = TagSet.Parse(TagsInput); } catch (ArgumentException) { return true; }
         var current = new SyncTaskData(Title, Description, DueDate is { } date ? DateOnly.FromDateTime(date) : null,
-            Priority, CategoryName, IsCompleted, draftTags);
+            Priority, CategoryName, IsCompleted, draftTags, selected?.Local?.Parent);
         if (selected?.Local is not { } original)
             return Title.Length > 0 || Description.Length > 0 || CategoryName.Length > 0 || DueDate is not null ||
                 Priority != TaskPriority.Normal || IsCompleted || TagsInput.Length > 0;

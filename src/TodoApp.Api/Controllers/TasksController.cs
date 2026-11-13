@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using TodoApp.Api.Contracts;
 using TodoApp.Api.Services;
 using TodoApp.Domain.Enums;
+using TodoApp.Domain.Relationships;
 
 namespace TodoApp.Api.Controllers;
 
@@ -49,6 +50,14 @@ public sealed class TasksController : ControllerBase
     public async Task<ActionResult<TaskResponse>> Update(Guid id, TaskWriteRequest request, CancellationToken cancellationToken)
     {
         var task = await tasks.UpdateAsync(id, request, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
+    }
+
+    [HttpPut("{id:guid}/parent")]
+    public async Task<ActionResult<TaskResponse>> SetParent(Guid id, TaskParent request, CancellationToken cancellationToken)
+    {
+        if (request.Id == Guid.Empty) return BadRequest();
+        var task = await tasks.SetParentAsync(id, request.Id, cancellationToken);
         return task is null ? NotFound() : Ok(task);
     }
 

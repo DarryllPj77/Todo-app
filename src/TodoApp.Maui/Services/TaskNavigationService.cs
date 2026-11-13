@@ -25,6 +25,10 @@ public sealed class TaskNavigationService : ITaskNavigation
 
     public async Task CloseEditorAsync() => await GetRoot().Navigation.PopAsync();
 
+    public Task OpenHierarchyAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<HierarchyPage>());
+    public Task<bool> ConfirmHierarchyConflictAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(
+        "Keep local task fields?", $"Queue the saved local fields for {title} with the selected parent? Review the displayed server version before choosing this.", "Keep local", "Cancel");
+
     public Task OpenTaskViewsAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<TaskViewsPage>());
     public Task<bool> ConfirmDeleteViewAsync(string name) => GetRoot().CurrentPage.DisplayAlertAsync(
         "Delete saved view?", $"Delete {name}? Task data will remain saved.", "Delete view", "Cancel");

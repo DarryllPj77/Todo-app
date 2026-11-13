@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-13): Phase 12B tags implemented; native acceptance pending.** Tasks now carry up to ten normalized labels through device SQLite, the API/PostgreSQL, offline sync, editors, and saved-view tag rules. All **276 tests passed, none skipped**; the Windows build has **0 warnings/errors**. Apply the new AddTaskTags migration and use the updated client/API together; local files upgrade automatically without deleting pending work. See [TAGS.md](docs/TAGS.md) for upgrade/compatibility rules and hands-on checks. Next is Phase 12C task relationships. Existing native notification/mobile/sync acceptance remains pending.
+**Current status (2026-11-13): Phase 12C.1 subtasks and parent hierarchy implemented; native acceptance pending.** Use **Task hierarchy** from the task-list toolbar to move device or cached account tasks under a parent. Cycle/depth checks, restricted parent deletion, ordered sync, and structural conflict repair preserve saved work. All **291 tests passed, none skipped**; the Windows build has **0 warnings/errors**. Apply AddTaskHierarchy and rebuild the client/API together using [HIERARCHY.md](docs/HIERARCHY.md). Local files upgrade automatically. Next is 12C.2 dependencies; native notification/mobile/sync acceptance remains pending.
 
 ## Technology and prerequisites
 
@@ -52,11 +52,11 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Thirty-two PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 12B suite passed **276 tests, 0 skipped** (244 portable cases; 32 PostgreSQL facts are skipped only when the test connection is absent). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Thirty-eight PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The final Phase 12C.1 suite passed **291 tests, 0 skipped** (253 portable cases; 38 PostgreSQL facts are skipped only when the test connection is absent). See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
-First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all four included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
+First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply all five included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -160,7 +160,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 
 ### Check account and server tasks
 
-1. Configure PostgreSQL, the JWT secret, and all four migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
+1. Configure PostgreSQL, the JWT secret, and all five migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
 2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
 3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
 4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.
