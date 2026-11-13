@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. The first usable version will be an offline MAUI task manager; a separate API will later provide server persistence and synchronization.
 
-**Current status (2026-11-13): Phase 7 PostgreSQL/EF Core persistence implemented.** The normal API uses a scoped PostgreSQL task service with an initial Code First migration. Real PostgreSQL tests verify stored data across new API hosts, transactions, constraints, and concurrent category assignment. The MAUI/SQLite app remains independent; authentication, API client integration, and synchronization are later phases. Configure your development connection and apply the migration before running the API. See [DATABASE.md](docs/DATABASE.md) and [development progress](docs/DEVELOPMENT_PROGRESS.md).
+**Current status (2026-11-13): Phase 8 server authentication and ownership implemented.** Registration/login issue short-lived JWTs; task/category access is scoped to the authenticated user. All 127 tests passed with PostgreSQL enabled, including real token/isolation tests. Windows-targeted solution build passed with zero warnings/errors. MAUI remains an offline app with a registered SecureStorage token wrapper; login screens/API calls are Phase 9. Configure the database, JWT signing secret, and migrations using [DATABASE.md](docs/DATABASE.md) before running the API.
 
 ## Technology and prerequisites
 
@@ -13,7 +13,8 @@ A learning-focused C#/.NET Todo application, built one phase at a time. The firs
 - LINQ for local task filtering and ordering; no additional package is needed.
 - Microsoft.Data.Sqlite **10.0.15** for local SQLite storage, including its native SQLite dependency.
 - EF Core/Relational/Design **10.0.15**, local dotnet-ef **10.0.15**, and Npgsql.EntityFrameworkCore.PostgreSQL **10.0.3** for server PostgreSQL storage.
-- Planned: authentication/JWT, client API integration, and synchronization.
+- Microsoft.AspNetCore.Authentication.JwtBearer **10.0.15**, ASP.NET Core's password hasher, per-IP auth rate limiting, and per-user server ownership.
+- Planned: client login/API integration, then offline synchronization.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -50,11 +51,11 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter does not convert MAUI into a plain .NET library or claim to validate client code.
 
-The default test run needs no database: REST contract tests explicitly substitute the earlier in-memory service, while the nine PostgreSQL cases report skipped unless TODOAPP_TEST_POSTGRES is set. The Phase 7 verification run supplied an isolated PostgreSQL 18 test connection: **113 passed, 0 skipped**. See DATABASE.md to run the full suite yourself; skipped database tests are not PostgreSQL validation.
+The default test run needs no database: portable REST tests explicitly substitute memory and a test-only authentication handler. Eighteen PostgreSQL facts report skipped unless TODOAPP_TEST_POSTGRES is set; these include real JWT/login/ownership tests. The full Phase 8 run used an isolated PostgreSQL 18 cluster: **127 passed, 0 skipped**. See DATABASE.md to run the full suite; fake authentication is never registered by the normal API.
 
 ## Run the API
 
-First follow [PostgreSQL setup](docs/DATABASE.md): create a development role/database, configure ConnectionStrings:TodoDatabase through user secrets/environment variables, restore the local EF tool, and apply the included migration. The API has no automatic startup migration or silent in-memory fallback.
+First follow [database/auth setup](docs/DATABASE.md): configure ConnectionStrings:TodoDatabase and a random Base64 Jwt:SigningKey through user secrets/environment variables, restore the local EF tool, and apply both included migrations. The API has no automatic startup migration, generated fallback signing key, or silent in-memory fallback.
 
 ```powershell
 dotnet dev-certs https --trust
@@ -63,7 +64,21 @@ dotnet run --project src/TodoApp.Api --launch-profile https
 
 Open `https://localhost:7114/api/health`; expected JSON is `{"status":"healthy"}`. The HTTP listener is `http://localhost:5062`, redirected to HTTPS by the pipeline when the HTTPS profile is used. `src/TodoApp.Api/TodoApp.Api.http` contains the same request. Stop with Ctrl+C.
 
-The health endpoint checks application liveness only. The task routes use PostgreSQL; there is no database readiness check, OpenAPI UI, or authentication yet. Startup requires a configured connection string and refuses environments outside Development until authentication/ownership are implemented. The launch profiles set Development automatically. API tasks survive restarting the API and are separate from the MAUI SQLite file. User-specific access and client synchronization are not implemented yet.
+The health endpoint is public liveness only, not database readiness. Task routes and /api/auth/me require a valid bearer token. Startup requires database/JWT configuration and remains Development-only until deployment hardening/acceptance. The launch profiles set Development automatically. API tasks persist in PostgreSQL and remain separate from MAUI's device-local SQLite tasks; there is no synchronization yet.
+
+### Register, log in, and access tasks
+
+| Route | Behavior |
+| --- | --- |
+| POST /api/auth/register | Email/password; 201 with bearer token, expiry, and public account fields |
+| POST /api/auth/login | Email/password; 200 with a new token, or generic 401 failure |
+| GET /api/auth/me | Authenticated account ID/email; 401 without a valid token |
+
+Register passwords must be 12–128 characters; passwords are never trimmed or stored as plaintext. Email is normalized for uniqueness; duplicate registration returns 409. Auth requests reject unknown fields. Register/login share a process-local limit of 10 requests per IP per minute, returning 429 when exceeded. Use the HTTPS launch profile for credentials/tokens.
+
+Copy accessToken from a successful response into your HTTP client's private environment and send `Authorization: Bearer <accessToken>` on task/me requests. The included .http file contains placeholders only; never commit actual passwords/tokens. Tokens default to 15 minutes, validate signature/issuer/audience/lifetime with no clock-skew grace, and are rejected for a missing account. There is no refresh token; log in again after expiry. Client logout will clear its stored token; already issued tokens remain valid until expiry (or signing-key/account invalidation).
+
+Every task operation scopes by the token's user ID. Another user's ID returns 404 for reads/updates/deletes; callers cannot submit ownerId/categoryId to change ownership. Category names are reused within each user, so two users may both have Work. Existing anonymous Phase 7 rows remain stored with null OwnerId and are hidden until explicitly assigned by an administrator; registration never claims them automatically.
 
 | Method and route | Success | Other expected responses |
 | --- | --- | --- |
@@ -72,6 +87,8 @@ The health endpoint checks application liveness only. The task routes use Postgr
 | POST /api/tasks | 201 with a task and Location header | 400 for invalid JSON/input |
 | PUT /api/tasks/{id} | 200 with the updated task | 400 for invalid input; 404 if missing |
 | DELETE /api/tasks/{id} | 204, no response body | 404 if missing |
+
+All five task routes additionally return 401 for missing/invalid credentials.
 
 Use `?filter=All`, `Pending`, `Completed`, `DueToday`, or `HighPriority`. DueToday uses the server's local calendar day for this development phase, not a phone's time zone. DueToday/HighPriority include completed tasks when they match. Tasks sort by title (ordinal, case-insensitive), then ID.
 
@@ -92,7 +109,7 @@ Priority is a JSON string: Low, Normal, or High; numeric values are rejected. Du
 
 IDs/timestamps are server-generated response fields; categoryId is read-only. Unknown JSON properties (including id/createdAt/updatedAt/categoryId/navigation objects) return 400 instead of being silently accepted. Titles, descriptions, and category names use the existing trimmed domain length rules. Existing category names are reused case-insensitively; category management is not exposed yet. Responses are flat DTOs with categoryId/categoryName and no entity navigation graph. Validation errors return Problem Details with field errors; missing tasks return 404 Problem Details.
 
-Open `src/TodoApp.Api/TodoApp.Api.http` in an HTTP client to try the workflow; copy the created ID into `taskId`. You can also run the `http` profile at localhost:5062 for loopback development if HTTPS trust is not set up; HTTPS redirection has no target in that HTTP-only profile, so it may log a warning and serve HTTP. The live smoke test used temporary loopback port 5073 and stopped afterward.
+Open src/TodoApp.Api/TodoApp.Api.http in an HTTP client to try register/login and the task workflow; keep actual credentials/token variables in private client settings and copy the created task ID into taskId. Prefer HTTPS. The historical Phase 6 HTTP-only smoke listener was temporary and is no longer running.
 
 ## Build and run MAUI
 
@@ -138,6 +155,8 @@ To provision the broader workload set, `dotnet workload install maui` is availab
 7. Check light/dark system themes and a narrow window. Phone layout/device behavior still needs native testing.
 
 Use an existing category name to reuse a category visible among stored tasks, or enter a new name to create/assign one. Changing the name in a task editor reassigns that task; it does not rename a category globally. Category management and empty-category browsing are later work. Tasks are local to this device; no API or login is needed.
+
+Phase 8 adds a SecureTokenStore wrapper using MAUI SecureStorage and registers it in DI; no token is acquired by the client yet. It stores no passwords and has no Preferences/plaintext-file fallback. Phase 9 will add login/logout, storage failure handling, expiry behavior, and account-aware local data handling. Secure storage has compiled for Windows but actual token round trips on devices remain unverified.
 
 ## Database setup
 

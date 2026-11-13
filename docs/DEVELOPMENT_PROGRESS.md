@@ -4,7 +4,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 7 — PostgreSQL/EF Core persistence implemented and verified against PostgreSQL 18.** The normal API uses PostgresTaskService and a request-scoped TodoDbContext with generated InitialCreate migration. All 113 tests passed with an isolated test connection, including nine real PostgreSQL cases. Windows-targeted solution build passed with zero warnings/errors. Your development role/database/connection still needs local setup; existing PostgreSQL databases were not modified. Authentication/user ownership remains Phase 8.
+**Phase 8 — Server authentication and ownership implemented.** Register/login use framework password hashing and short-lived JWTs; all task/category operations are owner-scoped. AddAuthenticationOwnership preserves legacy anonymous rows without assigning them. Verification ran 127 tests, including 18 real PostgreSQL facts, with no skips. Windows-targeted solution builds with zero warnings/errors. MAUI has a registered SecureStorage wrapper but remains offline; client login/API integration is Phase 9. Your local API needs the database/signing-secret/migration setup in DATABASE.md.
 
 ## Completed work
 
@@ -47,15 +47,22 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 - Introduced ITaskService with scoped PostgresTaskService as the normal API registration. The old memory implementation is only an explicit portable-test substitute. Added user-secrets ID and configuration-only connection loading with a tested missing-connection startup error.
 - Added nine isolated PostgreSQL tests and one configuration test; added scripts/Test-Postgres.ps1. Tests cover migrated schema consistency, persistent REST round trips across new hosts, category concurrency, FK deletion/clearing, rollback, validation, filters, and uniqueness/length constraints.
 - Verified and stopped an isolated loopback-only PostgreSQL test cluster under .tools/pg-tests. All generated test databases were removed; the installed PostgreSQL 18 Windows service remains running and unchanged.
+- Added UserAccount persistence, unique normalized email, framework password hashing/rehash, strict auth request DTOs, register/login/me endpoints, and generic login failures.
+- Added JWT bearer 10.0.15 with validated configured signing key, HS256/issuer/audience/lifetime checks, short expiry, and account-existence validation. Auth endpoints share a process-local per-IP limiter.
+- Added claim-derived current-user context, Authorize on task endpoints, owner filtering on every server task operation, and per-user category upserts/uniqueness.
+- Generated AddAuthenticationOwnership migration/designer/snapshot. Legacy anonymous rows retain null owners and remain hidden rather than being deleted or claimed by new accounts.
+- Added MAUI SecureTokenStore using SecureStorage, with no password/plaintext fallback; client login is not wired yet.
+- Added nine real PostgreSQL authentication/isolation facts and five portable settings cases. Existing tests use explicit fake auth only in contract/persistence fixtures; actual JWT tests use real middleware.
+- Updated .http samples to placeholder credentials/private bearer-token variables and added signing-key generation/migration instructions.
 
 ## Build and test evidence
 
 | Check | Result |
 | --- | --- |
 | `dotnet build TodoApp.Core.slnf --no-restore --nologo -m:1` | Passed: 0 warnings, 0 errors |
-| `scripts/Test-Postgres.ps1` with TODOAPP_TEST_POSTGRES set to the isolated cluster | Passed: 113 tests, 0 failed, 0 skipped |
+| `scripts/Test-Postgres.ps1` with TODOAPP_TEST_POSTGRES set to the isolated cluster | Passed: 127 tests, 0 failed, 0 skipped |
 | Windows-targeted `TodoApp.slnx` build using local SDK and TodoAppTargetFrameworks | Passed: all five projects, 0 warnings, 0 errors |
-| Default portable test mode without TODOAPP_TEST_POSTGRES | Nine PostgreSQL facts are explicitly skipped; portable contract tests use a test-only memory substitute |
+| Default portable test mode without TODOAPP_TEST_POSTGRES | Eighteen PostgreSQL facts are explicitly skipped; portable REST tests use explicit memory/auth substitutes |
 | Live HTTP CRUD on temporary loopback port 5073 | Passed: POST 201, GET/PUT 200, DELETE 204, final GET []; listener stopped |
 | `scripts/Run-Windows.ps1 -BuildOnly` (Phase 5 check) | Passed: native Windows MAUI/XAML build, 0 warnings, 0 errors; MAUI source unchanged in Phase 6 |
 | Initial global workload installation | Canceled during elevation and rolled back; local portable workload installation subsequently succeeded |
@@ -64,7 +71,7 @@ Last updated: **2026-11-13 (Asia/Manila)**.
 | Windows native direct launch | Passed: task-list empty state and editor visible in dark mode; app left available for user testing |
 | Full native CRUD/restart, light/narrow/mobile acceptance | Pending README manual checklist; not claimed from ViewModel/storage tests |
 | SQLite native execution on Windows | Passed: temporary file reopen/round-trip/rollback tests; files cleaned up after each test |
-| PostgreSQL 18 verification | Passed: nine real-database cases, each migrating/cleaning up a unique database; zero test databases remained before isolated cluster shutdown |
+| PostgreSQL 18 verification | Passed: 18 real-database facts, including real auth/JWT/isolation and legacy-migration checks; each fixture cleans up its own database |
 
 Initial sandbox build attempts in Phase 1 returned no diagnostics; normal SDK access produced the core results. Phase 5 compiled native Windows/XAML with a local workload. Phase 6 added 32 tests for the actual API pipeline: routes, response contracts, missing IDs, malformed JSON/values, length limits, unknown/server-owned fields, all filters, category reuse, parallel creates, cancellation, fresh server state, and refusal to start in Production. Integration tests use an in-memory HTTPS request host, not a deployed TLS certificate. A separate loopback HTTP listener passed real socket CRUD checks. The HTTP-only profile logged its expected missing HTTPS redirect-port warning. An initial smoke assertion mishandled PowerShell's empty-array wrapping; checking the final JSON body directly verified it was []. No application change was needed for that assertion correction.
 
@@ -72,24 +79,28 @@ Presentation tests retain their Phase 5 coverage of validation, draft isolation,
 
 In Phase 7, the running Phase 6 API initially locked normal build outputs. Tests and migration generation proceeded in isolated .tools/phase7-build output without stopping it. The user then reported stopping the API; the final Windows-targeted solution build used normal output successfully. Test factory configuration was moved to validation after host configuration was built, allowing an explicit test substitute while normal startup still rejects a missing connection. Final database tests used scripts/Test-Postgres.ps1 and did not touch the installed service's databases.
 
-Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions restored for net10.0. MVC.Testing 10.0.15 matches the installed ASP.NET runtime line. Microsoft.Data.Sqlite 10.0.15 supplies local SQLite/native dependencies. EF Core/Relational/Design/tool 10.0.15 are aligned; Npgsql EF 10.0.3 supports that EF 10 version. JWT/authentication remains deferred.
+Phase 8 tested hashed registration/login, unique email, password whitespace preservation, generic credential failure, auth rate limiting, missing/invalid/expired/unsigned/wrong-key/issuer/audience tokens, unknown/deleted accounts, every task route's authentication/ownership behavior, per-user categories, spoofed owner input, and migration preservation of legacy rows. No real signing secret/password/token was committed or printed. Native secure token round trips, login UI, refresh tokens, password reset/email verification, and production identity/deployment acceptance are not claimed.
+
+Package choices: MAUI Controls 10.0.130 matches the stable official .NET 10 template checked against NuGet. Logging.Debug 10.0.0 is template-supplied. Test SDK 17.14.1, xUnit 2.9.3, and runner 3.1.4 are SDK-template versions. MVC.Testing, JwtBearer, EF Core/Relational/Design/tool are aligned at 10.0.15; Npgsql EF 10.0.3 supports the EF 10 version. Microsoft.Data.Sqlite remains 10.0.15. Password hashing/rate limiting come from ASP.NET Core, and SecureStorage from MAUI.
 
 ## Work in progress / pending verification
 
 - Complete the README native checklist: create/edit/cancel/toggle/filter/delete a disposable test task, close/reopen the app, and verify persistence.
 - Check system light mode, narrow windows, accessibility, and mobile device targets. Only Windows has been compiled/launched in this run.
 - Empty categories have no management/browser UI yet; typing a category name reuses one visible among stored tasks or creates a new category, rather than renaming it globally.
-- Follow DATABASE.md to create your development role/database, set ConnectionStrings:TodoDatabase in user secrets/environment configuration, and apply the included migration. No credentials or persistent app connection were invented during this run.
-- Review Phase 7 before authentication/ownership. API data is now durable in PostgreSQL once configured, but there is still no client synchronization. No SQLite schema change was introduced.
+- Follow DATABASE.md to set your development connection and a cryptographically random Base64 Jwt:SigningKey, then apply both migrations. No user credentials or persistent app connection were invented during this run.
+- Legacy anonymous tasks/categories remain unowned and hidden. Any reassignment needs explicit administrative review; registration does not claim old data.
+- Review Phase 8 before client integration. No refresh token/revocation/password-reset/email-verification system is implemented, and the API remains Development-only pending hardening/acceptance.
+- SecureTokenStore compiles on Windows; actual device storage/acquisition/expiry/logout UI checks belong to Phase 9. No SQLite schema change or client login was introduced.
 - API DueToday currently follows the server's local date; define a per-user time-zone policy before multi-user integration. Authentication/ownership and production deployment remain later work.
 
 ## Uncommitted changes
 
-Phase 7 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 6 recorded in local commit `9935192`. Use git status for live state. Portable tools, test-cluster files, and build output remain ignored.
+Phase 8 changes are uncommitted; no commit or push has been performed for this phase. The working tree was clean at the start, with Phase 7 recorded in local commit 5810242. Portable tools, test-cluster files, and build output remain ignored.
 
-- New: Infrastructure/Persistence/Server context/configurations/migrations, API/Configuration/DatabaseConfiguration.cs, ITaskService/PostgresTaskService, dotnet-tools.json, scripts/Test-Postgres.ps1, and ApiTestFactory/PostgresFactAttribute/PostgresPersistenceTests.
-- Removed: API/Configuration .gitkeep placeholder.
-- Modified: TaskItem/Category EF materialization/FK support, Infrastructure/API package project files, API startup/controller/service interface registration, existing API tests, README, and all five docs.
+- New: UserAccount, AddAuthenticationOwnership migration/designer, AuthenticationConfiguration/JwtSettings, AuthRequests/AuthController/AuthService/JwtTokenService/ICurrentUser, SecureTokenStore, TestAuthentication/AuthenticationSettingsTests/PostgresAuthenticationTests.
+- Modified: server EF mappings/snapshot, PostgresTaskService owner scoping, TasksController/startup/API project/appsettings/HTTP samples, MAUI DI, existing test factories/persistence cases, README, and all five docs.
+- Removed files: none.
 
 After the user supplied the GitHub URL, the directory was initialized on `main` and `origin` was set to `https://github.com/DarryllPj77/Todo-app.git`. The remote reported no branches before the initial push. The user subsequently explicitly authorized committing and pushing the foundation.
 
@@ -103,7 +114,7 @@ Foundation file groups (historical):
 - Tests: project file and `ApiStartupTests.cs`.
 - Docs: README plus ROADMAP, ARCHITECTURE, DATABASE, LEARNINGS, and this progress file.
 
-Phase 7 preserves the public REST DTO/route contract and MAUI screen behavior. Shared domain persistence details changed and passed SQLite/presentation regression tests plus the Windows build. .tools, bin, obj, and SQLite files/journals remain excluded from Git scope.
+Phase 8 preserves task editable/response DTOs and MAUI offline screen behavior, while task routes now require bearer authentication and enforce ownership. Shared Domain/SQLite source/schema remain unchanged. .tools, bin, obj, and SQLite files/journals remain excluded from Git scope.
 
 ## Committed milestones
 
@@ -114,12 +125,13 @@ Phase 7 preserves the public REST DTO/route contract and MAUI screen behavior. S
 - `f191e39` — `Implement Phase 4 SQLite persistence`: verified in local Git history at the start of Phase 5.
 - `7639dff` — `Implement Phase 5 offline MAUI task interface`: verified in local Git history at the start of Phase 6.
 - `9935192` — `Implement Phase 6 task REST API`: verified in local Git history at the start of Phase 7.
-- Phase 7 has no committed milestone yet. No merge or force-push has been performed.
+- 5810242 — Implement Phase 7 PostgreSQL and EF Core persistence: verified in local Git history at the start of Phase 8.
+- Phase 8 has no committed milestone yet. No merge or force-push has been performed.
 
 ## Next task
 
-Configure the development database and apply InitialCreate using DATABASE.md, then review Phase 7. The next implementation phase is Phase 8 authentication/ownership before client API integration or synchronization. Finish the independent MAUI manual checklist as needed. Do not begin authentication or synchronization automatically.
+Configure the database/JWT secret and apply pending migrations using DATABASE.md, then review Phase 8. Next is Phase 9 client API integration: login/logout, configurable endpoint, bearer attachment, secure-storage/expiry failures, and account-aware local boundaries. Keep offline CRUD usable and do not implement synchronization automatically.
 
 ## What to learn now
 
-Trace TasksController through ITaskService/PostgresTaskService into TodoDbContext. Learn scoped contexts, tracking/no-tracking, Fluent mappings, FK materialization, migrations/model snapshots, database constraints/upserts, transaction rollback, and secret-based configuration. Compare PostgreSQL native async operations with the SQLite adapter and understand timestamp precision. See LEARNINGS for short examples.
+Trace registration through framework hashing, JWT issue/validation, and claim-derived task ownership. Learn authentication versus authorization, why decoded claims alone are untrusted, why owner IDs never come from JSON, and how migration policy protects anonymous data. Understand short token lifetime/local logout and why platform SecureStorage has no plaintext fallback. See LEARNINGS for examples.

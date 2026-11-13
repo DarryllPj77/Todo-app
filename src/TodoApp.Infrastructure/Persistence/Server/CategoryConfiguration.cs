@@ -14,7 +14,9 @@ internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.Property(category => category.Id).ValueGeneratedNever();
         builder.Property(category => category.Name).HasMaxLength(Category.MaxNameLength).IsRequired();
         builder.Property<string>("NameKey").HasMaxLength(Category.MaxNameLength).IsRequired();
-        builder.HasIndex("NameKey").IsUnique();
+        builder.Property<Guid?>("OwnerId");
+        builder.HasOne<UserAccount>().WithMany().HasForeignKey("OwnerId").OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex("OwnerId", "NameKey").IsUnique();
         builder.Navigation(category => category.Tasks).HasField("tasks")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }

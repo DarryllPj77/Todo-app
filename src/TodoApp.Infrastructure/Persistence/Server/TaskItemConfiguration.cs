@@ -20,6 +20,8 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Property(task => task.Priority).HasConversion<int>();
         builder.Property(task => task.CreatedAt).HasColumnType("timestamp with time zone");
         builder.Property(task => task.UpdatedAt).HasColumnType("timestamp with time zone");
+        builder.Property<Guid?>("OwnerId");
+        builder.HasOne<UserAccount>().WithMany().HasForeignKey("OwnerId").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(task => task.Category).WithMany(category => category.Tasks)
             .HasForeignKey(task => task.CategoryId).OnDelete(DeleteBehavior.SetNull);
     }

@@ -6,13 +6,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 if (!builder.Environment.IsDevelopment())
 {
-    throw new InvalidOperationException("The API supports Development only while authentication and user ownership are not configured.");
+    throw new InvalidOperationException("The API supports Development only until deployment hardening and acceptance are completed.");
 }
 
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter<TaskPriority>(allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 builder.Services.AddServerDatabase();
+builder.Services.AddTaskAuthentication();
 
 var app = builder.Build();
 
@@ -23,6 +24,9 @@ if (string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("TodoDatabas
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

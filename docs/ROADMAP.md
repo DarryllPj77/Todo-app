@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 7 PostgreSQL/EF Core persistence is implemented. Verification ran 113 tests, including nine real PostgreSQL cases, with no skips; the Windows-targeted solution also builds. Your development database connection still needs local setup. Next is Phase 8 authentication/ownership, before client API integration and synchronization.
+Proceed one phase at a time after review. Phase 8 server authentication/ownership and secure token-storage foundations are implemented. Verification ran 127 tests with no skips and the Windows-targeted solution builds. Configure your development database/signing secret and apply both migrations. Next is Phase 9 client API integration; complex synchronization is still later.
 
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
@@ -124,7 +124,7 @@ Proceed one phase at a time after review. Phase 7 PostgreSQL/EF Core persistence
 - [x] Existing SQLite/presentation/REST tests still pass; full run is 113 passed, 0 skipped.
 - [ ] Configure your own development role/database/connection and apply the included migration using DATABASE.md.
 
-## Phase 8 — Authentication and ownership
+## Phase 8 — Authentication and ownership (server implemented; client/device verification pending)
 
 **Goal:** Protect the server before multi-user integration and sync.
 
@@ -136,8 +136,12 @@ Proceed one phase at a time after review. Phase 7 PostgreSQL/EF Core persistence
 
 **Completion checklist:**
 
-- [ ] Registration/login/token lifecycle and cross-user isolation tested.
-- [ ] No secrets/tokens appear in source or logs; device token storage reviewed.
+- [x] Registration/login, password hashing, token expiry/validation, throttling, and cross-user isolation tested against PostgreSQL/JWT middleware.
+- [x] Ownership migration preserves anonymous rows without automatically assigning them; category names are per user.
+- [x] Signing key comes from validated secrets/configuration; HTTP samples contain placeholders only.
+- [x] MAUI SecureTokenStore uses platform SecureStorage with no plaintext/password fallback; Windows compilation passes.
+- [ ] Verify token storage on target devices when Phase 9 adds login/logout and real API calls.
+- [ ] Configure the development signing secret and apply AddAuthenticationOwnership locally before using the API.
 
 ## Phase 9 — API integration
 
@@ -145,7 +149,7 @@ Proceed one phase at a time after review. Phase 7 PostgreSQL/EF Core persistence
 
 **Concepts learned:** HttpClient, serialization, API DTOs, timeouts and cancellation.
 
-**Tasks:** Add API client services, configurable development endpoints, secure token attachment, and clear failure handling. Do not replace local reads/writes with mandatory network calls.
+**Tasks:** Add login/logout UI and API client services, configurable development endpoints, secure token attachment, expiry/storage failure handling, and account-aware local data boundaries. Do not replace local reads/writes with mandatory network calls or upload unassigned device tasks to whichever account logs in first.
 
 **Expected result:** Controlled authenticated communication with no hidden claim of synchronization.
 

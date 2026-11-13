@@ -37,9 +37,12 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("NameKey")
+                    b.HasIndex("OwnerId", "NameKey")
                         .IsUnique();
 
                     b.ToTable("Categories", null, t =>
@@ -69,6 +72,9 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -84,6 +90,8 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("OwnerId");
+
                     b.ToTable("Tasks", null, t =>
                         {
                             t.HasCheckConstraint("CK_Tasks_Priority", "\"Priority\" IN (0, 1, 2)");
@@ -92,12 +100,53 @@ namespace TodoApp.Infrastructure.Persistence.Server.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TodoApp.Infrastructure.Persistence.Server.UserAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("NormalizedEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .IsUnique();
+
+                    b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("TodoApp.Domain.Entities.Category", b =>
+                {
+                    b.HasOne("TodoApp.Infrastructure.Persistence.Server.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("TodoApp.Domain.Entities.TaskItem", b =>
                 {
                     b.HasOne("TodoApp.Domain.Entities.Category", "Category")
                         .WithMany("Tasks")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TodoApp.Infrastructure.Persistence.Server.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Category");
                 });

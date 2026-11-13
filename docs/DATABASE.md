@@ -2,7 +2,7 @@
 
 ## Current state
 
-Local tasks use SQLite through SqliteLocalTaskService. Phase 7 adds separate PostgreSQL storage for API tasks using EF Core and TodoDbContext. The initial migration and nine real PostgreSQL test cases verify mapping, retained data across API hosts, constraints, rollback, concurrency, and relationships. Your existing PostgreSQL service/databases were not changed during verification; tests used an isolated project-local cluster. Configure your own development connection and apply the migration before running the normal API.
+Local tasks still use SQLite. The API uses PostgreSQL with two migrations: InitialCreate and AddAuthenticationOwnership. Phase 8 adds Users and owner-scoped server tasks/categories. Verification ran 127 tests with 18 PostgreSQL cases, including real registration/JWT/isolation checks. Your existing service/databases were not changed; tests used an isolated cluster. Configure your development connection/signing key and apply the migrations before running the API.
 
 ## Initial entities and relationship
 
@@ -69,12 +69,19 @@ EF Core, Relational, Design, and dotnet-ef are pinned to 10.0.15. Npgsql.EntityF
 
 | Table | Main mapping |
 | --- | --- |
-| Categories | uuid Id, varchar(100) Name, required varchar(100) shadow NameKey, unique NameKey index, nonblank-name check |
-| Tasks | uuid Id, varchar(200) Title, nullable varchar(4000) Description, boolean IsCompleted, nullable date DueDate, integer Priority, nullable uuid CategoryId, UTC timestamptz CreatedAt/UpdatedAt |
+| Users | uuid Id, varchar(254) Email/NormalizedEmail, unique NormalizedEmail, required varchar(1024) PasswordHash |
+| Categories | uuid Id, varchar(100) Name, required shadow NameKey, nullable legacy shadow OwnerId, unique (OwnerId, NameKey), nonblank-name check |
+| Tasks | uuid Id, varchar(200) Title, nullable varchar(4000) Description, boolean IsCompleted, nullable date DueDate, integer Priority, nullable uuid CategoryId/OwnerId, UTC timestamptz CreatedAt/UpdatedAt |
 
 IDs are assigned by the domain (ValueGeneratedNever). Priority is constrained to 0/1/2; titles must be nonblank; CategoryId is indexed and uses ON DELETE SET NULL. EF accesses Category's private tasks backing field. Read queries use Include for category names and AsNoTracking for DTO reads; writes use a request-scoped tracked context.
 
-Category NameKey is the trimmed name converted with ToUpperInvariant, stored as an EF shadow property rather than a domain field. A unique index enforces server case-normalized name reuse. ResolveCategory uses one parameterized INSERT ... ON CONFLICT DO NOTHING followed by an EF query, inside the task transaction. Concurrent requests reuse the winning category ID/name instead of racing to insert duplicates. Category rename is not exposed; any future implementation must update NameKey with Name. SQLite's duplicate-name policy is unchanged.
+Category NameKey is the trimmed name converted with ToUpperInvariant. The unique (OwnerId, NameKey) index enforces normalized name reuse per account. ResolveCategory includes the validated current owner in both its parameterized upsert and EF query. Two users may independently have Work; concurrent requests within one account reuse the winning category. Rename is not exposed and would need to update NameKey with Name. SQLite's duplicate-name policy is unchanged.
+
+Server ownership uses shadow OwnerId fields referencing Users with restricted user deletion. Every public task query/update/delete is owner-filtered; new task/category writes take ownership only from the validated sub claim. The DTO accepts no owner ID. CategoryId still references Categories with ON DELETE SET NULL. Ownership is enforced in the service; direct administrative SQL must preserve task/category owner consistency.
+
+### Existing anonymous data
+
+AddAuthenticationOwnership preserves existing tasks/categories with null OwnerId. Authenticated queries exclude those rows, and registering a new account never claims them. If you need them, an administrator must explicitly map selected legacy tasks and their categories to a verified account, reconcile per-account category-name collisions, and review the assignment. No blanket first-user assignment or data-reset script is provided. Local MAUI SQLite data is unaffected and remains device-local until account-aware client integration is designed.
 
 PostgreSQL stores timestamp microseconds; .NET ticks have finer precision. SaveChangesAsync normalizes task timestamps to UTC microseconds before saving/returning DTOs, so POST/PUT responses match subsequent reads exactly. Dates remain date-only values. Create/update commit category/task changes together; failure disposes the uncommitted transaction. Native async EF/Npgsql calls receive cancellation tokens; no Task.Run wrapper is used. Concurrent edits currently use last-writer behavior, without a revision/conflict protocol.
 
@@ -94,15 +101,22 @@ The psql password command prompts locally; do not paste credentials into chat or
 dotnet tool restore
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 dotnet user-secrets set "ConnectionStrings:TodoDatabase" "Host=localhost;Port=5432;Database=todoapp;Username=todoapp_dev;Password=<local-password>" --project src/TodoApp.Api
+$jwtKeyBytes = New-Object byte[] 32
+$jwtRandom = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$jwtRandom.GetBytes($jwtKeyBytes)
+$jwtRandom.Dispose()
+dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String($jwtKeyBytes)) --project src/TodoApp.Api
 dotnet ef database update --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext
 dotnet run --project src/TodoApp.Api --launch-profile https
 ```
 
-UserSecretsId is already assigned. Alternatively set ConnectionStrings__TodoDatabase in the API terminal or deployment configuration. A connection string is required at startup; missing configuration stops startup with instructions. No credentials are in appsettings/source. The API stays Development-only until authentication/user ownership are implemented. The health endpoint is liveness, not a database readiness check.
+UserSecretsId is already assigned. Alternatively use ConnectionStrings__TodoDatabase and Jwt__SigningKey in the API terminal. Jwt:SigningKey must decode to at least 32 random bytes; no fallback key is generated. Public issuer/audience/15-minute lifetime defaults are in appsettings, and the accepted lifetime range is 1–60 minutes. Do not regenerate the signing secret on every startup; replacing it and restarting the API invalidates old tokens. Missing/invalid configuration stops startup. No credentials/signing key are in committed appsettings/source. The API remains Development-only pending deployment hardening/acceptance. Health is liveness, not readiness.
+
+After startup, register or log in using the HTTPS auth endpoints, then send the returned bearer token on task requests. Passwords are hashed using ASP.NET Core PasswordHasher; plaintext passwords and hashes are never returned in account DTOs. Login failures use the same public response for wrong/unknown credentials. Password reset/email verification/refresh tokens are outside this learning phase; access tokens expire and require re-login. Local token removal is not immediate server-side revocation.
 
 ### Migration strategy
 
-The generated initial migration is `20261113005745_InitialCreate` in Persistence/Server/Migrations, alongside its designer and model snapshot. It creates Categories/Tasks, constraints, and indexes. Review it and apply it explicitly with database update; the API does not call EnsureCreated or Migrate during startup.
+The generated migrations are 20261113005745_InitialCreate and 20261113011803_AddAuthenticationOwnership in Persistence/Server/Migrations, with designers and model snapshot. The latter creates Users, adds nullable legacy owners/FKs, and replaces global category-name uniqueness with per-owner uniqueness. Apply pending migrations explicitly with database update; the API does not call EnsureCreated or Migrate during startup.
 
 For future model changes:
 
@@ -111,18 +125,18 @@ dotnet ef migrations add MeaningfulChangeName --project src/TodoApp.Infrastructu
 dotnet ef migrations script --idempotent --project src/TodoApp.Infrastructure --startup-project src/TodoApp.Api --context TodoDbContext
 ```
 
-Do not regenerate InitialCreate against an existing database. Review changes before applying them, and use controlled deployment/backup procedures before any destructive future migration. PostgreSQL tracks applied EF migrations in __EFMigrationsHistory; SQLite's user_version mechanism is separate.
+Do not regenerate InitialCreate or downgrade the ownership migration against live multi-user data: its Down method removes accounts/owner columns and cannot restore global category-name uniqueness if users share names. Review migrations with backup/roll-forward planning. PostgreSQL tracks applied EF migrations in __EFMigrationsHistory; SQLite's user_version mechanism is separate.
 
 ### Real PostgreSQL tests
 
-Default dotnet test runs the portable suite using an explicit in-memory REST substitute and skips nine database cases unless TODOAPP_TEST_POSTGRES is configured. It does not pretend those skipped cases validate PostgreSQL. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
+Default dotnet test uses explicit in-memory REST/test-auth substitutes and skips 18 database cases unless TODOAPP_TEST_POSTGRES is configured. It does not treat fake authentication as JWT validation. Real auth tests use the normal JWT handler and scoped PostgreSQL service. To run all cases, provide a dedicated development test connection whose role has CREATEDB permission:
 
 ```powershell
 $env:TODOAPP_TEST_POSTGRES = 'Host=localhost;Port=5432;Database=postgres;Username=<test-role>;Password=<test-password>'
 .\scripts\Test-Postgres.ps1
 ```
 
-Each database test creates/migrates a uniquely named todoapp_tests_<guid> database, then drops only that database during cleanup. Never point this at production. The script builds into ignored .tools/postgres-checks so an existing dev API need not lock its outputs. Tests cover retained DTOs across new API hosts, identity/timestamp precision, full CRUD, category concurrency/uniqueness, FK deletion/clearing, rollback after forced failure, filters, validation, and repeatable migrations/model consistency.
+Each database test creates/migrates a unique todoapp_tests_<guid> database and drops only that database during cleanup. Never point this at production. The script builds into ignored .tools/postgres-checks. It covers stored data/transactions plus registration, hashes, email uniqueness, generic failed login, rate limiting, real invalid/expired JWT rejection, account deletion, user/category isolation, spoofed input, and preservation of anonymous rows during migration. Test signing keys are generated in process and not printed or committed.
 
 This run used PostgreSQL 18 binaries with a separate .tools/pg-tests cluster on 127.0.0.1:55439 and a loopback-only trust-auth test role. This was test infrastructure, not the app's development database configuration or a replacement for your running service. Test databases were cleaned up; the isolated server is stopped after verification. Its local files remain ignored. Your normal API still needs the development connection/migration steps above.
 

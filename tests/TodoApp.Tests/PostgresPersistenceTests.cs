@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TodoApp.Api.Contracts;
 using TodoApp.Api.Services;
@@ -40,6 +41,11 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         }.ToString();
         await using var context = OpenContext();
         await context.Database.MigrateAsync();
+        var testUser = new UserAccount("contract-tests@example.invalid");
+        testUser.SetPasswordHash("NotUsedByTheExplicitTestAuthenticationHandler");
+        context.Users.Add(testUser);
+        context.Entry(testUser).Property(user => user.Id).CurrentValue = TestAuthentication.UserId;
+        await context.SaveChangesAsync();
     }
 
     public async Task DisposeAsync()
@@ -57,7 +63,12 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     private WebApplicationFactory<Program> OpenHost() => new WebApplicationFactory<Program>()
         .WithWebHostBuilder(builder => builder.UseEnvironment("Development")
             .ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:TodoDatabase"] = connectionString })));
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:TodoDatabase"] = connectionString,
+                    ["Jwt:SigningKey"] = TestAuthentication.SigningKey
+                }))
+            .ConfigureServices(TestAuthentication.Register));
 
     private static HttpClient Client(WebApplicationFactory<Program> host) => host.CreateClient(
         new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
@@ -66,10 +77,10 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     public async Task InitialMigration_IsRepeatableAndMatchesCurrentModel()
     {
         await using var context = OpenContext();
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(2, (await context.Database.GetAppliedMigrationsAsync()).Count());
         Assert.False(context.Database.HasPendingModelChanges());
         await context.Database.MigrateAsync();
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(2, (await context.Database.GetAppliedMigrationsAsync()).Count());
     }
 
     [PostgresFact]
@@ -139,7 +150,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         Guid id;
         await using (var context = OpenContext())
         {
-            var service = new PostgresTaskService(context);
+            var service = new PostgresTaskService(context, new TestCurrentUser());
             id = (await service.CreateAsync(new TaskWriteRequest { Title = "Keep", CategoryName = "Work" }, default)).Id;
         }
 
@@ -163,7 +174,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         Guid id;
         await using (var context = OpenContext())
         {
-            id = (await new PostgresTaskService(context).CreateAsync(new TaskWriteRequest
+            id = (await new PostgresTaskService(context, new TestCurrentUser()).CreateAsync(new TaskWriteRequest
                 { Title = "Keep", CategoryName = "Work" }, default)).Id;
         }
 
@@ -192,7 +203,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
                 CREATE TRIGGER reject_test_task BEFORE INSERT ON "Tasks"
                 FOR EACH ROW EXECUTE FUNCTION reject_test_task();
                 """);
-            var service = new PostgresTaskService(context);
+            var service = new PostgresTaskService(context, new TestCurrentUser());
             await Assert.ThrowsAsync<DbUpdateException>(() => service.CreateAsync(new TaskWriteRequest
             {
                 Title = "Not saved", CategoryName = "Not saved"
@@ -230,7 +241,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         TaskResponse original;
         await using (var context = OpenContext())
         {
-            var service = new PostgresTaskService(context, clock);
+            var service = new PostgresTaskService(context, new TestCurrentUser(), clock);
             original = await service.CreateAsync(new TaskWriteRequest
             {
                 Title = "Today high", Priority = TaskPriority.High, DueDate = new DateOnly(2026, 11, 14),
@@ -246,7 +257,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         }
 
         await using var reopened = OpenContext();
-        var readService = new PostgresTaskService(reopened, clock);
+        var readService = new PostgresTaskService(reopened, new TestCurrentUser(), clock);
         Assert.Equal(2, (await readService.GetTasksAsync(TaskFilter.All, default)).Count);
         Assert.Equal("Undated", Assert.Single(await readService.GetTasksAsync(TaskFilter.Pending, default)).Title);
         foreach (var filter in new[] { TaskFilter.Completed, TaskFilter.DueToday, TaskFilter.HighPriority })
@@ -257,10 +268,10 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     public async Task DatabaseConstraints_RejectDuplicateCategoryKeysAndBlankTitles()
     {
         await using var context = OpenContext();
-        await new PostgresTaskService(context).CreateAsync(new TaskWriteRequest { Title = "Keep", CategoryName = "Work" }, default);
+        await new PostgresTaskService(context, new TestCurrentUser()).CreateAsync(new TaskWriteRequest { Title = "Keep", CategoryName = "Work" }, default);
         var id = Guid.NewGuid();
         await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO "Categories" ("Id", "Name", "NameKey") VALUES ({id}, 'work', 'WORK');
+            INSERT INTO "Categories" ("Id", "Name", "NameKey", "OwnerId") VALUES ({id}, 'work', 'WORK', {TestAuthentication.UserId});
             """));
         await Assert.ThrowsAsync<PostgresException>(() => context.Database.ExecuteSqlRawAsync("UPDATE \"Tasks\" SET \"Title\" = ' ';"));
         Assert.Equal("Keep", (await context.Tasks.AsNoTracking().SingleAsync()).Title);

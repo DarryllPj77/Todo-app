@@ -30,6 +30,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ILocalTaskService>(_ =>
             new SqliteLocalTaskService(
                 Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
+        builder.Services.AddSingleton<SecureTokenStore>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TodoApp.Api.Contracts;
 using TodoApp.Api.Services;
 using TodoApp.Domain.Enums;
@@ -6,6 +7,7 @@ using TodoApp.Domain.Enums;
 namespace TodoApp.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/tasks")]
 public sealed class TasksController : ControllerBase
 {

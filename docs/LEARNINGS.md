@@ -331,3 +331,45 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** Databases and .NET can represent timestamps at different resolutions, so a saved value may otherwise differ slightly when read back.
 
 **Short example:** TodoDbContext rounds down UTC timestamps to PostgreSQL microseconds before saving, so response timestamps round-trip exactly.
+
+## Password hashing
+
+**Definition:** A password hasher stores a salted, computationally expensive verification value instead of the plaintext password. Use a maintained framework implementation rather than inventing password cryptography.
+
+**Short example:** AuthService uses ASP.NET Core PasswordHasher<UserAccount> to hash/register and verify/login, with rehash support when required. Password input is never trimmed.
+
+## JWT bearer validation
+
+**Definition:** A bearer token grants access to whoever possesses it. The server must validate its signature, issuer, audience, and lifetime before trusting claims.
+
+**Short example:** JwtBearer validates an HS256 token, then HttpCurrentUser reads its validated sub claim. Merely decoding a JWT is not authentication.
+
+## Authentication versus authorization
+
+**Definition:** Authentication establishes who the caller is; authorization decides which operations/data that caller can access.
+
+**Short example:** Authorize requires a valid token, while PostgresTaskService additionally filters OwnerId. A valid token does not grant access to another user's task ID.
+
+## Claim-derived ownership
+
+**Definition:** Ownership comes from authenticated server context, not a user-supplied JSON property.
+
+**Short example:** New task OwnerId is set from ICurrentUser.UserId, and another user's resource returns 404. The request DTO rejects ownerId/categoryId input.
+
+## Rate limiting
+
+**Definition:** A rate limiter caps requests over a time window to reduce abusive load. Its scope and limits must be understood.
+
+**Short example:** Register/login share 10 requests per IP per minute and return 429 after that. This process-local limiter is not distributed throttling or account lockout.
+
+## SecureStorage and local logout
+
+**Definition:** MAUI SecureStorage uses platform-protected storage for small sensitive values. Removing a local token does not invalidate every copy of an already issued JWT.
+
+**Short example:** SecureTokenStore stores/removes only an access token; it has no plaintext fallback or password storage. Actual login/storage UI arrives in Phase 9; server tokens expire after their short lifetime.
+
+## Preserving data during ownership migrations
+
+**Definition:** New ownership rules must not silently delete old rows or guess who owns anonymous data.
+
+**Short example:** AddAuthenticationOwnership leaves legacy OwnerId null and excludes those rows from account queries. An administrator must explicitly review any later assignment.

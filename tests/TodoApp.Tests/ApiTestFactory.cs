@@ -16,12 +16,14 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
             new Dictionary<string, string?>
             {
-                ["ConnectionStrings:TodoDatabase"] = "Host=localhost;Database=unused_contract_test;Username=unused"
+                ["ConnectionStrings:TodoDatabase"] = "Host=localhost;Database=unused_contract_test;Username=unused",
+                ["Jwt:SigningKey"] = TestAuthentication.SigningKey
             }));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<ITaskService>();
             services.AddSingleton<ITaskService, InMemoryTaskService>();
+            TestAuthentication.Register(services);
         });
     }
 }

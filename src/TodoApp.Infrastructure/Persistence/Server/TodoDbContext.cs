@@ -7,6 +7,7 @@ public sealed class TodoDbContext : DbContext
 {
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<UserAccount> Users => Set<UserAccount>();
 
     public TodoDbContext(DbContextOptions<TodoDbContext> options) : base(options) { }
 
@@ -14,6 +15,16 @@ public sealed class TodoDbContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new TaskItemConfiguration());
         modelBuilder.ApplyConfiguration(new CategoryConfiguration());
+        modelBuilder.Entity<UserAccount>(user =>
+        {
+            user.ToTable("Users");
+            user.HasKey(item => item.Id);
+            user.Property(item => item.Id).ValueGeneratedNever();
+            user.Property(item => item.Email).HasMaxLength(254).IsRequired();
+            user.Property(item => item.NormalizedEmail).HasMaxLength(254).IsRequired();
+            user.HasIndex(item => item.NormalizedEmail).IsUnique();
+            user.Property(item => item.PasswordHash).HasMaxLength(1024).IsRequired();
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

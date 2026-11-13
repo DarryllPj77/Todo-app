@@ -1,14 +1,43 @@
 @TodoApp.Api_HostAddress = https://localhost:7114
+@accessToken = paste-access-token-here
+@email = replace-with-local-test-email
+@password = replace-with-local-test-password
+
+### Placeholder values only: never commit real passwords or tokens here
+POST {{TodoApp.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Login; copy the returned accessToken into your HTTP client's private variable
+POST {{TodoApp.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Current account
+GET {{TodoApp.Api_HostAddress}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Public liveness
 
 GET {{TodoApp.Api_HostAddress}}/api/health
 Accept: application/json
 
 ### List tasks; valid filters: All, Pending, Completed, DueToday, HighPriority
 GET {{TodoApp.Api_HostAddress}}/api/tasks?filter=All
+Authorization: Bearer {{accessToken}}
 Accept: application/json
 
 ### Create a task; copy the returned id into taskId below
 POST {{TodoApp.Api_HostAddress}}/api/tasks
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -24,10 +53,12 @@ Content-Type: application/json
 @taskId = 00000000-0000-0000-0000-000000000000
 
 GET {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
 Accept: application/json
 
 ### Full replacement: omitted optional fields reset to their defaults
 PUT {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -41,3 +72,4 @@ Content-Type: application/json
 
 ### Delete a disposable test task
 DELETE {{TodoApp.Api_HostAddress}}/api/tasks/{{taskId}}
+Authorization: Bearer {{accessToken}}
