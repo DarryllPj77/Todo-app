@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16A adds reproducible debug-APK auditing, failure-case tests and explicit Android release/readiness evidence. See ANDROID_RELEASE_READINESS.md. A passing artifact audit is not release approval; all Android capture/geofence phone gates, backup/restore, approved signing/distribution, Apple and earlier provider/Windows acceptance remain open. Next: Phase 16B Android backup/transfer and transport-policy hardening, followed by the required recovery/device acceptance.
+Proceed one phase at a time after review. Phase 16B implements Android managed-backup/transfer exclusion and explicit cleartext/system-certificate policy, enforced by the Phase 16A APK audit. See ANDROID_DATA_POLICY.md and ANDROID_RELEASE_READINESS.md. Device-only/unsynced data has no automatic restore path; actual OEM/restore/TLS, phone/provider/accessibility/signing acceptance remains open. Next: Phase 16C release-mode build/packaging validation and signer-identity preparation, without publishing or claiming release approval.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -322,7 +322,9 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 **Completion checklist:**
 
 - [x] **16A - Android release-hardening preparation implementation:** automatic debug-APK signature/manifest/resource/assembly audit, hash-bound report, 23 PowerShell policy/parser cases and release/recovery checklist. See ANDROID_RELEASE_READINESS.md. No release/native gate is closed by this check.
-- [ ] **16B - Android backup/transfer and transport policy:** review/implement supported-version configuration and recovery coverage for task data, protected credentials and encrypted journals; test before claiming restore/privacy acceptance.
+- [x] **16B - Android backup/transfer and transport policy implementation:** local-only managed-backup policy, legacy/device-protected and cloud/device-transfer exclusions, explicit cleartext/system-only trust and expanded source/APK policy tests. See ANDROID_DATA_POLICY.md.
+- [ ] **16B device/recovery acceptance:** same-identity upgrade, OEM/cloud/device transfer, fresh-install/lost-key outcomes and valid/invalid TLS across selected APIs.
+- [ ] **16C - Release-mode validation:** compile/inspect the release-mode artifact and prepare signer-identity evidence; no publishing, final identity selection or release approval is implied.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 

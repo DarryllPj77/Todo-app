@@ -69,6 +69,12 @@ function Assert-AndroidManifest([xml]$Manifest) {
     Assert-AndroidValue $declaration.GetAttribute('name') "$package.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" 'Unexpected declared permission.'
     Assert-AndroidValue $declaration.GetAttribute('protectionLevel') '0x00000002' 'Internal receiver permission must remain signature protected.'
     $app = Get-AndroidNode $Manifest '/manifest/application'
+    Assert-AndroidValue $app.GetAttribute('allowBackup') 'false' 'Managed backup must remain disabled.'
+    Assert-AndroidValue $app.GetAttribute('usesCleartextTraffic') 'false' 'Cleartext traffic must remain explicitly disabled.'
+    foreach ($attribute in @('fullBackupContent', 'dataExtractionRules', 'networkSecurityConfig')) {
+        if ($app.GetAttribute($attribute) -cnotmatch '^@0x[0-9a-f]+$') { throw 'Backup/transport configuration reference is missing.' }
+    }
+    if ($app.HasAttribute('backupAgent')) { throw 'A custom backup agent requires a separate reviewed policy.' }
     Assert-AndroidValue $app.GetAttribute('debuggable') 'true' 'This audit accepts only the debug development baseline, not a release candidate.'
     $main = @($app.SelectNodes('activity') | Where-Object { $_.GetAttribute('name') -cmatch '^crc[0-9a-f]+\.MainActivity$' })
     if ($main.Count -ne 1) { throw 'Expected one generated main Activity.' }
@@ -129,4 +135,52 @@ function Assert-AndroidManifest([xml]$Manifest) {
     }
 }
 
-Export-ModuleMember -Function ConvertFrom-AaptXmlTree, Get-AndroidNode, Assert-AndroidValue, Assert-AndroidNames, Assert-AndroidManifest
+function Assert-AndroidExclusionSet($Node, [string[]]$Domains) {
+    Assert-AndroidNames @($Node.SelectNodes('*') | ForEach-Object { $_.LocalName }) @($Domains | ForEach-Object { 'exclude' }) 'Backup rules contain an include or unexpected child.'
+    Assert-AndroidNames @($Node.SelectNodes('exclude') | ForEach-Object { $_.GetAttribute('domain') }) $Domains 'Backup domains are missing, duplicated or unexpected.'
+    foreach ($rule in $Node.SelectNodes('exclude')) {
+        Assert-AndroidValue $rule.GetAttribute('path') '.' 'Backup exclusion must cover the complete domain.'
+        Assert-AndroidValue $rule.Attributes.Count 2 'Unexpected backup exclusion attribute.'
+        Assert-AndroidValue $rule.SelectNodes('*').Count 0 'Unexpected nested backup rule.'
+    }
+}
+
+function Assert-AndroidBackupRules([xml]$Rules, [ValidateSet('Legacy', 'Extraction')][string]$Mode, [bool]$DeviceDomains = $false) {
+    $domains = @('root', 'file', 'database', 'sharedpref', 'external')
+    if ($DeviceDomains -or $Mode -eq 'Extraction') { $domains += @('device_root', 'device_file', 'device_database', 'device_sharedpref') }
+    if ($Mode -eq 'Legacy') {
+        $root = Get-AndroidNode $Rules '/full-backup-content'
+        Assert-AndroidValue $root.Attributes.Count 0 'Unexpected legacy backup root attribute.'
+        Assert-AndroidExclusionSet $root $domains
+    } else {
+        $root = Get-AndroidNode $Rules '/data-extraction-rules'
+        Assert-AndroidValue $root.Attributes.Count 0 'Unexpected extraction root attribute.'
+        Assert-AndroidNames @($root.SelectNodes('*') | ForEach-Object { $_.LocalName }) @('cloud-backup', 'device-transfer') 'Extraction modes changed or are missing.'
+        $cloud = Get-AndroidNode $Rules '/data-extraction-rules/cloud-backup'
+        Assert-AndroidValue $cloud.GetAttribute('disableIfNoEncryptionCapabilities') 'true' 'Cloud encryption condition changed.'
+        Assert-AndroidValue $cloud.Attributes.Count 1 'Unexpected cloud backup attribute.'
+        $transfer = Get-AndroidNode $Rules '/data-extraction-rules/device-transfer'
+        Assert-AndroidValue $transfer.Attributes.Count 0 'Unexpected device transfer attribute.'
+        Assert-AndroidExclusionSet $cloud $domains
+        Assert-AndroidExclusionSet $transfer $domains
+    }
+}
+
+function Assert-AndroidNetworkRules([xml]$Rules) {
+    $root = Get-AndroidNode $Rules '/network-security-config'
+    Assert-AndroidValue $root.Attributes.Count 0 'Unexpected network configuration attribute.'
+    Assert-AndroidNames @($root.SelectNodes('*') | ForEach-Object { $_.LocalName }) @('base-config') 'Network policy contains domain/debug overrides.'
+    $base = Get-AndroidNode $Rules '/network-security-config/base-config'
+    Assert-AndroidValue $base.GetAttribute('cleartextTrafficPermitted') 'false' 'Network policy allows cleartext.'
+    Assert-AndroidValue $base.Attributes.Count 1 'Unexpected base network configuration attribute.'
+    Assert-AndroidNames @($base.SelectNodes('*') | ForEach-Object { $_.LocalName }) @('trust-anchors') 'Network trust structure changed.'
+    $anchors = Get-AndroidNode $Rules '/network-security-config/base-config/trust-anchors'
+    Assert-AndroidValue $anchors.Attributes.Count 0 'Unexpected trust anchor attribute.'
+    Assert-AndroidNames @($anchors.SelectNodes('*') | ForEach-Object { $_.LocalName }) @('certificates') 'Network certificate sources changed.'
+    $certificates = Get-AndroidNode $Rules '/network-security-config/base-config/trust-anchors/certificates'
+    Assert-AndroidValue $certificates.GetAttribute('src') 'system' 'Network trust must use system certificates only.'
+    Assert-AndroidValue $certificates.Attributes.Count 1 'Unexpected certificate trust attribute.'
+    Assert-AndroidValue $certificates.SelectNodes('*').Count 0 'Unexpected nested certificate rule.'
+}
+
+Export-ModuleMember -Function ConvertFrom-AaptXmlTree, Get-AndroidNode, Assert-AndroidValue, Assert-AndroidNames, Assert-AndroidManifest, Assert-AndroidBackupRules, Assert-AndroidNetworkRules

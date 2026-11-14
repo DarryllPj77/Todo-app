@@ -6,7 +6,7 @@ $package = 'com.companyname.todoapp.maui'
 <manifest package="$package">
   <uses-sdk minSdkVersion="21" targetSdkVersion="36" />
   <permission name="$package.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" protectionLevel="0x00000002" />
-  <application debuggable="true" allowBackup="true">
+  <application debuggable="true" allowBackup="false" usesCleartextTraffic="false" fullBackupContent="@0x12345670" dataExtractionRules="@0x12345671" networkSecurityConfig="@0x12345672">
     <activity name="crc123abc.MainActivity" exported="true">
       <intent-filter><action name="android.intent.action.MAIN"/><category name="android.intent.category.LAUNCHER"/></intent-filter>
       <meta-data name="android.app.shortcuts" resource="@0x12345678"/>
@@ -40,6 +40,12 @@ function Test-Rejected([string]$Name, [scriptblock]$Change) {
     $script:passed++
 }
 Test-Rejected 'unknown exported receiver' { param($d) $n=$d.CreateElement('receiver'); $n.SetAttribute('name','foreign.Receiver'); $n.SetAttribute('exported','true'); [void]$d.SelectSingleNode('/manifest/application').AppendChild($n) }
+Test-Rejected 'backup enabled' { param($d) $d.SelectSingleNode('//application').SetAttribute('allowBackup','true') }
+Test-Rejected 'cleartext enabled' { param($d) $d.SelectSingleNode('//application').SetAttribute('usesCleartextTraffic','true') }
+Test-Rejected 'backup policy unlinked' { param($d) $d.SelectSingleNode('//application').RemoveAttribute('fullBackupContent') }
+Test-Rejected 'extraction policy unlinked' { param($d) $d.SelectSingleNode('//application').RemoveAttribute('dataExtractionRules') }
+Test-Rejected 'network policy unlinked' { param($d) $d.SelectSingleNode('//application').RemoveAttribute('networkSecurityConfig') }
+Test-Rejected 'custom backup agent' { param($d) $d.SelectSingleNode('//application').SetAttribute('backupAgent','foreign.Agent') }
 Test-Rejected 'unprotected profile receiver' { param($d) $n=$d.CreateElement('receiver'); $n.SetAttribute('name','androidx.profileinstaller.ProfileInstallReceiver'); $n.SetAttribute('exported','true'); [void]$d.SelectSingleNode('/manifest/application').AppendChild($n) }
 Test-Rejected 'shortcut metadata detached from main Activity' { param($d) $n=$d.SelectSingleNode('//meta-data'); [void]$n.ParentNode.RemoveChild($n) }
 Test-Rejected 'alias impersonates capture' { param($d) $n=$d.CreateElement('activity-alias'); $n.SetAttribute('name',"$package.QuickCaptureActivity"); $n.SetAttribute('exported','true'); [void]$d.SelectSingleNode('/manifest/application').AppendChild($n) }
@@ -79,4 +85,40 @@ foreach ($badTree in @(@('A: name="orphan"'), @('E: root', '  A: name="one"', ' 
     if (!$rejected) { throw 'Malformed aapt2 output was accepted.' }
     $script:passed++
 }
+$resources = Join-Path $PSScriptRoot '../src/TodoApp.Maui/Platforms/Android/Resources'
+[xml]$legacy = Get-Content -LiteralPath (Join-Path $resources 'xml/backup_rules.xml') -Raw
+[xml]$deviceLegacy = Get-Content -LiteralPath (Join-Path $resources 'xml-v24/backup_rules.xml') -Raw
+[xml]$extraction = Get-Content -LiteralPath (Join-Path $resources 'xml/data_extraction_rules.xml') -Raw
+[xml]$network = Get-Content -LiteralPath (Join-Path $resources 'xml/network_security_config.xml') -Raw
+Assert-AndroidBackupRules $legacy 'Legacy'
+Assert-AndroidBackupRules $deviceLegacy 'Legacy' $true
+Assert-AndroidBackupRules $extraction 'Extraction'
+Assert-AndroidNetworkRules $network
+$script:passed += 4
+
+function Test-PolicyRejected([string]$Name, [xml]$Document, [scriptblock]$Change, [scriptblock]$Validate) {
+    $copy = $Document.CloneNode($true)
+    & $Change $copy
+    $rejected = $false
+    try { & $Validate $copy } catch { $rejected = $true }
+    if (!$rejected) { throw "Backup/transport audit accepted unsafe drift: $Name" }
+    $script:passed++
+}
+$checkLegacy = { param($d) Assert-AndroidBackupRules $d 'Legacy' }
+$checkDeviceLegacy = { param($d) Assert-AndroidBackupRules $d 'Legacy' $true }
+$checkExtraction = { param($d) Assert-AndroidBackupRules $d 'Extraction' }
+$checkNetwork = { param($d) Assert-AndroidNetworkRules $d }
+Test-PolicyRejected 'missing secret preferences exclusion' $legacy { param($d) $n=$d.SelectSingleNode('//exclude[@domain="sharedpref"]'); [void]$n.ParentNode.RemoveChild($n) } $checkLegacy
+Test-PolicyRejected 'narrow task backup exclusion' $legacy { param($d) $d.SelectSingleNode('//exclude[@domain="file"]').SetAttribute('path','one-task.db3') } $checkLegacy
+Test-PolicyRejected 'backup include' $legacy { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('include')) } $checkLegacy
+Test-PolicyRejected 'missing device protected secrets' $deviceLegacy { param($d) $n=$d.SelectSingleNode('//exclude[@domain="device_sharedpref"]'); [void]$n.ParentNode.RemoveChild($n) } $checkDeviceLegacy
+Test-PolicyRejected 'missing cloud task exclusion' $extraction { param($d) $n=$d.SelectSingleNode('//cloud-backup/exclude[@domain="database"]'); [void]$n.ParentNode.RemoveChild($n) } $checkExtraction
+Test-PolicyRejected 'missing transfer secret exclusion' $extraction { param($d) $n=$d.SelectSingleNode('//device-transfer/exclude[@domain="sharedpref"]'); [void]$n.ParentNode.RemoveChild($n) } $checkExtraction
+Test-PolicyRejected 'transfer mode omitted' $extraction { param($d) $n=$d.SelectSingleNode('//device-transfer'); [void]$n.ParentNode.RemoveChild($n) } $checkExtraction
+Test-PolicyRejected 'weakened cloud encryption condition' $extraction { param($d) $d.SelectSingleNode('//cloud-backup').SetAttribute('disableIfNoEncryptionCapabilities','false') } $checkExtraction
+Test-PolicyRejected 'unreviewed transfer mode' $extraction { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('cross-platform-transfer')) } $checkExtraction
+Test-PolicyRejected 'network cleartext exception' $network { param($d) $d.SelectSingleNode('//base-config').SetAttribute('cleartextTrafficPermitted','true') } $checkNetwork
+Test-PolicyRejected 'user certificate trust' $network { param($d) $d.SelectSingleNode('//certificates').SetAttribute('src','user') } $checkNetwork
+Test-PolicyRejected 'debug certificate override' $network { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('debug-overrides')) } $checkNetwork
+Test-PolicyRejected 'domain override' $network { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('domain-config')) } $checkNetwork
 Write-Output "Android audit policy/parser tests passed: $script:passed"

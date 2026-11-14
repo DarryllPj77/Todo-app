@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 16B - Recovery policy includes what cannot be restored
+
+**Term:** Managed-data exclusion. **Definition:** Declare the complete app-storage domains that Android should omit from supported backup/transfer paths. **Short example:** Excluding shared preferences alone protects a secret envelope but could still copy a SQLite queue or encrypted journal without its key; this increment excludes all configured domains and promises no automatic recovery.
+
+**Term:** Versioned platform policy. **Definition:** Match rules to the Android APIs that understand them, then inspect the actual packaged variants. **Short example:** API-23 legacy rules have five domains, API-24 adds device-protected domains, and API-31+ cloud/device transfer uses a separate resource format.
+
+**Term:** Explicit trust boundary. **Definition:** An HTTPS URL and a certificate the device trusts are separate requirements. **Short example:** A PC-trusted development certificate does not make a phone trust that endpoint; the Android API-24+ policy allows only system CAs and no debug/user-CA override.
+
+
 ## Phase 16A - Artifact checks and release acceptance answer different questions
 
 **Term:** Artifact identity. **Definition:** A SHA-256 hash identifies the exact package bytes inspected, not the source commit or signing authority. **Short example:** A report for yesterday's APK cannot establish today's build, even when both files have the same name.

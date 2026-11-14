@@ -1,5 +1,10 @@
 # Database plan
 
+## Android backup exclusion (Phase 16B)
+
+Android now requests no automatic managed backup/Android device transfer of app-storage domains: tasks, account outbox/receipts, preferences/protected ciphertext and encrypted local journals stay local. Legacy and modern rules are explicit and APK-audited. No database/key is opened, cleared, rewritten or migrated by these XML edits; same-identity installed upgrades retain data. Uninstall/clear-data can lose device-only/unsent data, with no automatic export/restore feature. Previous cloud copies, user exports, server/provider data and OEM/newer transfer behavior are not erased or certified. Actual upgrade/restore/lost-key tests remain pending. Existing schemas, eight EF migrations and protocol 6 remain unchanged; see ANDROID_DATA_POLICY.md.
+
+
 ## Release-readiness inspection (Phase 16A)
 
 No app data/configuration/schema change. The audit reads only the APK and tool metadata and writes an ignored JSON report; it never opens todoapp.db3, sync.db3, protected credentials or encrypted journals. Confirmed compiled backup attributes remain allowBackup=true with no explicit fullBackupContent/dataExtractionRules. Define/test supported cloud/device-transfer behavior and consistent recovery in Phase 16B before promising backup privacy or portability. Existing task/sync schema 7 and other local stores, eight PostgreSQL migrations and protocol 6 remain unchanged. See ANDROID_RELEASE_READINESS.md for upgrade, lost-key, uncertain-save and live-SQLite backup limits.

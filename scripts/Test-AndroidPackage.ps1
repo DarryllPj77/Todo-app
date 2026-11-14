@@ -67,6 +67,17 @@ try {
     }
     $report.EmbeddedAssemblies = 'App/domain/infrastructure present for arm64-v8a and x86_64'
     $package = $report.Manifest.Package
+    $application = Get-AndroidNode $manifest '/manifest/application'
+    $policyResources = @{
+        fullBackupContent = 'xml/backup_rules'
+        dataExtractionRules = 'xml/data_extraction_rules'
+        networkSecurityConfig = 'xml/network_security_config'
+    }
+    foreach ($attribute in $policyResources.Keys) {
+        $resource = $policyResources[$attribute]
+        if (!$resourceIds.ContainsKey($resource)) { throw 'Required backup/transport resource is absent.' }
+        Assert-AndroidValue $application.GetAttribute($attribute) $resourceIds[$resource] 'Backup/transport manifest resource link changed.'
+    }
     $widgetMetadata = Get-AndroidNode $manifest "/manifest/application/receiver[@name='$package.QuickCaptureWidgetProvider']/meta-data[@name='android.appwidget.provider']"
     Assert-AndroidValue $widgetMetadata.GetAttribute('resource') $resourceIds['xml/quick_capture_widget_info'] 'Widget provider metadata points to the wrong resource.'
     $shortcutMetadata = Get-AndroidNode $manifest "/manifest/application/activity/meta-data[@name='android.app.shortcuts']"
@@ -78,7 +89,19 @@ try {
     $modernWidget = $false
     $modernShortcut = $false
     foreach ($entry in $entries) {
-        if ($entry -cmatch '^res/xml[^/]*/quick_capture_widget_info\.xml$') {
+        if ($entry -cmatch '^res/xml(?:-v\d+)?/backup_rules\.xml$') {
+            $xml = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', $entry, $ApkPath))
+            Assert-AndroidBackupRules $xml 'Legacy' ($entry -ceq 'res/xml-v24/backup_rules.xml')
+            $checkedResources.Add($entry)
+        } elseif ($entry -cmatch '^res/xml[^/]*/data_extraction_rules\.xml$') {
+            $xml = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', $entry, $ApkPath))
+            Assert-AndroidBackupRules $xml 'Extraction'
+            $checkedResources.Add($entry)
+        } elseif ($entry -cmatch '^res/xml[^/]*/network_security_config\.xml$') {
+            $xml = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', $entry, $ApkPath))
+            Assert-AndroidNetworkRules $xml
+            $checkedResources.Add($entry)
+        } elseif ($entry -cmatch '^res/xml[^/]*/quick_capture_widget_info\.xml$') {
             $xml = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', $entry, $ApkPath))
             $provider = Get-AndroidNode $xml '/appwidget-provider'
             Assert-AndroidValue $provider.GetAttribute('updatePeriodMillis') '0' 'Widget periodic refresh became enabled.'
@@ -110,6 +133,9 @@ try {
     }
     if (!($checkedResources -cmatch '^res/xml[^/]*/quick_capture_widget_info\.xml$') -or !($checkedResources -cmatch '^res/xml[^/]*/quick_capture_shortcuts\.xml$')) { throw 'Packaged capture XML is missing.' }
     if (!$modernWidget -or !$modernShortcut) { throw 'Modern capture metadata is missing from the packaged resource variants.' }
+    foreach ($policyPath in @('res/xml/backup_rules.xml', 'res/xml-v24/backup_rules.xml', 'res/xml/data_extraction_rules.xml', 'res/xml/network_security_config.xml')) {
+        if ($checkedResources -cnotcontains $policyPath) { throw 'Required versioned backup/transport resource was not inspected.' }
+    }
     $layout = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', 'res/layout/quick_capture_widget.xml', $ApkPath))
     $button = Get-AndroidNode $layout '/FrameLayout/Button'
     Assert-AndroidValue $layout.SelectNodes('//*').Count 2 'Widget layout gained unexpected views.'
@@ -117,12 +143,14 @@ try {
     Assert-AndroidValue $button.GetAttribute('contentDescription') $resourceIds['string/quick_capture_widget_description'] 'Widget accessible description changed.'
     Assert-AndroidValue $button.GetAttribute('text') $resourceIds['string/quick_capture_widget_button'] 'Widget text reference changed.'
     $report.CheckedResources = @($checkedResources)
+    $report.ConfiguredDataPolicy = 'Managed cloud/Android device transfer excluded; actual restore/OEM behavior not accepted'
+    $report.ConfiguredTransportPolicy = 'Cleartext disabled; API 24+ network configuration trusts system certificates only; no debug/domain overrides'
     Assert-AndroidValue (Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256).Hash $report.Sha256 'APK changed during audit; rebuild and rerun.'
     $report.OpenReleaseGates = @(
         'Development application ID/version and approved release signing identity'
         'Debug build only; release build, store/background-location review and distribution validation'
-        'Backup/data-transfer policy and lost-key/restore acceptance; inspect recorded manifest attributes'
-        'Explicit transport configuration review; HTTPS is enforced by existing client code'
+        'Actual backup/device-transfer/lost-key/restore acceptance; configuration alone is not evidence of OEM behavior'
+        'On-device transport/certificate failures and supported API behavior; HTTPS is enforced by existing client code'
         'Phone launcher/share/widget, lifecycle, offline/account and accessibility acceptance'
         'Real geofence/permission/notification/OEM/battery and provider acceptance'
         'Database upgrade/backup/recovery and secret redaction evidence'

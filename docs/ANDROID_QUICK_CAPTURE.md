@@ -55,6 +55,10 @@ Device task schema **7** adds `QuickCaptureReceipts(Id,Fingerprint)`. The task a
 
 Receipts are retained up to 10,000 per device database or account partition. At capacity, new quick captures are refused and the normal editor remains available. There is no automatic receipt pruning, separate draft database, cross-workspace move or automatic sync. Server migrations remain eight and the sync wire protocol remains **6**. Normal task text retains the existing SQLite/backup protection limits; capture does not add database encryption or change Android's existing backup configuration.
 
+## Data retention after Phase 16B
+
+Android now excludes app storage from supported managed-backup/Android device-transfer paths and explicitly enforces the network policy described in [ANDROID_DATA_POLICY.md](ANDROID_DATA_POLICY.md). Device-only tasks and unsynced captures have no automatic recovery after uninstall/clear-data. Same-identity installed upgrades keep the existing files; the policy edit does not clear a draft queue or receipt. Account synchronization only recovers data already uploaded. Real OEM/restore/TLS behavior is still pending acceptance.
+
 ## Reproducible package checks (Phase 16A)
 
 Build-Android.ps1 now automatically runs Test-AndroidPackage.ps1 after debug signing. It checks the actual APK's capture/widget/share resources, native component/permission boundaries, signatures and embedded assemblies and writes ignored .tools/android-audit/debug-report.json. Its success means the development artifact matches the current baseline, not that launcher/phone behavior or release readiness passed. See [ANDROID_RELEASE_READINESS.md](ANDROID_RELEASE_READINESS.md) for commands, failure cases and the open acceptance/recovery matrix.

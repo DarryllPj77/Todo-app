@@ -1,5 +1,12 @@
 # Architecture
 
+## Android managed-data and network policy (Phase 16B)
+
+AndroidManifest now explicitly disables managed backup and cleartext and references versioned backup/extraction/network resources. Legacy API-23 rules exclude all five available domains; xml-v24 adds device-protected domains. API-31+ extraction rules separately exclude all nine domains for cloud and Android device transfer. No custom backup agent, selective restore, new storage/schema or key migration is added. Existing installed data is untouched, but device-only/unsent data has no automatic recovery path; previous backups/OEM/newer cross-platform tools are outside the static guarantee.
+
+API-24+ network configuration permits no cleartext, trusts only system certificates and has no debug/domain/user-CA override. API-21/22 rely on the existing HTTPS endpoint validation and older platform trust; API-23 adds the platform cleartext flag. AndroidPackageAudit now validates flags/resource links and actual packaged rule variants, while PowerShell mutation tests cover missing/partial exclusions and trust weakening. Audit configuration evidence is distinct from real upgrade/restore/lost-key/TLS acceptance, which stays open. See ANDROID_DATA_POLICY.md.
+
+
 ## Android artifact audit boundary (Phase 16A)
 
 Build-Android.ps1 now invokes Test-AndroidPackage.ps1 after debug signing. AndroidPackageAudit.psm1 converts aapt2's actual compiled XML tree into a normalized DOM and validates the current permission/export/SDK/capture baseline. The orchestrator verifies APK signatures, resource IDs and packaged variants/layout, embedded app/domain/infrastructure ABIs and unchanged APK hash, then writes an ignored JSON report tied to APK and audit-code hashes. Native commands use argument arrays; no app database, credential, phone or provider is accessed. Invalid/unknown parser forms and unexpected manifest changes fail rather than broadening accepted capabilities.

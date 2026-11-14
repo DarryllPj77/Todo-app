@@ -1,6 +1,6 @@
-# Phase 16A: Android release-readiness preparation
+# Android release readiness: Phases 16A/16B
 
-Updated 2026-11-15 (Asia/Manila). **Release readiness: BLOCKED.** This increment automates inspection of the existing development APK and records the remaining acceptance work. It does not create a release candidate, change backup behavior, install an app, access a phone or approve distribution.
+Updated 2026-11-15 (Asia/Manila). **Release readiness: BLOCKED.** Phase 16A added debug-APK inspection; Phase 16B implements managed-backup exclusion rules and an explicit transport policy, with automated resource checks. These increments do not create a release candidate, install an app, access a phone or approve distribution. Device-only tasks and unsynced changes have no automatic restore path; see ANDROID_DATA_POLICY.md.
 
 ## Reproduce the checks
 
@@ -28,6 +28,7 @@ The report defaults to ignored `.tools/android-audit/debug-report.json`. It reco
 - Verify APK signatures with apksigner, requiring v1/v2/v3 and one signer. Record AndroidX META-INF/JAR coverage warning count without suppressing or claiming to resolve those warnings.
 - Inspect the compiled APK manifest with aapt2, rather than trusting source XML. Check the current application ID, minimum API 21/target API 36, debug flag, exact permission set/signature-protected internal permission and reviewed exported component boundaries.
 - Require the narrow single ACTION_SEND/DEFAULT/text/plain capture filter, empty capture task affinity/Recents exclusion, private widget and background-transition receivers, expected boot/update actions and DUMP-protected profile installer when present. Unexpected public components or permission expansion fail.
+- Require allowBackup=false and usesCleartextTraffic=false plus exact resource links. Inspect the packaged legacy/device-protected and cloud/device-transfer exclusion rules and system-only network trust; missing/narrowed exclusions, includes, extra transfer modes and debug/domain trust overrides fail. These configuration checks do not prove OEM restore or native TLS outcomes.
 - Resolve resource IDs from the APK resource table and check the actual packaged launcher/widget XML variants, widget layout/click ID/accessibility reference, zero refresh, generic preview, modern cell hints and fixed shortcut action/package/class. This does not execute the Activity/PendingIntent or prove runtime privacy behavior.
 - Check app/domain/infrastructure assemblies are embedded for arm64-v8a and x86_64. This verifies the current standalone debug format, not every possible ABI/distribution format.
 - Check the APK hash again after inspection to reject an artifact changed during the audit. No installation, emulator, SDK download/license operation, provider write or runtime permission request is performed.
@@ -38,8 +39,8 @@ The parser normalizes the Android attribute namespace into a DOM and rejects unk
 
 | Gate | Confirmed current evidence | Required before closing |
 | --- | --- | --- |
-| Backup and transfer | Compiled APK has allowBackup=true; no explicit fullBackupContent or dataExtractionRules. Local task/sync text is not independently encrypted. | Define cloud/device-transfer policy for task data, protected credentials and encrypted journals; implement supported Android-version rules and test real restore/lost-key behavior. Phase 16B is proposed for this policy work. |
-| Transport configuration | Client session validation requires an HTTPS origin; compiled app has no explicit usesCleartextTraffic/networkSecurityConfig. | Review/declare the intended Android transport policy and test endpoints/certificate failures. No certificate bypass or production trust exception is authorized. |
+| Backup and transfer | Phase 16B sets allowBackup=false with complete legacy/API 24+ and cloud/Android device-transfer exclusions. Local task/sync text is not independently encrypted; no automatic recovery is promised. | Verify actual OEM/cloud/transfer, same-identity upgrade, fresh-install and lost-key behavior. Existing backups/newer cross-platform migration are not certified. See ANDROID_DATA_POLICY.md. |
+| Transport configuration | Phase 16B explicitly disables cleartext; API 24+ uses only system CAs with no user/debug/domain exception. Client validation still requires HTTPS. | Test reachable valid TLS and HTTP/invalid-certificate failures on selected devices, including older platform limits. No certificate bypass is provided. |
 | Identity and signing | Development ID com.companyname.todoapp.maui, version 1/1.0, debug signing; signatures verify. | Choose durable release identity/versioning and approved certificate/distribution plan, protect keys outside Git, verify certificate identity and upgrade compatibility. |
 | Capture on phones | Portable capture tests and APK resource checks pass. | Record real launcher/share/widget behavior, multiple instances/resizing, offline saves/account changes, interrupted Save/recreation/task stacks and supported API/host combinations. See ANDROID_QUICK_CAPTURE.md. |
 | Geofences/notifications | Portable permission/lifecycle/crypto tests and native compilation pass. | Perform ANDROID_GEOFENCES.md device matrix, actual dwell/exit/Stop/restart/revocation/OEM battery cases and notification delivery/privacy. |
@@ -48,7 +49,7 @@ The parser normalizes the Android attribute namespace into a DOM and rejects unk
 | Provider and distribution | Google provider, background-location justification/privacy and Play/release acceptance remain open. | Perform the documented real-provider cases and complete distribution disclosure/review for the selected features. No store submission is performed here. |
 | Other platforms | Apple support and earlier Windows native/MSIX resource-warning gates remain pending. | Use Mac tooling for Apple; finish selected Windows package/device checks separately. Android preparation does not close these gates. |
 
-For each manual case, record app commit and APK hash, device/OS/API/launcher or provider, prerequisites, exact actions, expected/actual result, pass/fail, date and redacted evidence. Keep tokens, passwords, coordinates and personal task text out of committed logs. No manual case is marked passed in Phase 16A. Compilation, static audit or an empty checklist is insufficient evidence.
+For each manual case, record app commit and APK hash, device/OS/API/launcher or provider, prerequisites, exact actions, expected/actual result, pass/fail, date and redacted evidence. Keep tokens, passwords, coordinates and personal task text out of committed logs. No manual case is marked passed by these implementation increments. Compilation, static audit or an empty checklist is insufficient evidence.
 
 Android's [Auto Backup documentation](https://developer.android.com/identity/data/autobackup) distinguishes modern extraction rules and older backup formats, and notes that allowBackup=false alone can leave OEM device-transfer behavior enabled. Treat a single manifest flag as incomplete restore/privacy evidence. Native inspection follows [aapt2](https://developer.android.com/tools/aapt2) and [apksigner](https://developer.android.com/tools/apksigner) documentation.
 
@@ -61,6 +62,6 @@ Android's [Auto Backup documentation](https://developer.android.com/identity/dat
 5. Do not assume copying a live SQLite file is a consistent backup: journal/WAL activity, protected credentials, partition ownership and related files matter. This increment implements no export/import or automatic restore feature. Define and test a consistent recovery procedure before promising data portability.
 6. An audit failure preserves the APK; inspect its failed report, confirm the toolchain/artifact and fix the underlying drift. Do not treat a report for an older hash as evidence for a new APK. Clearing a report is not a repair.
 
-## Phase 16A verification
+## Verification by increment
 
-The PowerShell policy/parser suite contains 23 passing cases, including unknown public receivers/aliases, private worker/widget export changes, broadened share filters/URI routes, permission expansion, SDK/package changes, missing boundaries and malformed/sibling aapt2 trees. A deliberately invalid APK was rejected with a nonzero process exit and a failed JSON report. The real debug APK and integrated build/audit results are recorded in DEVELOPMENT_PROGRESS.md. Native phone/release outcomes remain pending.
+Phase 16A introduced 23 passing PowerShell policy/parser cases, including unknown public receivers/aliases, private worker/widget export changes, broadened share filters/URI routes, permission expansion, SDK/package changes, missing boundaries and malformed/sibling aapt2 trees. A deliberately invalid APK was rejected with a nonzero process exit and a failed JSON report during Phase 16A. Phase 16B expands the suite to 46 passing cases, including source-policy documents and missing backup/transport links, credential/task/device-domain exclusions and weakened trust. The real debug APK and integrated build/audit results are recorded in DEVELOPMENT_PROGRESS.md. Native phone/release outcomes remain pending.
