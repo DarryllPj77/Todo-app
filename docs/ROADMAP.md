@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 13A local calendar planning is implemented: scoped time blocks, overlap/stale-edit guards and selected-block ICS export. Google Calendar is the selected first provider for the next OAuth increment. No Google authorization or automatic synchronization is connected yet. Phase 13 and earlier native/release acceptance remain open; see CALENDAR.md.
+Proceed one phase at a time after review. Phase 13B Windows Google consent/token lifecycle is implemented: browser PKCE/state, protected Todo-account-bound grants, manual refresh/identity checks, cancellation and disconnect/revocation. Live Google/native acceptance and mobile authorization remain open. Next is 13C explicit calendar/event links; no calendar event writes or automatic sync are enabled yet. See GOOGLE_CALENDAR.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -250,7 +250,8 @@ A saved view remains a device-local query definition. Focus history is also devi
 
 - [x] **13A - Local planning and file exchange:** task-linked scoped calendar.db3 version-1 blocks, fixed UTC/original zone semantics, DST validation, transactional nonoverlap, revision checks, snapshot retention, draft-aware MAUI page and selected-block RFC 5545 export. Twenty-one new portable cases pass. Google Calendar is the chosen first provider.
 - [ ] **13A native acceptance:** actual screen, share dialog/file delivery, manual Google import, mobile build/FileProvider/iPad anchor, accessibility and account/lifecycle checks; see CALENDAR.md.
-- [ ] **13B - Google OAuth:** configured installed-app credentials, supported platform flows, browser PKCE/state, secure tokens, refresh/revocation/disconnect and Todo-account separation.
+- [x] **13B Windows implementation - Google OAuth:** configurable Desktop client, system-browser IPv4 loopback PKCE/state/cancellation, protected Todo-account/origin/Google-subject binding, identity checks, refresh rotation, fail-closed restoration markers and explicit disconnect/revocation. Twenty-six new portable/loopback cases pass; see GOOGLE_CALENDAR.md.
+- [ ] **13B provider/native/mobile acceptance:** real configured Google consent and token lifecycle, SecureStorage/restart, browser/firewall/account-race checks and supported mobile flows remain open. Mobile/preview authorization is disabled.
 - [ ] **13C - Explicit Google event links:** selected calendar, durable event identity, idempotent retries/uncertain writes, conditional updates and confirmed remote deletion.
 - [ ] **13D - Reconciliation/two-way policy:** field ownership, incremental cursors/resets, reviewed conflicts/deletions/recurring exceptions; provider acceptance before automatic writes.
 

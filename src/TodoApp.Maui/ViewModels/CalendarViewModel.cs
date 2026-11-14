@@ -26,7 +26,7 @@ public sealed class CalendarViewModel : ObservableViewModel, IDisposable
     private DateTime day = DateTime.Today;
     private TimeSpan startTime = new(9, 0, 0);
     private string duration = "30", zoneId = TimeZoneInfo.Local.Id, error = "";
-    private string status = "Plan a fixed block of time. Google Calendar connection comes in the next increment.";
+    private string status = "Plan a fixed block of time. Google consent is available through Tools; event synchronization comes in the next increment.";
 
     public ObservableCollection<CalendarTask> Tasks { get; } = new();
     public ObservableCollection<TimeBlock> Blocks { get; } = new();

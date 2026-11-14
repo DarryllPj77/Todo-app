@@ -102,6 +102,9 @@ internal sealed class ClientHarness : IDisposable
 
 internal sealed class ClientNavigation : ITaskNavigation
 {
+    public Task OpenGoogleConnectionAsync() => Task.CompletedTask;
+    public Func<Task<bool>>? GoogleConfirmation { get; set; }
+    public Task<bool> ConfirmGoogleDisconnectAsync(bool revoke) => GoogleConfirmation?.Invoke() ?? Task.FromResult(Confirm);
     public Task OpenCalendarAsync() => Task.CompletedTask;
     public Func<Task<bool>>? CalendarConfirmation { get; set; }
     public Task<bool> ConfirmDiscardCalendarDraftAsync() => CalendarConfirmation?.Invoke() ?? Task.FromResult(Confirm);

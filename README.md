@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 13A calendar planning implemented; native acceptance pending.** Open **Tools > Calendar & time blocks** to save task-linked local time blocks, reschedule them, and export one saved block as an ICS file for manual calendar import. Google Calendar is the chosen first provider; OAuth and automatic/two-way sync remain later increments. All **431 tests passed, none skipped** (372 portable cases and 59 PostgreSQL facts); Windows/XAML build has **0 warnings/errors**. See [CALENDAR.md](docs/CALENDAR.md). No new API migration is needed; earlier native/mobile acceptance remains open.
+**Current status (2026-11-14): Phase 13B Windows Google consent/token lifecycle implemented; native/provider acceptance pending.** Open **Tools > Google Calendar connection** after signing into the Todo API and configuring a Google Desktop OAuth client. Browser PKCE/state, protected account-bound tokens, manual refresh/check, cancellation, local disconnect and confirmed revocation are implemented. Event links/synchronization remain Phase 13C/13D; mobile Google authorization is disabled pending its supported flow. See [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md). All **457 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. Existing local planning/export remains available; no new migration is needed.
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 13A suite passed **431 tests, 0 skipped** (372 portable cases; 59 PostgreSQL facts). Calendar planning adds 21 portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13B suite passed **457 tests, 0 skipped** (398 portable cases; 59 PostgreSQL facts). This includes 26 new OAuth/lifecycle/loopback cases; no live Google service was used in automated tests. See GOOGLE_CALENDAR.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -227,4 +227,8 @@ This folder was not a Git repository at initial inspection. It is now initialize
 
 ## Calendar planning
 
-Rebuild the client and open **Tools > Calendar & time blocks**. Choose a pending device/current-account cached task, a start date/time and elapsed duration, then **Save local block**. Select a saved block to reschedule, export or delete it. Export opens the system share dialog for a selected-block ICS snapshot; imports are separate copies and may duplicate on repeated import. Google OAuth is not connected yet. See [CALENDAR.md](docs/CALENDAR.md) for the complete workflow, time-zone rules, native checks and next increments.
+Rebuild the client and open **Tools > Calendar & time blocks**. Choose a pending device/current-account cached task, a start date/time and elapsed duration, then **Save local block**. Select a saved block to reschedule, export or delete it. Export opens the system share dialog for a selected-block ICS snapshot; imports are separate copies and may duplicate on repeated import. Windows Google consent/token lifecycle is available separately through **Tools > Google Calendar connection**; event sync remains pending. See [CALENDAR.md](docs/CALENDAR.md) for the complete workflow, time-zone rules, native checks and next increments.
+
+## Google Calendar connection
+
+Follow [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md) to enable Calendar API and configure a Desktop app OAuth client. Rebuild the Windows client, sign into the Todo API, then open **Tools > Google Calendar connection**. Enter the client ID and optional client secret, and choose **Connect in browser**. Never enter a Google password in the app. **Check saved connection / refresh token**, local disconnect and separately confirmed revocation are available. Actual Google consent and SecureStorage/browser acceptance remain manual checks; this increment does not send calendar events.

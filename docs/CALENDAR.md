@@ -1,6 +1,6 @@
 # Calendar planning - Phase 13A
 
-Google Calendar is the user's chosen first provider. This increment implements local time blocking and selected-block iCalendar export. **Google OAuth, provider event writes and automatic/two-way synchronization are not connected yet.** No Google credentials or API setup are required to try this increment.
+Google Calendar is the user's chosen first provider. This increment implements local time blocking and selected-block iCalendar export. Windows Google consent/token lifecycle is now implemented separately in Phase 13B; see [GOOGLE_CALENDAR.md](GOOGLE_CALENDAR.md). **Provider event writes and automatic/two-way synchronization are not connected yet.** No Google credentials or API setup are required to try local planning/export.
 
 ## Blueprint and boundaries
 
@@ -47,7 +47,7 @@ Export files remain in the app's `CacheDirectory/calendar-exports` so the receiv
 
 ## Remaining Phase 13 increments
 
-- **13B - Google consent and token lifecycle:** configure an installed-app OAuth client, system-browser authorization with PKCE/state and cancellation, secure account-bound token storage, refresh/revocation/disconnect, and platform-specific redirects. Todo JWTs and Google credentials stay separate. Follow [Google's installed-app guidance](https://developers.google.com/identity/protocols/oauth2/native-app); desktop and mobile authorization need their respective supported flows.
+- **13B Windows consent/token implementation is complete:** configurable Desktop client, browser PKCE/state, secure account-bound tokens, refresh/check, cancellation and explicit disconnect/revocation. Live Google/native acceptance and mobile authorization remain pending; see [GOOGLE_CALENDAR.md](GOOGLE_CALENDAR.md).
 - **13C - Explicit Google event links:** user selects a calendar; persist local block/provider/account/calendar/event identity, idempotent create/retry receipts, conditional updates, consent before remote deletion, and reconciliation after uncertain writes. Do not infer links from imported ICS copies.
 - **13D - Reconciliation/two-way policy:** decide field ownership and review conflicts before enabling remote-to-local changes, incremental tokens/resets, remote deletion, recurring/provider event exceptions, timezone shifts and revoked access. A calendar event must never implicitly complete a task or credit focus history.
 

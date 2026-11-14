@@ -40,6 +40,7 @@ public partial class TaskListPage : ContentPage
         var commands = new (string Label, AsyncCommand Command)[]
         {
             ("Calendar & time blocks", viewModel.CalendarCommand),
+            ("Google Calendar connection", viewModel.GoogleConnectionCommand),
             ("Saved views", viewModel.TaskViewsCommand), ("Task hierarchy", viewModel.HierarchyCommand),
             ("Dependencies", viewModel.DependenciesCommand), ("Urgency & importance", viewModel.PlanningCommand),
             ("Recurring tasks", viewModel.RecurrenceCommand), ("Focus & history", viewModel.FocusCommand),

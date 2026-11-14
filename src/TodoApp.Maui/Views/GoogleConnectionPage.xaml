@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" x:Class="TodoApp.Maui.Views.GoogleConnectionPage"
+             x:DataType="vm:GoogleConnectionViewModel" Title="Google Calendar connection" Style="{StaticResource TaskPage}">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="14" MaximumWidthRequest="760" HorizontalOptions="Fill">
+            <Label Text="Connect Google Calendar" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="{Binding PlatformNote}" Style="{StaticResource TaskMuted}" />
+            <Label Text="This connects Google to the signed-in Todo account and API address. Consent includes your Google identity, calendar list, and events on calendars you own. Event creation/sync comes in the next increment." />
+            <Label Text="Desktop app OAuth client ID" />
+            <Entry Text="{Binding ClientId}" Placeholder="Client ID from Google Cloud" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Google Desktop app client ID" />
+            <Label Text="Desktop client secret (optional if not required by your client)" />
+            <Entry Text="{Binding ClientSecret}" IsPassword="True" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Optional Google Desktop client secret" />
+            <Label Text="Do not enter a Google password. Sign-in and consent happen only in your system browser." Style="{StaticResource TaskMuted}" />
+            <Button Text="Connect in browser" Command="{Binding ConnectCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Check saved connection / refresh token" Command="{Binding CheckCommand}" Style="{StaticResource TaskAction}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Button Text="Cancel current action" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
+            <Label Text="{Binding ConnectionLabel}" LineBreakMode="WordWrap" />
+            <Label Text="{Binding Status}" LineBreakMode="WordWrap" />
+            <Label Text="{Binding Error}" Style="{StaticResource TaskError}" LineBreakMode="WordWrap" />
+            <Button Text="Disconnect locally" Command="{Binding ForgetCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Revoke Google access and disconnect" Command="{Binding RevokeCommand}" Style="{StaticResource TaskAction}" />
+            <Label Text="Local disconnect leaves Google permission intact. Revocation affects this Google project's granted scopes across its clients. Neither action deletes your calendar events or local blocks. Todo sign-out hides the connection but does not revoke Google access."
+                   Style="{StaticResource TaskMuted}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

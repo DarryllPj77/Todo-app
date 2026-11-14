@@ -2,6 +2,8 @@ namespace TodoApp.Maui.Services;
 
 public interface ITaskNavigation
 {
+    Task OpenGoogleConnectionAsync();
+    Task<bool> ConfirmGoogleDisconnectAsync(bool revoke);
     Task OpenCalendarAsync();
     Task<bool> ConfirmDiscardCalendarDraftAsync();
     Task<bool> ConfirmDeleteCalendarBlockAsync(string title);

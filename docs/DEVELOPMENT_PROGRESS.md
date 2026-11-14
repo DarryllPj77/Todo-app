@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 13A - Local calendar planning implemented; native acceptance pending.** Added task-linked time blocks with fixed UTC/original-zone semantics, scoped durable calendar.db3, transactional overlap/revision guards, draft-aware Calendar page and selected-block ICS export. Google Calendar was selected by the user as the first provider; OAuth/event-link/two-way increments remain pending. Full regression: **431 passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Final Windows/XAML build: **0 warnings/errors**. No server migration or task/sync protocol change. Native sharing/import/mobile and earlier acceptance remain open.
+**Phase 13B Windows Google consent/token lifecycle implemented; provider/native/mobile acceptance pending.** Added system-browser PKCE/state loopback consent, protected Todo-account/origin/Google-subject binding, manual refresh/identity checks, cancellation, local disconnect and separately confirmed provider revocation. Mobile and preview authorization are disabled. Full regression: **457 passed, 0 failed, 0 skipped** (398 portable and **59 PostgreSQL facts**). Windows solution/XAML: **0 warnings/errors**. No calendar event writes/sync, server migration or database/protocol changes. Live Google consent, native SecureStorage/browser and earlier acceptance remain open.
 
 ## Completed work
 
@@ -199,15 +199,15 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - `6464399` - `Implement Phase 12D urgency and importance planning`: verified at the start of Phase 12E.
 - `1482320` - `Implement Phase 12E completion-based task recurrence`: verified at the start of Phase 12F.
 - `66dd406` - `Implement Phase 12F focus sessions and local time history`: verified at the start of Phase 13A.
-- `74d3aef` - `Implement Phase 12G adaptive MAUI workspace`: verified at the start of Phase 13A. Phase 13A remains uncommitted; no merge or force-push ran.
+- `74d3aef` - `Implement Phase 12G adaptive MAUI workspace`: verified at the start of Phase 13A. No merge or force-push ran.
 
 ## Next task
 
-Rebuild and follow CALENDAR.md for native block CRUD/draft/scrolling, sharing and manual Google test-calendar import. Next implementation is Phase 13B Google consent/token lifecycle, using configured installed-app credentials and supported platform OAuth flows; no Google setup is needed for current local planning. Earlier Phase 12, TLS/SecureStorage, notification, mobile and release checks stay open.
+Configure a dedicated Google Desktop OAuth client and follow GOOGLE_CALENDAR.md for live consent, actual SecureStorage/restart, browser/socket/cancel, account switching and refresh/revocation acceptance. Next implementation is Phase 13C explicit calendar/event links with selected calendars, durable provider identity, idempotent retries and conditional writes; automatic/two-way synchronization remains later. Supported mobile OAuth and earlier native/release acceptance stay open.
 
 ## What to learn now
 
-Trace a pending task into an immutable title snapshot, original-zone wall time, fixed UTC interval, transaction/revision check, and an escaped/folded iCalendar event. Distinguish calendar-file exchange from provider authorization and reconciliation; see LEARNINGS.md and CALENDAR.md.
+Trace fresh PKCE/state through browser callback, code exchange, authenticated Google subject, protected account-bound save, refresh and explicit revocation. Review fail-closed restoration markers and why queued work captures its account before waiting. Distinguish OAuth consent/token management from calendar event synchronization; see LEARNINGS.md and GOOGLE_CALENDAR.md.
 
 ## Phase 12G verification and delivery
 
@@ -222,4 +222,10 @@ Trace a pending task into an immutable title snapshot, original-zone wall time, 
 - SqliteCalendarStore adds independent schema-1 calendar.db3, per-scope reads, transactional overlap/500-block/revision checks, immutable task/title identity, and unsupported/corrupt-data failure without reset. Existing task/sync/views/reminders/focus/server formats are unchanged.
 - CalendarViewModel/page supports device/current-account cached tasks, local block CRUD, draft discard confirmation, stale export checks and account/version/expiry guards. File export shares only a selected saved block and has a dedicated Android cache FileProvider root plus iPad anchor. No provider/token/network integration was added.
 - Added 21 calendar cases. Full regression: 431 passed, 0 skipped (372 portable and 59 PostgreSQL). Final calendar cases were rechecked after tightening persisted-data validation. Windows build/native acceptance details are recorded in CALENDAR.md.
-- Phase 13A is uncommitted on main over 74d3aef. Phase 12G is committed; unrelated .vscode/ remains excluded. The assistant did not commit, pull, push, create a Google client or send anything to Google.
+- Phase 13A was uncommitted at delivery and is now committed as 8e15128 (verified at the start of Phase 13B). Phase 12G is committed; unrelated .vscode/ remains excluded. The assistant did not commit, pull, push, create a Google client or send anything to Google.
+
+## Phase 13B verification and delivery
+
+- Added 26 OAuth/lifecycle/real-loopback cases. Full regression: 457 passed, 0 skipped; Windows solution/XAML build: 0 warnings/errors. Google endpoints use mock responses; no live Google account was contacted. Native consent/SecureStorage/mobile checks remain open.
+- Isolated PostgreSQL test databases remaining: 0; repository test cluster stopped, installed PostgreSQL service remains running. No app windows or user development servers were stopped.
+- Phase 13A milestone 8e15128 is committed and verified. Phase 13B remains uncommitted on main; .vscode/ is excluded. No commit/pull/push, Google project/client creation or provider authorization was performed by the assistant.

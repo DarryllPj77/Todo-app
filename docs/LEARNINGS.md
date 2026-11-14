@@ -617,3 +617,13 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Term:** Wall time versus elapsed duration. **Definition:** A local calendar clock value needs a time zone to become an instant; elapsed minutes are measured on the UTC timeline. **Short example:** A two-hour block that starts before a daylight-saving jump still lasts 120 minutes even if its displayed end clock is three hours later. Skipped/repeated starts require a different unambiguous selection.
 
 **Term:** iCalendar UID and content-line folding. **Definition:** A stable UID identifies an exported event, while folding wraps long UTF-8 content lines at 75 octets without splitting a Unicode character. **Short example:** Exporting a rescheduled block keeps its UID and increases SEQUENCE. Escaped newlines cannot inject another VEVENT. Import is a copy operation; stable IDs alone do not implement provider synchronization.
+
+## Phase 13B - OAuth is a separate authorization boundary
+
+**Term:** PKCE and state. **Definition:** PKCE binds an authorization code to the client attempt with a secret verifier and its SHA-256 challenge; state binds the browser callback to the expected request. **Short example:** A code copied into a callback with the wrong state is rejected before token exchange, and an intercepted code lacks the verifier needed by the token endpoint.
+
+**Term:** Stable subject versus display email. **Definition:** A provider subject identifies the Google account; an email label can change. **Short example:** UserInfo must match the saved subject after refresh. A new subject requires explicit disconnect/reconnect rather than silently replacing another Google identity.
+
+**Term:** Fail-closed restoration marker. **Definition:** Persist a non-secret block before replacing/removing a protected credential and unblock only after successful save. **Short example:** If SecureStorage deletion fails, a blocked stale refresh token cannot be restored on restart. If the marker fails too, in-process blocking remains and the UI reports the unresolved restart risk.
+
+**Term:** Capture context before a serialization gate. **Definition:** An operation must keep the account that authorized it while waiting for another window. **Short example:** A queued Google Connect for Todo account A is rejected after switching to B, instead of capturing B when it finally acquires the semaphore.

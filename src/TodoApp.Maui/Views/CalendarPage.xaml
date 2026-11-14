@@ -9,7 +9,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
             <Label Text="Make time for a task" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
-            <Label Text="Save local time blocks, then export a selected block for manual calendar import. Google Calendar sign-in and automatic sync are not connected yet."
+            <Label Text="Save local time blocks, then export a selected block for manual calendar import. Google consent is available through Tools > Google Calendar connection on Windows; automatic event sync is not enabled yet."
                    Style="{StaticResource TaskMuted}" />
             <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}"
                     IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Calendar workspace" />

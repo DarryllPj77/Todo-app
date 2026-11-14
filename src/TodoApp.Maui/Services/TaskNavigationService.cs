@@ -27,6 +27,12 @@ public sealed class TaskNavigationService : ITaskNavigation
 
     public Task OpenFocusAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<FocusPage>());
     public Task OpenCalendarAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<CalendarPage>());
+    public Task OpenGoogleConnectionAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<GoogleConnectionPage>());
+    public Task<bool> ConfirmGoogleDisconnectAsync(bool revoke) => GetRoot().CurrentPage.DisplayAlertAsync(
+        revoke ? "Revoke Google access?" : "Disconnect Google locally?",
+        revoke ? "Revoke this Google project's granted access across its clients, then block/remove local credentials? Existing calendar events and local blocks remain."
+            : "Block/remove this Todo account's local Google credentials? Google permission remains until removed in your Google Account. Existing events and blocks remain.",
+        revoke ? "Revoke and disconnect" : "Disconnect locally", "Cancel");
     public Task<bool> ConfirmDiscardCalendarDraftAsync() => GetRoot().CurrentPage.DisplayAlertAsync(
         "Discard calendar draft?", "Discard unsaved time-block changes? Saved blocks remain.", "Discard draft", "Keep editing");
     public Task<bool> ConfirmDeleteCalendarBlockAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(

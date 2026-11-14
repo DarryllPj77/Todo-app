@@ -49,6 +49,13 @@ internal static class WorkspacePreview
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             throw new HttpRequestException("The layout preview has no network connection.");
     }
+    public sealed class GoogleVault : IGoogleTokenVault
+    {
+        private readonly Dictionary<string, string> values = new();
+        public Task<string?> ReadAsync(string scope) => Task.FromResult(values.GetValueOrDefault(scope));
+        public Task WriteAsync(string scope, string json) { values[scope] = json; return Task.CompletedTask; }
+        public void Block(string scope) => values.Remove(scope);
+    }
     public sealed class Notifications : IReminderPlatform
     {
         public bool SupportsScheduling => false;

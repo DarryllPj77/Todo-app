@@ -62,6 +62,18 @@ public static class MauiProgram
         builder.Services.AddSingleton<ICalendarFileExporter, CalendarFileExporter>();
         builder.Services.AddScoped<CalendarViewModel>();
         builder.Services.AddTransient<CalendarPage>();
+        builder.Services.AddSingleton<IGoogleTokenVault>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.GoogleVault() : new GoogleTokenVault());
+#if WINDOWS
+        builder.Services.AddSingleton<IGoogleAuthorizationBroker>(_ => WorkspacePreview.Enabled ? new UnsupportedGoogleBroker() : new GoogleLoopbackBroker(new GoogleSystemBrowser()));
+#else
+        builder.Services.AddSingleton<IGoogleAuthorizationBroker, UnsupportedGoogleBroker>();
+#endif
+        builder.Services.AddSingleton(_ => new GoogleOAuthProtocol(new HttpClient(WorkspacePreview.Enabled
+            ? new WorkspacePreview.OfflineHandler() : new HttpClientHandler { AllowAutoRedirect = false })
+        { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 65536 }));
+        builder.Services.AddSingleton<GoogleConnectionService>();
+        builder.Services.AddScoped<GoogleConnectionViewModel>();
+        builder.Services.AddTransient<GoogleConnectionPage>();
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();
