@@ -14,6 +14,8 @@ public sealed class TaskNavigationService : ITaskNavigation
     }
 
     public void Attach(NavigationPage navigationPage) => root = navigationPage;
+    public Task OpenLocationRemindersAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<LocationRemindersPage>());
+    public Task<bool> ConfirmLocationActionAsync(string action, string details) => GetRoot().CurrentPage.DisplayAlertAsync(action + "?", details, "Continue", "Cancel");
 
     public async Task EditTaskAsync(Guid? taskId)
     {

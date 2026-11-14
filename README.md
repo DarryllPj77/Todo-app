@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 13D.2 Google cursors and opt-in monitoring implemented; provider/native acceptance pending.** Open **Tools > Google change monitoring** for full/incremental checks and optional page-active read-only monitoring. Complete-page cursors, 410 reset, retry backoff and linked-event notices preserve pending intent; no automatic publishing, adoption or deletion runs. calendar.db3 upgrades to schema 4 without resetting local data. All **529 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [GOOGLE_MONITORING.md](docs/GOOGLE_MONITORING.md).
+**Current status (2026-11-14): Phase 14A manual foreground location reminders implemented; native/device acceptance pending.** Open **Tools > Location reminders** to save encrypted task-linked places, explicitly check arrivals and manage rearm/opt-out. Each arm needs a reliable outside check followed by an inside check and permits one generic notification attempt. No background geofence/listener or location upload is enabled. All **569 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [LOCATION_REMINDERS.md](docs/LOCATION_REMINDERS.md). Earlier Google/provider/mobile acceptance remains open.
 
 ## Technology and prerequisites
 

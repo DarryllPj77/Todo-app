@@ -43,6 +43,7 @@ public partial class TaskListPage : ContentPage
             ("Google Calendar connection", viewModel.GoogleConnectionCommand),
             ("Google event links", viewModel.GoogleEventsCommand),
             ("Google change monitoring", viewModel.GoogleFeedCommand),
+            ("Location reminders", viewModel.LocationRemindersCommand),
             ("Saved views", viewModel.TaskViewsCommand), ("Task hierarchy", viewModel.HierarchyCommand),
             ("Dependencies", viewModel.DependenciesCommand), ("Urgency & importance", viewModel.PlanningCommand),
             ("Recurring tasks", viewModel.RecurrenceCommand), ("Focus & history", viewModel.FocusCommand),

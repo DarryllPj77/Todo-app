@@ -56,6 +56,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
         if (WorkspacePreview.Enabled) builder.Services.AddSingleton<IReminderPlatform, WorkspacePreview.Notifications>();
+        builder.Services.AddSingleton<ILocationEncryptionKeyStore>(_ => WorkspacePreview.Enabled ? new PreviewLocationKeyStore() : new LocationEncryptionKeyStore());
+        builder.Services.AddSingleton<IForegroundLocationProvider>(_ => WorkspacePreview.Enabled ? new PreviewLocationProvider() : new ForegroundLocationProvider());
+        builder.Services.AddSingleton(provider => new SqliteLocationReminderStore(Path.Combine(dataDirectory, "location.db3"), provider.GetRequiredService<ILocationEncryptionKeyStore>()));
+        builder.Services.AddSingleton<ILocationTaskSource, LocationTaskCatalog>();
+        builder.Services.AddSingleton<LocationReminderService>();
+        builder.Services.AddScoped<LocationRemindersViewModel>();
+        builder.Services.AddTransient<LocationRemindersPage>();
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(dataDirectory, "views.db3")));
         builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(dataDirectory, "focus.db3")));
         builder.Services.AddSingleton(_ => new SqliteCalendarStore(Path.Combine(dataDirectory, "calendar.db3")));

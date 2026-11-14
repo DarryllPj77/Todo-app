@@ -269,6 +269,8 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenLocationRemindersAsync() => Task.CompletedTask;
+        public Task<bool> ConfirmLocationActionAsync(string action, string details) => Task.FromResult(true);
         public Task OpenGoogleFeedAsync() => Task.CompletedTask;
         public Task OpenGoogleEventsAsync() => Task.CompletedTask;
         public Task<bool> ConfirmGoogleEventAsync(string action, string details) => Task.FromResult(false);

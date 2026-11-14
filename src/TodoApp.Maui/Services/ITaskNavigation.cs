@@ -2,6 +2,8 @@ namespace TodoApp.Maui.Services;
 
 public interface ITaskNavigation
 {
+    Task OpenLocationRemindersAsync();
+    Task<bool> ConfirmLocationActionAsync(string action, string details);
     Task OpenGoogleFeedAsync();
     Task OpenGoogleEventsAsync();
     Task<bool> ConfirmGoogleEventAsync(string action, string details);

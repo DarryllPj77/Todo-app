@@ -1,5 +1,17 @@
 # Learnings
 
+## Phase 14A - Samples are uncertain, delivery is an attempt
+
+**Term:** Haversine distance. **Definition:** Estimate surface distance from latitude/longitude using a spherical Earth. **Example:** Crossing longitude 180 to -180 by a tiny amount is a short journey, not a trip around the world.
+
+**Term:** Accuracy margin and hysteresis. **Definition:** Consider reported uncertainty and require a larger outside boundary before changing state. **Example:** A sample 190 m from a 200 m center with 30 m reported accuracy does not establish arrival; distance plus uncertainty exceeds the radius. Accuracy remains an estimate.
+
+**Term:** At-most-once attempt. **Definition:** Save consumption before calling a nontransactional OS delivery API. **Example:** A crash can lose the alert, but restart does not automatically show it again. Explicit rearm creates a new attempt budget and resets outside evidence.
+
+**Term:** Authenticated encryption. **Definition:** Encrypt data and detect unauthorized changes to both ciphertext and bound metadata. **Example:** Moving an encrypted place to another workspace or revision makes AES-GCM authentication fail. The database cannot recover without the original OS-protected key.
+
+**Term:** Foreground check versus native geofence. **Definition:** One explicit sample compares saved places only while the app runs; native geofencing needs a separate platform registration/lifecycle. **Example:** Closing Todo after saving a place does not enable an arrival notification in Phase 14A.
+
 Only concepts used in this project are recorded here. Examples describe the current implementation rather than future frameworks.
 
 ## Solution and project reference

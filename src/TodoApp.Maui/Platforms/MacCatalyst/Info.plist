@@ -51,6 +51,8 @@
 			</array>
 		</dict>
 	</dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Todo uses one location fix when you choose Use current location or Check arrivals now. Saved places stay on this device.</string>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 </dict>

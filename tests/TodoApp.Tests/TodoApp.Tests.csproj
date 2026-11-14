@@ -21,6 +21,8 @@
   <!-- These presentation types use only .NET APIs. Compile the actual client
        sources here so behavior tests do not require a native MAUI test host. -->
   <ItemGroup>
+    <Compile Include="..\..\src\TodoApp.Maui\Services\LocationTaskCatalog.cs" Link="Client\LocationTaskCatalog.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\LocationReminderService.cs" Link="Client\LocationReminderService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ICalendarFileExporter.cs" Link="Client\ICalendarFileExporter.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleOAuth*.cs" Link="Client\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleLoopbackBroker.cs" Link="Client\GoogleLoopbackBroker.cs" />

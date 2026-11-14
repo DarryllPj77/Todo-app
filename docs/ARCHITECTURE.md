@@ -1,5 +1,11 @@
 # Architecture
 
+## Manual location reminders (Phase 14A)
+
+LocationRules provides Haversine distance and conservative freshness/accuracy classifications. SqliteLocationReminderStore encrypts task/place snapshots in independent schema-1 location.db3 using AES-GCM and a SecureStorage-only key. Scope-bound authenticated data, transactional revisions and nonreused negative notification IDs protect separate workspaces and coexist with positive time-reminder IDs.
+
+LocationTaskCatalog exposes pending device/current-account cached tasks, excluding conflicts. LocationReminderService serializes in-process work, captures session authorization before waiting, rechecks tasks/row revisions and persists one-attempt consumption before generic native delivery. Manual foreground checks require OutsideObserved before Inside; rearm resets that evidence. Disable precedes cancellation; deletion follows successful native cancellation. LocationRemindersViewModel/page adds contextual confirmations, cancellation and draft clearing on page departure. OS location is requested only by two explicit buttons, never by opening the page or startup/resume. No task/sync/provider mutation or background geofence is added. See [LOCATION_REMINDERS.md](LOCATION_REMINDERS.md) for native races, protected-key recovery and device acceptance.
+
 ## Server side
 
 ASP.NET Core hosts HTTP requests. Program.cs registers controllers/Problem Details and string priority serialization. DatabaseConfiguration registers a scoped TodoDbContext using Npgsql and a scoped ITaskService implemented by PostgresTaskService. Exception handling, HTTPS redirection, and controller routing remain separate. HealthController provides GET /api/health; TasksController implements the five task routes.

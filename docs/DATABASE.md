@@ -1,5 +1,11 @@
 # Database plan
 
+## Protected location places (Phase 14A)
+
+Independent location.db3 schema 1 contains LocationMetadata (one key fingerprint and decreasing negative notification counter) and LocationReminders (row ID, workspace, revision, unique negative native ID, encrypted Data). AES-256-GCM protects task/place snapshots, coordinates/radius and state; authenticated associated data binds ciphertext to scope/ID/revision/native ID. The key exists only in platform SecureStorage. Samples/travel history are never stored. A copied file needs the original protected key; missing/mismatched keys, tampering and unsupported schema fail closed without reset. Debug workspace preview disables this storage.
+
+Writes use immediate transactions and expected revisions; capacity is 100 places per scope. IDs are not reused after deletion. Attempt consumption is durable before native delivery, so restart cannot automatically repeat an uncertain attempt. Disable persists before cancellation, and deletion waits for successful cancellation; native cancellation failure retains a disabled row for explicit retry. This does not make SQLite and the OS notification API atomic. Other local schemas (task/sync 6, views 3, reminders/focus 1, calendar 4), eight PostgreSQL migrations and sync protocol 6 remain unchanged. See [LOCATION_REMINDERS.md](LOCATION_REMINDERS.md) for storage/privacy and recovery limits.
+
 ## Current state
 
 Device tasks use todoapp.db3 schema **6** with recurrence JSON plus existing tags/parent/prerequisites/planning. The API has eight migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, AddTaskDependencies, AddTaskPlanning, and AddTaskRecurrence. The last adds Tasks.Recurrence text and bounded SyncRecords.RecurrenceFloor bigint. sync.db3 uses schema **6**, views.db3 remains **3**, reminders.db3 **1**. Existing data/counters/queues/receipts/definitions remain. Only generated test databases were migrated. Follow RECURRENCE.md for coordinated API/client upgrade.

@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 13D.2 cursors and opt-in read-only Google monitoring are implemented: atomic complete-page cursor/notices, reset/backoff, protected pending intent and page-active checks. Provider writes/adoption remain explicit reviewed actions; no unattended mutation/OS background job is enabled. Live Google/native/mobile/release acceptance stays open. Next planned feature is Phase 14 location reminders, beginning with supported-platform/privacy design. See GOOGLE_MONITORING.md.
+Proceed one phase at a time after review. Phase 14A manual foreground location reminders are implemented: protected task-linked places, contextual one-shot requests, accuracy/freshness checks, outside-before-inside arrival state and one-attempt generic notifications. No background location listener or geofence is installed. Native/device acceptance and earlier Google/mobile/release gates remain open. Next planned increment is Phase 14B native background geofence lifecycle and platform design. See LOCATION_REMINDERS.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -274,6 +274,14 @@ ICS import remains a separate snapshot exchange and is not adopted as a provider
 **Completion checklist:**
 
 - [ ] Permissions, geofence lifecycle, background behavior, and opt-out verified on devices.
+
+### Phase 14 increments
+
+- [x] **14A implementation - Manual foreground arrival checks:** task-linked encrypted local places, contextual one-shot location requests, accuracy/freshness and outside-before-inside rules, one-attempt state, explicit rearm/disable/delete, generic notifications, scope/session/CAS guards and a MAUI management page. Forty portable location cases pass; see [LOCATION_REMINDERS.md](LOCATION_REMINDERS.md).
+- [ ] **14A native acceptance:** actual GPS/OS permission/notification behavior, encrypted key/restart/recovery, page/window/account races, accessibility and Android/Apple builds/devices remain open. No background listener or geofence is installed.
+- [ ] **14B - Native background geofences:** choose supported platforms and implement explicit registration/unregistration, contextual background permission where required, platform quota/restart/boot handling and battery/privacy policy. Closed-app arrival detection is not implemented in 14A.
+
+Phase 14 remains open until supported native/background behavior and opt-out are verified on devices. Earlier Phase 13 provider/native gates remain open separately.
 
 ## Phase 15 — Universal quick capture
 

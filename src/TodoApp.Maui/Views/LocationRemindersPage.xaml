@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:location="clr-namespace:TodoApp.Domain.Location;assembly=TodoApp.Domain"
+             x:Class="TodoApp.Maui.Views.LocationRemindersPage" x:DataType="vm:LocationRemindersViewModel"
+             Title="Location reminders" Style="{StaticResource TaskPage}">
+    <ScrollView><VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="850" HorizontalOptions="Fill">
+        <Label Text="Check arrivals manually" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Text="Checks run only when you press Check arrivals now. No background geofence is installed. Each arm needs a reliable outside check followed by an inside check. Delivery depends on location accuracy, notification permission and OS policy." />
+        <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}" IsEnabled="{Binding IsIdle}" />
+        <Button Text="Refresh tasks and saved places" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
+        <CollectionView ItemsSource="{Binding Reminders}" SelectedItem="{Binding SelectedReminder}" SelectionMode="Single" HeightRequest="220" IsEnabled="{Binding IsIdle}">
+            <CollectionView.EmptyView><Label Text="No saved location reminders in this workspace." Padding="12" /></CollectionView.EmptyView>
+            <CollectionView.ItemTemplate><DataTemplate x:DataType="location:LocationReminder">
+                <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8"><Label Text="{Binding Label}" LineBreakMode="WordWrap" /></Border>
+            </DataTemplate></CollectionView.ItemTemplate>
+        </CollectionView>
+        <Label Text="{Binding Details}" LineBreakMode="WordWrap" />
+        <Button Text="New place reminder" Command="{Binding NewCommand}" Style="{StaticResource TaskAction}" />
+        <Picker Title="Pending task" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask}" ItemDisplayBinding="{Binding Title, x:DataType=location:LocationTask}" IsEnabled="{Binding IsIdle}" />
+        <Entry Placeholder="Place name (1-60 characters)" Text="{Binding PlaceName}" MaxLength="60" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Place name" />
+        <Entry Placeholder="Latitude (-90 to 90, decimal point)" Text="{Binding Latitude}" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Latitude" />
+        <Entry Placeholder="Longitude (-180 to 180, decimal point)" Text="{Binding Longitude}" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Longitude" />
+        <Entry Placeholder="Radius in meters (100-5000)" Text="{Binding Radius}" Keyboard="Numeric" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Arrival radius in meters" />
+        <Button Text="Use current location for draft" Command="{Binding PositionCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Save and arm / rearm" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Allow/check notifications" Command="{Binding PermissionCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Check arrivals now" Command="{Binding CheckCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Disable selected reminder" Command="{Binding DisableCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Delete selected place" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Cancel current action" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
+        <Label Text="{Binding Error}" Style="{StaticResource TaskError}" LineBreakMode="WordWrap" />
+        <Label Text="{Binding Status}" LineBreakMode="WordWrap" />
+        <Label Text="Places are encrypted locally using an OS-protected key. Account places stay on this device. No coordinate samples, travel history or location uploads are saved. Losing the protected key makes saved places unreadable. Leaving this page cancels the current check and clears the draft. Notifications contain generic text only." Style="{StaticResource TaskMuted}" />
+    </VerticalStackLayout></ScrollView>
+</ContentPage>
