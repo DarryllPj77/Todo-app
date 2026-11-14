@@ -1,5 +1,9 @@
 # Database plan
 
+## Android lifecycle reuse (Phase 14B.3)
+
+No schema, migration, credential format or protocol change. Android uses its private app-directory copies of the existing encrypted location/background journal and nonsecret Stop control database. Boot, package update and cold foreground Activity creation invalidate a saved run by advancing the blocked generation; cleanup applies only if that generation is still current. Receiver process creation alone does not revoke authorized background work. No sampled location history or account cache/token is added. Native Google Play services receives bounded center/radius registrations outside application encryption; permission/backup/key-recovery/device behavior remains acceptance. See ANDROID_GEOFENCES.md.
+
 ## Background run journal and opt-out control (Phase 14B.2)
 
 Two independent schema-1 files are added without altering existing data. geofence-background.db3 stores one revisioned BackgroundRun ciphertext: device reminder snapshot, random run identity, fixed thirty-minute start/expiry, fresh-outside flag, state/status. AES-GCM uses the original location SecureStorage key and binds the journal purpose/revision; missing keys or tampering fail closed without reset. The key must already exist; the journal never creates/replaces it.

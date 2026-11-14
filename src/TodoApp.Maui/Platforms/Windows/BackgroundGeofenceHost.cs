@@ -71,36 +71,15 @@ public static class BackgroundGeofenceHost
             {
                 if (instance.Task.Name != WindowsBackgroundGeofencePlatform.TaskName) return;
                 var directory = FileSystem.AppDataDirectory;
-                var keys = new LocationEncryptionKeyStore();
-                var journal = new SqliteBackgroundGeofenceStore(Path.Combine(directory, "geofence-background.db3"), keys);
                 var blocker = new BackgroundGeofenceBlocker(Path.Combine(directory, "geofence-control.db3"));
                 var platform = new WindowsBackgroundGeofencePlatform(Path.Combine(directory, "geofence-background.db3"));
-                var notification = new BackgroundNotificationGuard(new HeadlessNotifications(), async () =>
-                {
-                    if (blocker.IsBlocked) return false;
-                    var run = await journal.ReadAsync();
-                    return !blocker.IsBlocked && run is { State: BackgroundGeofenceState.Active } && DateTimeOffset.UtcNow >= run.StartedUtc && DateTimeOffset.UtcNow < run.ExpiresUtc;
-                });
-                var session = new ClientSession(new NoAccountSettings(), new NoTokens());
-                var tasks = new LocationTaskCatalog(new SqliteLocalTaskService(Path.Combine(directory, "todoapp.db3")), new(Path.Combine(directory, "sync.db3")), session);
-                var reminders = new LocationReminderService(new(Path.Combine(directory, "location.db3"), keys), tasks, new NoPositionRequests(), notification, session);
-                var service = new BackgroundGeofenceService(journal, reminders, platform, blocker, new(Path.Combine(directory, "native-geofence.lock")));
+                var service = DeviceBackgroundGeofenceHost.Create(directory, new LocationEncryptionKeyStore(), platform, new HeadlessNotifications(), blocker);
                 await service.ProcessAsync(WindowsBackgroundGeofencePlatform.ReadReports, cancellation.Token);
             }
             catch { /* No sensitive payload/logging and no UI fallback on activation failure. */ }
             finally { instance.Canceled -= onCanceled; deferral.Complete(); completed.Set(); }
         }
     }
-    private sealed class NoAccountSettings : IClientSettings
-    { public string ApiBaseUrl { get; set; } = "https://background.invalid/"; public bool RestorationBlocked { get; set; } = true; }
-    private sealed class NoTokens : ISecureTokenStore
-    {
-        public Task<string?> GetAsync() => throw new NotSupportedException();
-        public Task SetAsync(string value) => throw new NotSupportedException();
-        public void Clear() => throw new NotSupportedException();
-    }
-    private sealed class NoPositionRequests : IForegroundLocationProvider
-    { public Task<TodoApp.Domain.Location.PositionFix> ReadAsync(CancellationToken token) => throw new NotSupportedException("A headless task cannot request location or permissions."); }
     private sealed class HeadlessNotifications : IReminderPlatform
     {
         private static string AppId => global::Windows.ApplicationModel.Package.Current.Id.FamilyName + "!App";

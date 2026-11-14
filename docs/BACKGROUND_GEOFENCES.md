@@ -1,6 +1,8 @@
 # Phase 14B.2: bounded Windows background arrivals
 
-This implementation adds an explicit **thirty-minute background run for one device-local reminder** in an installed packaged Windows app. It includes a headless activation path for events after the UI closes. Compilation, portable behavior tests and unsigned packaging are verified separately from actual installed-device activation. The unpackaged development app, mobile builds and workspace preview do not enable this mode. Phase 14 remains open for native acceptance and further platform work.
+Android now has a separate Phase 14B.3 adapter using this run/control model; see [ANDROID_GEOFENCES.md](ANDROID_GEOFENCES.md). Its staged permissions and boot/update/cold-Activity invalidation differ from the Windows lifecycle below. Apple background support remains unavailable.
+
+This Windows implementation adds an explicit **thirty-minute background run for one device-local reminder** in an installed packaged app. It includes a headless activation path for events after the UI closes. Compilation, portable behavior tests and unsigned packaging are verified separately from actual installed-device activation. Unpackaged Windows, Apple and workspace preview do not enable this mode; Android has the separate adapter noted above. Phase 14 remains open for native acceptance and further platform work.
 
 ## Use and opt out
 
@@ -53,4 +55,4 @@ Portable tests use real temporary SQLite/encryption/leases with fake platform re
 - Actual exit/entry/dwell/expiry, sleep/restart, revoked permissions, locale resources, background throttling and generic toast identity/click/delivery.
 - Stop during permission/registration/callback delivery, task completion/deletion/repeat change, two windows/processes, held leases, cancellation/deferral completion, partial registration and failed cleanup.
 - Account changes leave only the explicitly authorized device run active; no account cache/token/provider access occurs. No startup/boot path silently re-registers or extends it.
-- Package-generation PRI249/PRI263 warnings from Phase 14B.1 remain unresolved release/locale checks. Mobile background adapters and broader supported-platform/boot policy remain later work (14B.3).
+- Package-generation PRI249/PRI263 warnings from Phase 14B.1 remain unresolved release/locale checks. Android implementation is covered by Phase 14B.3; its device acceptance and later Apple support remain open.

@@ -73,11 +73,13 @@ public sealed class BackgroundGeofenceTests : IDisposable
         public Task ShowAsync(int id) { Shown.Add(id); Showing?.Invoke(); if (Fail) throw new IOException("Uncertain delivery"); return Task.CompletedTask; }
         public Task CancelAsync(int id) { Canceled.Add(id); return Task.CompletedTask; }
     }
-    private sealed class Platform : IBackgroundGeofencePlatform
+    private sealed class Platform : IBackgroundGeofencePlatform, IBackgroundGeofencePermissionSettings
     {
         public bool Supported = true, FailAccess, FailRegister, FailCleanup;
         public bool IsSupported => Supported; public string Description => "Test background capability";
         public int Accesses, Registrations, Cleanups; public BackgroundGeofenceRun? Registered;
+        public int SettingsOpened;
+        public Task OpenPermissionSettingsAsync(CancellationToken token) { token.ThrowIfCancellationRequested(); SettingsOpened++; return Task.CompletedTask; }
         public Func<Task>? Registering;
         public Task RequestAccessAsync(CancellationToken token) { Accesses++; if (FailAccess) throw new InvalidOperationException("Denied"); return Task.CompletedTask; }
         public async Task RegisterAsync(BackgroundGeofenceRun run, CancellationToken token)
@@ -311,5 +313,55 @@ public sealed class BackgroundGeofenceTests : IDisposable
         using var cancellation = new CancellationTokenSource(); var pending = review.ReconcileAsync(cancellation.Token);
         await entered.Task; cancellation.Cancel(); release.SetResult(); await pending;
         Assert.False(blocker.IsBlocked); Assert.NotNull(platform.Registered); Assert.Equal(BackgroundGeofenceState.Active, (await journal.ReadAsync())!.State);
+    }
+    [Fact]
+    public async Task MobileLifecycleInvalidation_StopsWithoutAutomaticRegistration()
+    {
+        var row = await Arm(); await Service.StartAsync(row, default); var generation = blocker.Block();
+        await Service.StopForLifecycleAsync(generation, default);
+        Assert.True(blocker.IsBlocked); Assert.Null(platform.Registered); Assert.Equal(1, platform.Registrations);
+        Assert.Equal(BackgroundGeofenceState.Stopped, (await journal.ReadAsync())!.State);
+    }
+    [Fact]
+    public async Task DelayedMobileLifecycleCleanup_CannotStopNewlyAuthorizedRun()
+    {
+        var row = await Arm(); await Service.StartAsync(row, default); var oldGeneration = blocker.Block();
+        row = Assert.Single(await places.ReadAsync("device")); await Service.StartAsync(row, default); var current = (await journal.ReadAsync())!;
+        await Service.StopForLifecycleAsync(oldGeneration, default);
+        Assert.False(blocker.IsBlocked); Assert.Equal(current, await journal.ReadAsync()); Assert.Equal(current.Id, platform.Registered!.Id);
+    }
+    [Fact]
+    public async Task AndroidMappedDwell_UsesExistingOneAttemptAndFreshOutsideRules()
+    {
+        var row = await Arm(); await Service.StartAsync(row, default); var run = (await journal.ReadAsync())!; Inside();
+        var mapped = AndroidGeofencePolicy.Reports(4, [run.EntryId], position.Fix);
+        await Worker.ProcessAsync(() => mapped, default); await Worker.ProcessAsync(() => mapped, default);
+        Assert.Single(notifications.Shown); Assert.True(blocker.IsBlocked); Assert.Equal(1, position.Reads);
+    }
+    [Fact]
+    public async Task PermissionSettingsRequireConfirmation_AndDoNotStartARun()
+    {
+        var navigation = new ClientNavigation { Confirm = false };
+        using var vm = new LocationRemindersViewModel(Reminders(), client.Session, navigation, background: Service);
+        await vm.BackgroundSettingsCommand.ExecuteAsync(); Assert.Equal(0, platform.SettingsOpened);
+        navigation.Confirm = true; await vm.BackgroundSettingsCommand.ExecuteAsync(); Assert.Equal(1, platform.SettingsOpened);
+        vm.Workspace = HierarchyWorkspace.SyncedAccount; await vm.BackgroundSettingsCommand.ExecuteAsync(); Assert.Equal(2, platform.SettingsOpened);
+        Assert.Equal(0, platform.Accesses); Assert.Equal(0, platform.Registrations); Assert.Equal(0, position.Reads);
+    }
+    [Fact]
+    public async Task SharedWorkerFactory_ReadsDeviceSqliteWithoutNewFixOrAccountCache()
+    {
+        var local = new SqliteLocalTaskService(Path.Combine(directory, "todoapp.db3"));
+        var localSource = new LocationTaskCatalog(local, new(Path.Combine(directory, "sync.db3")), client.Session, client.Clock);
+        var uiReminders = new LocationReminderService(places, localSource, position, notifications, client.Session, client.Clock);
+        var task = await local.CreateAsync(new("Device worker task"));
+        var row = await uiReminders.ArmAsync("device", null, new(task.Id, "Worker center", 0, 0, 200), default);
+        var sharedJournal = new SqliteBackgroundGeofenceStore(Path.Combine(directory, "geofence-background.db3"), keys);
+        var ui = new BackgroundGeofenceService(sharedJournal, uiReminders, platform, blocker, new(Path.Combine(directory, "native-geofence.lock")), client.Clock);
+        await ui.StartAsync(row, default); var run = (await sharedJournal.ReadAsync())!; Inside();
+        var host = DeviceBackgroundGeofenceHost.Create(directory, keys, platform, notifications, blocker, client.Clock);
+        await host.ProcessAsync(() => AndroidGeofencePolicy.Reports(4, [run.EntryId], position.Fix), default);
+        Assert.Single(notifications.Shown); Assert.Equal(1, position.Reads); Assert.False(File.Exists(Path.Combine(directory, "sync.db3")));
+        Assert.False((await local.GetByIdAsync(task.Id))!.IsCompleted); Assert.Equal(0, client.Storage.ReadCount);
     }
 }

@@ -68,6 +68,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<INativeGeofencePlatform>(provider => WorkspacePreview.Enabled ? new UnsupportedNativeGeofencePlatform() : new Platforms.Windows.WindowsGeofencePlatform(Path.Combine(dataDirectory, "native-geofence.lock"),
             async () => (await provider.GetRequiredService<SqliteBackgroundGeofenceStore>().ReadAsync()) is { State: not BackgroundGeofenceState.Stopped }));
         builder.Services.AddSingleton<IBackgroundGeofencePlatform>(_ => WorkspacePreview.Enabled ? new UnsupportedBackgroundGeofencePlatform() : new Platforms.Windows.WindowsBackgroundGeofencePlatform(Path.Combine(dataDirectory, "geofence-background.db3")));
+#elif ANDROID
+        builder.Services.AddSingleton<INativeGeofencePlatform, UnsupportedNativeGeofencePlatform>();
+        builder.Services.AddSingleton<IBackgroundGeofencePlatform>(_ => WorkspacePreview.Enabled ? new UnsupportedBackgroundGeofencePlatform() : new Platforms.Android.AndroidBackgroundGeofencePlatform());
 #else
         builder.Services.AddSingleton<INativeGeofencePlatform, UnsupportedNativeGeofencePlatform>();
         builder.Services.AddSingleton<IBackgroundGeofencePlatform, UnsupportedBackgroundGeofencePlatform>();

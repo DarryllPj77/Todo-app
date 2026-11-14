@@ -1,5 +1,11 @@
 # Architecture
 
+## Android mobile background lifecycle (Phase 14B.3)
+
+AndroidBackgroundGeofencePlatform adapts the existing device-only thirty-minute run to Google Play services. AndroidGeofencePolicy separates notification/location-service/precise/background access states: API 29 has a distinct runtime background step; API 30+ uses an explicit settings action and retry. Registration uses a component/action-bound mutable PendingIntent on API 31+, an inner dwell/outer exit pair, original expiry and no initial native entry trigger.
+
+The nonexported transition receiver maps bounded reports into BackgroundGeofenceService. Separate system lifecycle callbacks block boot/update/cold-Activity state without re-registering it. Deferred cleanup compares the captured Stop generation under the shared lease, so it cannot revoke a later explicit Start. Resume checks state without prompting or sampling. DeviceBackgroundGeofenceHost now supplies the device-only worker graph for Android and Windows, with unsupported token/position providers and guarded generic delivery. Android initializes its normal Application process infrastructure but the receiver launches no Activity or foreground service. See ANDROID_GEOFENCES.md for build, privacy and native acceptance limits.
+
 ## Bounded Windows background runs (Phase 14B.2)
 
 BackgroundGeofenceService handles one explicitly selected device reminder for at most thirty minutes. An encrypted revisioned run journal retains task/arm identity and fresh outside evidence; a separate keyless control database provides transactional Stop generations. A delayed Start can enable only its original generation, so it cannot undo a later Stop. The shared process lease excludes page-active native registration and concurrent workers; both namespaces are cleaned separately.

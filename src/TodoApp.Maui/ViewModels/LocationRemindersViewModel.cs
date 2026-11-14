@@ -68,6 +68,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     public AsyncCommand StopNativeCommand { get; }
     public AsyncCommand StartBackgroundCommand { get; }
     public AsyncCommand StopBackgroundCommand { get; }
+    public AsyncCommand BackgroundSettingsCommand { get; }
     public LocationRemindersViewModel(LocationReminderService service, ClientSession session, ITaskNavigation navigation, GeofenceSessionService? native = null, BackgroundGeofenceService? background = null)
     {
         this.service = service; this.session = session; this.navigation = navigation;
@@ -85,6 +86,12 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         StartNativeCommand = Command(StartNativeAsync, () => this.native.IsSupported);
         StopNativeCommand = Command(() => this.native.StopAsync(owner));
         StartBackgroundCommand = Command(StartBackgroundAsync, () => background?.IsSupported == true && Workspace == HierarchyWorkspace.Device && SelectedReminder?.Enabled == true);
+        BackgroundSettingsCommand = Command(async () =>
+        {
+            var token = lifetime.Token;
+            if (!await navigation.ConfirmLocationActionAsync("Open location permission settings", "Open this app's Android settings? For background geofences, enable precise location and Allow all the time. You can decline and continue using manual reminders. Returning to Todo does not automatically start a run; select a device place and press Start again.")) return;
+            token.ThrowIfCancellationRequested(); await background!.OpenPermissionSettingsAsync(token);
+        }, () => background?.CanOpenPermissionSettings == true);
         StopBackgroundCommand = new(async () =>
         {
             Cancel(); Error = "";
@@ -186,7 +193,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     {
         var context = Capture(); var row = SelectedReminder ?? throw new ArgumentException("Choose a saved device reminder.");
         if (context.Scope != "device" || background is null) throw new ArgumentException("Select a device-local reminder for background monitoring.");
-        if (!await navigation.ConfirmLocationActionAsync("Start 30-minute background run", "Authorize one device reminder to continue after you leave this page or close Todo, for at most 30 minutes? Windows may request location/background access and read one initial fix. Its OS-managed regions contain this place's center/radius. Fresh outside evidence is required before a conservative inner entry can attempt one generic notification. No account credentials, travel history, server upload or automatic boot recovery is used. Use Stop background run to opt out; changing accounts does not stop a completed device-local run.")) return;
+        if (!await navigation.ConfirmLocationActionAsync("Start 30-minute background run", "Authorize one device reminder to continue after you leave this page or close Todo, for at most 30 minutes? The OS may request location/background access and one initial fix will be read. Android uses Google Play services geofencing and may require precise location plus Allow all the time in settings. Native services receive this place's center/radius. Fresh outside evidence is required before conservative inner arrival can attempt one generic notification. No account credentials, travel history, Todo API upload or automatic boot registration is used. Use Stop to opt out; account changes alone do not stop a completed device run.")) return;
         Ensure(context); await native.StopAsync(owner); Ensure(context);
         await background.StartAsync(row, context.Token); Ensure(context); await RefreshAsync();
     }
@@ -219,7 +226,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     private void Notify()
     {
         OnPropertyChanged(nameof(IsIdle));
-        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand, StartNativeCommand, StopNativeCommand, StartBackgroundCommand }) command?.NotifyCanExecuteChanged();
+        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand, StartNativeCommand, StopNativeCommand, StartBackgroundCommand, BackgroundSettingsCommand }) command?.NotifyCanExecuteChanged();
     }
     public void Leave() { Cancel(); ResetDraft(); }
     public void Dispose() { session.Changed -= OnSessionChanged; native.Changed -= NativeChanged; native.Cancel(owner); if (ownsNative) native.Dispose(); lifetime.Cancel(); lifetime.Dispose(); }

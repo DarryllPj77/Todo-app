@@ -25,6 +25,8 @@
     <Compile Include="..\..\src\TodoApp.Maui\Services\INativeGeofencePlatform.cs" Link="Client\INativeGeofencePlatform.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GeofenceSessionService.cs" Link="Client\GeofenceSessionService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\BackgroundGeofenceService.cs" Link="Client\BackgroundGeofenceService.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\AndroidGeofencePolicy.cs" Link="Client\AndroidGeofencePolicy.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\DeviceBackgroundGeofenceHost.cs" Link="Client\DeviceBackgroundGeofenceHost.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\BackgroundNotificationGuard.cs" Link="Client\BackgroundNotificationGuard.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\LocationReminderService.cs" Link="Client\LocationReminderService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\ICalendarFileExporter.cs" Link="Client\ICalendarFileExporter.cs" />

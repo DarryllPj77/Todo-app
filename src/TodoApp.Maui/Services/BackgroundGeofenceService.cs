@@ -13,10 +13,14 @@ public interface IBackgroundGeofencePlatform
     Task RegisterAsync(BackgroundGeofenceRun run, CancellationToken token);
     Task CleanupAsync();
 }
+public interface IBackgroundGeofencePermissionSettings
+{
+    Task OpenPermissionSettingsAsync(CancellationToken token);
+}
 public sealed class UnsupportedBackgroundGeofencePlatform : IBackgroundGeofencePlatform
 {
     public bool IsSupported => false;
-    public string Description => "Background runs require an installed packaged Windows build. Device-local reminders only; mobile/preview background runs are unavailable.";
+    public string Description => "Background runs are unavailable on this build. Supported adapters require packaged Windows or Android with Google Play services. Manual reminders remain available.";
     public Task RequestAccessAsync(CancellationToken token) => throw new InvalidOperationException(Description);
     public Task RegisterAsync(BackgroundGeofenceRun run, CancellationToken token) => throw new InvalidOperationException(Description);
     public Task CleanupAsync() => Task.CompletedTask;
@@ -28,6 +32,9 @@ public sealed class BackgroundGeofenceService(SqliteBackgroundGeofenceStore stor
     private readonly TimeProvider time = clock ?? TimeProvider.System;
     public bool IsSupported => platform.IsSupported;
     public string Capability => platform.Description;
+    public bool CanOpenPermissionSettings => platform is IBackgroundGeofencePermissionSettings;
+    public Task OpenPermissionSettingsAsync(CancellationToken token) => platform is IBackgroundGeofencePermissionSettings settings
+        ? settings.OpenPermissionSettingsAsync(token) : throw new InvalidOperationException("This build does not provide mobile location settings.");
     public Task<BackgroundGeofenceRun?> ReadAsync() => store.ReadAsync();
     public async Task StartAsync(LocationReminder expected, CancellationToken token)
     {
@@ -75,6 +82,15 @@ public sealed class BackgroundGeofenceService(SqliteBackgroundGeofenceStore stor
         // checks this marker again immediately before notification delivery.
         try { blocker.Block(); } catch { /* Still attempt journal stop and native cleanup below. */ }
         using var ownership = await lease.AcquireAsync(token);
+        await StopCoreAsync();
+    }
+    // Mobile boot/update/cold-Activity handling blocks synchronously first, then
+    // cleans up only that generation. A delayed lifecycle callback cannot stop
+    // a new run the user explicitly authorized in the meantime.
+    public async Task StopForLifecycleAsync(long blockedGeneration, CancellationToken token)
+    {
+        using var ownership = await lease.AcquireAsync(token);
+        if (blocker.Generation != blockedGeneration || !blocker.IsBlocked) return;
         await StopCoreAsync();
     }
     private async Task StopCoreAsync(bool blockControl = true)

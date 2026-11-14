@@ -14,19 +14,21 @@ public sealed class AndroidReminderPlatform : IReminderPlatform
     private static Context Context => global::Android.App.Application.Context;
     public bool SupportsScheduling => true;
     public string DeliveryDescription => "Android: inexact OS alarms may be delayed by Doze/battery settings. Reboot restores future alerts; force-stop requires opening the app again.";
-    private static NotificationManager Manager => (NotificationManager)Context.GetSystemService(Context.NotificationService)!;
+    private static NotificationManager Manager => Context.GetSystemService(Context.NotificationService) as NotificationManager ?? throw new InvalidOperationException("Android notifications are unavailable.");
+    private static NotificationManagerCompat Compat => NotificationManagerCompat.From(Context) ?? throw new InvalidOperationException("Android notifications are unavailable.");
+    private static PendingIntentFlags Immutable => OperatingSystem.IsAndroidVersionAtLeast(23) ? PendingIntentFlags.Immutable : 0;
     private static void EnsureChannel()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
             Manager.CreateNotificationChannel(new NotificationChannel(Channel, "Task reminders", NotificationImportance.Default));
     }
     public async Task<ReminderPermission> PermissionAsync(bool request)
     {
         EnsureChannel();
-        if (request && Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
+        if (request && OperatingSystem.IsAndroidVersionAtLeast(33))
             await MainThread.InvokeOnMainThreadAsync(() => Permissions.RequestAsync<NotificationPermission>());
-        var allowed = NotificationManagerCompat.From(Context).AreNotificationsEnabled();
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.O && Manager.GetNotificationChannel(Channel)?.Importance == NotificationImportance.None) allowed = false;
+        var allowed = Compat.AreNotificationsEnabled();
+        if (OperatingSystem.IsAndroidVersionAtLeast(26) && (Manager.GetNotificationChannel(Channel) is not { } channel || channel.Importance == NotificationImportance.None)) allowed = false;
         return allowed ? ReminderPermission.Allowed : ReminderPermission.Denied;
     }
     private static Intent AlarmIntent(int id) => new Intent(Context, typeof(ReminderReceiver))
@@ -34,35 +36,36 @@ public sealed class AndroidReminderPlatform : IReminderPlatform
     public Task ScheduleAsync(int id, DateTimeOffset when)
     {
         var intent = AlarmIntent(id); intent.PutExtra("id", id); intent.PutExtra("when", when.ToUnixTimeMilliseconds());
-        var pending = PendingIntent.GetBroadcast(Context, id, intent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable)!;
+        var pending = PendingIntent.GetBroadcast(Context, id, intent, PendingIntentFlags.UpdateCurrent | Immutable)!;
         var alarm = (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.M) alarm.SetAndAllowWhileIdle(AlarmType.RtcWakeup, when.ToUnixTimeMilliseconds(), pending);
+        if (OperatingSystem.IsAndroidVersionAtLeast(23)) alarm.SetAndAllowWhileIdle(AlarmType.RtcWakeup, when.ToUnixTimeMilliseconds(), pending);
         else alarm.Set(AlarmType.RtcWakeup, when.ToUnixTimeMilliseconds(), pending);
         return Task.CompletedTask;
     }
     public Task ShowAsync(int id)
     {
         EnsureChannel();
-        var launch = Context.PackageManager!.GetLaunchIntentForPackage(Context.PackageName!)!;
+        var launch = Context.PackageManager?.GetLaunchIntentForPackage(Context.PackageName!) ?? throw new InvalidOperationException("Android could not find Todo's launcher.");
         launch.SetFlags(ActivityFlags.SingleTop | ActivityFlags.ClearTop);
-        var open = PendingIntent.GetActivity(Context, id, launch, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
-        var notification = new NotificationCompat.Builder(Context, Channel).SetSmallIcon(Resource.Drawable.reminder_icon)
-            .SetContentTitle("Todo reminder").SetContentText("A task reminder is due. Open Todo to review it.")
-            .SetContentIntent(open).SetAutoCancel(true).SetVisibility(NotificationCompat.VisibilityPrivate).Build();
-        NotificationManagerCompat.From(Context).Notify(id, notification);
+        var open = PendingIntent.GetActivity(Context, id, launch, PendingIntentFlags.UpdateCurrent | Immutable);
+        var builder = new NotificationCompat.Builder(Context, Channel);
+        builder.SetSmallIcon(Resource.Drawable.reminder_icon); builder.SetContentTitle("Todo reminder");
+        builder.SetContentText("A task reminder is due. Open Todo to review it."); builder.SetContentIntent(open);
+        builder.SetAutoCancel(true); builder.SetVisibility(NotificationCompat.VisibilityPrivate);
+        Compat.Notify(id, builder.Build());
         return Task.CompletedTask;
     }
     public Task CancelAsync(int id)
     {
-        var pending = PendingIntent.GetBroadcast(Context, id, AlarmIntent(id), PendingIntentFlags.NoCreate | PendingIntentFlags.Immutable);
+        var pending = PendingIntent.GetBroadcast(Context, id, AlarmIntent(id), PendingIntentFlags.NoCreate | Immutable);
         if (pending is not null) { ((AlarmManager)Context.GetSystemService(Context.AlarmService)!).Cancel(pending); pending.Cancel(); }
-        NotificationManagerCompat.From(Context).Cancel(id);
+        Compat.Cancel(id);
         return Task.CompletedTask;
     }
     public sealed class NotificationPermission : Permissions.BasePlatformPermission
     {
         public override (string androidPermission, bool isRuntime)[] RequiredPermissions =>
-            Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu ? [(global::Android.Manifest.Permission.PostNotifications, true)] : [];
+            OperatingSystem.IsAndroidVersionAtLeast(33) ? [(global::Android.Manifest.Permission.PostNotifications, true)] : [];
     }
 }
 

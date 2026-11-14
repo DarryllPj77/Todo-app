@@ -1,5 +1,15 @@
 # Learnings
 
+## Phase 14B.3 - Mobile access and lifecycle are separate decisions
+
+**Term:** Staged permission. **Definition:** Request only the next platform-supported access step after contextual opt-in. **Example:** Precise foreground location comes before Android 10 background permission; Android 11+ requires a separate settings visit and explicit Start retry. Approximate permission alone cannot enable this geofence adapter.
+
+**Term:** Scoped mutable PendingIntent. **Definition:** A geofence delivery token must let Play services attach event extras while keeping an explicit receiver/action and bounded authorization checks. **Example:** Android 12+ mutability does not authorize arbitrary IDs: the mapper and encrypted run still require the exact current opaque region and arm.
+
+**Term:** Lifecycle invalidation versus restoration. **Definition:** A restart signal can revoke uncertain native work without silently recreating it. **Example:** Boot/update/cold Activity launch blocks a run, and delayed cleanup cannot stop a newer generation the user explicitly started.
+
+**Term:** Build evidence versus runtime evidence. **Definition:** A signed APK with included assemblies and valid manifest proves packaging, not device behavior. **Example:** Background dwell, Doze, permission dialogs and notifications still need a phone even after Android compilation and portable tests pass.
+
 ## Phase 14B.2 - Durable consent must defeat delayed work
 
 **Term:** Opt-out generation. **Definition:** A transactional version identifies the latest permission to continue a background run. **Example:** Stop increments the generation while Start waits on an OS dialog; the old Start's enable compare-and-swap fails instead of restoring monitoring.

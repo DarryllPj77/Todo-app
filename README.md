@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 14B.2 bounded Windows background arrivals implemented; installed/device activation acceptance pending.** Open **Tools > Location reminders** for manual checks, page-active native sessions and a separate explicit thirty-minute background run for one selected device reminder in an installed packaged Windows build. The default unpackaged/mobile app explains background unavailability. An encrypted run journal and transactional Stop generations control headless one-attempt delivery; no account-token access, startup rearm or location upload is added. All **641 tests passed, 0 skipped**; Windows solution/XAML build has **0 warnings/errors**. The unsigned MSIX builds with two known resource warnings; no package was installed or real background activation tested. See [BACKGROUND_GEOFENCES.md](docs/BACKGROUND_GEOFENCES.md). Earlier provider/mobile acceptance remains open.
+**Current status (2026-11-14): Phase 14B.3 Android background arrivals implemented; phone/device acceptance pending.** Android with Google Play services now supports the explicit thirty-minute device reminder run, staged precise/background permissions, an explicit settings button and boot/update/cold-Activity invalidation. Windows background behavior remains available in packaged builds. All **671 tests passed, 0 skipped**; Android APK and Windows solution builds have **0 warnings/errors**. A standalone debug-signed Android APK was built and signature/contents checked; no device/emulator was installed or run. Windows MSIX still has two known resource warnings. See [ANDROID_GEOFENCES.md](docs/ANDROID_GEOFENCES.md). Apple support and earlier provider/native acceptance remain open.
 
 ## Technology and prerequisites
 
@@ -16,6 +16,7 @@ A learning-focused C#/.NET Todo application, built one phase at a time. It inclu
 - Microsoft.AspNetCore.Authentication.JwtBearer **10.0.15**, ASP.NET Core's password hasher, per-IP auth rate limiting, and per-user server ownership.
 - HttpClient, client DTOs, platform SecureStorage, and an online account workspace. Account-scoped offline synchronization with a durable SQLite queue.
 - Device-local reminder persistence and platform notification adapters; no new package dependency in Phase 11.
+- Android background geofencing uses the Android-only Xamarin.GooglePlayServices.Location **121.3.0.7** binding, pinned to preserve the current MAUI/AndroidX dependency graph. No new core/Windows package is added.
 
 Core projects require the selected SDK and NuGet access. MAUI additionally needs platform workloads/tools. On Windows, use Visual Studio with .NET MAUI development support, or the .NET MAUI extension for VS Code and the required native tooling. Android needs its SDK/JDK and a device/emulator. Apple targets require a Mac with compatible Xcode; Windows cannot independently build/run every Apple target.
 
@@ -138,13 +139,19 @@ If PowerShell reports that script execution is restricted, use the equivalent CL
 dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TodoAppTargetFrameworks=net10.0-windows10.0.19041.0
 ```
 
-For Android, install `maui-android` plus its SDK/JDK, select a device/emulator, and use:
+For a standalone Android test APK, install `maui-android` in the selected SDK, then use the workspace tooling described in [ANDROID_GEOFENCES.md](docs/ANDROID_GEOFENCES.md):
+
+```powershell
+.\scripts\Build-Android.ps1
+```
+
+The optional `-InstallDependencies` flag downloads the SDK/JDK and accepts their development licenses. The generated debug-signed APK embeds its managed assemblies; building does not install or run it on a device. For an SDK-managed device/emulator run, configure its SDK/JDK and use:
 
 ```powershell
 dotnet build src/TodoApp.Maui/TodoApp.Maui.csproj -t:Run -p:TodoAppTargetFrameworks=net10.0-android
 ```
 
-To provision the broader workload set, `dotnet workload install maui` is available. A full `dotnet build TodoApp.slnx` evaluates all configured targets and requires corresponding tooling/remote Apple setup. Only Windows was compiled/launched in Phase 5; Android/iOS/Mac Catalyst remain unverified.
+To provision the broader workload set, `dotnet workload install maui` is available. A full `dotnet build TodoApp.slnx` evaluates all configured targets and requires corresponding tooling/remote Apple setup. Phase 5 compiled/launched Windows; Phase 14B.3 now compiles/signs Android as well. Actual Android device UI/geofences and Apple builds/runtime remain unverified.
 
 ## Check the app yourself
 
