@@ -13,6 +13,8 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     private readonly ITaskNavigation navigation;
     private readonly GeofenceSessionService native;
     private readonly bool ownsNative;
+    private readonly BackgroundGeofenceService? background;
+    private string backgroundStatus = "No background run loaded. Refresh to review saved status.";
     private readonly Guid owner = Guid.NewGuid();
     private CancellationTokenSource lifetime = new();
     private int generation;
@@ -51,6 +53,8 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     public string Status { get => status; private set => SetProperty(ref status, value); }
     public string NativeCapability => native.Capability;
     public string NativeStatus => native.Notice;
+    public string BackgroundCapability => background?.Capability ?? "Background runs are unavailable in this host.";
+    public string BackgroundStatus { get => backgroundStatus; private set => SetProperty(ref backgroundStatus, value); }
     public AsyncCommand RefreshCommand { get; }
     public AsyncCommand SaveCommand { get; }
     public AsyncCommand NewCommand { get; }
@@ -62,10 +66,13 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     public AsyncCommand CancelCommand { get; }
     public AsyncCommand StartNativeCommand { get; }
     public AsyncCommand StopNativeCommand { get; }
-    public LocationRemindersViewModel(LocationReminderService service, ClientSession session, ITaskNavigation navigation, GeofenceSessionService? native = null)
+    public AsyncCommand StartBackgroundCommand { get; }
+    public AsyncCommand StopBackgroundCommand { get; }
+    public LocationRemindersViewModel(LocationReminderService service, ClientSession session, ITaskNavigation navigation, GeofenceSessionService? native = null, BackgroundGeofenceService? background = null)
     {
         this.service = service; this.session = session; this.navigation = navigation;
         this.native = native ?? new(service, new UnsupportedNativeGeofencePlatform(), session); ownsNative = native is null;
+        this.background = background;
         RefreshCommand = Command(RefreshAsync);
         SaveCommand = Command(SaveAsync);
         NewCommand = Command(() => { ResetDraft(); return Task.CompletedTask; });
@@ -77,6 +84,13 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         CancelCommand = new(() => { Cancel(); Status = "Current check canceled. Refresh to review saved state."; return Task.CompletedTask; }, () => true, _ => { });
         StartNativeCommand = Command(StartNativeAsync, () => this.native.IsSupported);
         StopNativeCommand = Command(() => this.native.StopAsync(owner));
+        StartBackgroundCommand = Command(StartBackgroundAsync, () => background?.IsSupported == true && Workspace == HierarchyWorkspace.Device && SelectedReminder?.Enabled == true);
+        StopBackgroundCommand = new(async () =>
+        {
+            Cancel(); Error = "";
+            try { if (background is not null) { await background.StopAsync(); await RefreshBackgroundAsync(); } }
+            catch (Exception) { Error = "Background Stop could not fully finish. Retry Stop and check Windows permissions/settings; protected data was not reset."; }
+        }, () => background is not null, _ => Error = "Background cleanup could not finish. Retry Stop.");
         this.native.Changed += NativeChanged;
         session.Changed += OnSessionChanged;
     }
@@ -110,6 +124,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         var id = SelectedReminder?.Id; Tasks.Clear(); foreach (var item in snapshot.Tasks) Tasks.Add(item);
         Reminders.Clear(); foreach (var item in snapshot.Reminders) Reminders.Add(item);
         SelectedReminder = Reminders.FirstOrDefault(r => r.Id == id);
+        await RefreshBackgroundAsync(); Ensure(context);
         if (SelectedTask is not null) SelectedTask = Tasks.FirstOrDefault(t => t.Id == SelectedTask.Id);
         Status = "Places are local to this device and workspace. Arrival checks run only when you press Check arrivals now.";
     }
@@ -122,6 +137,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         LocationRules.Validate(draft);
         if (!await navigation.ConfirmLocationActionAsync("Save and arm place", "Store this task and place encrypted on this device? Each arm requires an outside check followed by an inside check and permits one generic notification attempt. No background monitoring or upload occurs.")) return;
         Ensure(context); await native.StopAsync(owner); Ensure(context);
+        if (Workspace == HierarchyWorkspace.Device) await StopBackgroundIfPresentAsync(); Ensure(context);
         await service.ArmAsync(context.Scope, prior, draft, context.Token); Ensure(context);
         ResetDraft(); await RefreshAsync();
     }
@@ -139,6 +155,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         var context = Capture();
         if (!await navigation.ConfirmLocationActionAsync("Check arrivals now", "Request one foreground location fix and compare armed places in this workspace? The OS may ask for location access. A confirmed arrival may show one generic task notification. No sample/history is stored or uploaded.")) return;
         Ensure(context); await native.StopAsync(owner); Ensure(context);
+        if (Workspace == HierarchyWorkspace.Device) await StopBackgroundIfPresentAsync(); Ensure(context);
         var result = await service.CheckAsync(context.Scope, context.Token); Ensure(context);
         await RefreshAsync(); Ensure(context); Status = result;
     }
@@ -155,16 +172,45 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         if (!await navigation.ConfirmLocationActionAsync(delete ? "Delete saved place" : "Disable reminder", delete ? "Delete this local place/reminder and cancel its generic notification? The task remains saved." : "Disable this location reminder and cancel its generic notification?")) return;
         Ensure(context);
         try { await service.RemoveAsync(context.Scope, row, delete, context.Token); }
-        finally { await native.StopAsync(owner); }
+        finally { await native.StopAsync(owner); if (context.Scope == "device") await StopBackgroundIfPresentAsync(); }
         Ensure(context); ResetDraft(); await RefreshAsync();
     }
     private async Task StartNativeAsync()
     {
         var context = Capture();
         if (!await navigation.ConfirmLocationActionAsync("Start native location session", "Monitor 1-10 armed places while this page/window stays active, for up to 30 minutes? Windows may ask for location access, and one initial location fix will be read. Saved centers are registered with OS location services; no sample history or API upload is saved. A new outside observation is required before entry into a conservative inner region. The first arrival attempt ends the session. Closing/leaving the app does not enable background delivery.")) return;
-        Ensure(context); await native.StartAsync(owner, context.Scope, context.Token); Ensure(context);
+        Ensure(context); await StopBackgroundIfPresentAsync(); Ensure(context);
+        await native.StartAsync(owner, context.Scope, context.Token); Ensure(context);
     }
-    public async Task PollNativeAsync() { if (!busy) await native.ReconcileAsync(owner); }
+    private async Task StartBackgroundAsync()
+    {
+        var context = Capture(); var row = SelectedReminder ?? throw new ArgumentException("Choose a saved device reminder.");
+        if (context.Scope != "device" || background is null) throw new ArgumentException("Select a device-local reminder for background monitoring.");
+        if (!await navigation.ConfirmLocationActionAsync("Start 30-minute background run", "Authorize one device reminder to continue after you leave this page or close Todo, for at most 30 minutes? Windows may request location/background access and read one initial fix. Its OS-managed regions contain this place's center/radius. Fresh outside evidence is required before a conservative inner entry can attempt one generic notification. No account credentials, travel history, server upload or automatic boot recovery is used. Use Stop background run to opt out; changing accounts does not stop a completed device-local run.")) return;
+        Ensure(context); await native.StopAsync(owner); Ensure(context);
+        await background.StartAsync(row, context.Token); Ensure(context); await RefreshAsync();
+    }
+    private async Task StopBackgroundIfPresentAsync()
+    {
+        if (background is not null && await background.ReadAsync() is { State: not BackgroundGeofenceState.Stopped }) await background.StopAsync();
+    }
+    private async Task RefreshBackgroundAsync()
+    {
+        if (background is null) return;
+        var run = await background.ReadAsync();
+        BackgroundStatus = run is null ? "No saved device background run." : $"Device background run: {run.State}; expires {run.ExpiresUtc:yyyy-MM-dd HH:mm:ss 'UTC'}. {run.Status}";
+    }
+    public async Task PollNativeAsync()
+    {
+        if (busy) return;
+        await native.ReconcileAsync(owner);
+        if (background is not null)
+        {
+            try { await background.ReconcileAsync(lifetime.Token); await RefreshBackgroundAsync(); }
+            catch (OperationCanceledException) { }
+            catch (Exception) { BackgroundStatus = "Could not review background state. Use Stop / retry cleanup to block it and inspect protected data."; }
+        }
+    }
     private void NativeChanged() { OnPropertyChanged(nameof(NativeStatus)); Notify(); }
     private void ResetDraft() { SelectedReminder = null; SelectedTask = null; PlaceName = Latitude = Longitude = ""; Radius = "200"; }
     public void Cancel() { generation++; lifetime.Cancel(); native.Cancel(owner); lifetime.Dispose(); lifetime = new(); }
@@ -173,7 +219,7 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     private void Notify()
     {
         OnPropertyChanged(nameof(IsIdle));
-        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand, StartNativeCommand, StopNativeCommand }) command?.NotifyCanExecuteChanged();
+        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand, StartNativeCommand, StopNativeCommand, StartBackgroundCommand }) command?.NotifyCanExecuteChanged();
     }
     public void Leave() { Cancel(); ResetDraft(); }
     public void Dispose() { session.Changed -= OnSessionChanged; native.Changed -= NativeChanged; native.Cancel(owner); if (ownsNative) native.Dispose(); lifetime.Cancel(); lifetime.Dispose(); }

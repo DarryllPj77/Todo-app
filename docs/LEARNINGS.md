@@ -1,5 +1,15 @@
 # Learnings
 
+## Phase 14B.2 - Durable consent must defeat delayed work
+
+**Term:** Opt-out generation. **Definition:** A transactional version identifies the latest permission to continue a background run. **Example:** Stop increments the generation while Start waits on an OS dialog; the old Start's enable compare-and-swap fails instead of restoring monitoring.
+
+**Term:** Headless activation. **Definition:** A platform trigger launches code without constructing the normal application window or runtime. **Example:** A geofence COM callback reads device SQLite and existing native reports; it cannot restore an account token, request a new location fix or start HTTP synchronization.
+
+**Term:** Deferral. **Definition:** A background task tells the OS that asynchronous work is still in progress and completes that claim on every exit path. **Example:** Notification failure/cancellation still releases the task deferral; a bounded host exits rather than acting as an always-running service.
+
+**Term:** Independent opt-out authority. **Definition:** Stopping delivery must not depend on decrypting the protected payload being stopped. **Example:** A missing location key makes the run journal unreadable, but the separate nonsecret blocked generation can still deny callbacks and permit attempted native cleanup.
+
 ## Phase 14B.1 - Native lifetime is separate from application intent
 
 **Term:** Capability gate. **Definition:** Check that a build supports a native feature before asking for access. **Example:** The unpackaged Windows app explains that native geofence sessions need an installed package; it never requests location for a disabled feature.

@@ -1,0 +1,56 @@
+# Phase 14B.2: bounded Windows background arrivals
+
+This implementation adds an explicit **thirty-minute background run for one device-local reminder** in an installed packaged Windows app. It includes a headless activation path for events after the UI closes. Compilation, portable behavior tests and unsigned packaging are verified separately from actual installed-device activation. The unpackaged development app, mobile builds and workspace preview do not enable this mode. Phase 14 remains open for native acceptance and further platform work.
+
+## Use and opt out
+
+1. Build/deploy a properly signed development MSIX using the Windows tooling described in [NATIVE_GEOFENCES.md](NATIVE_GEOFENCES.md). The existing `scripts/Build-WindowsPackage.ps1` creates unsigned test artifacts only; it does not install, sign or trust a certificate. Running a copied executable does not grant package identity.
+2. In the packaged installation, create a disposable pending **device** task and a saved, armed place. Account-scoped places are intentionally excluded from headless access.
+3. Open Tools > Location reminders, choose Device, Refresh and select one saved reminder. Allow/check notifications, then choose **Start 30-minute background run for selected place** and read its contextual confirmation. Windows may ask for location/background access. A permission dialog can cancel the pending page action; grant access and explicitly retry if necessary.
+4. Start reads one foreground bootstrap fix. A reliable outside fix captured at/after Start can establish new outside evidence. Starting inside never uses outside evidence from an earlier manual/native run. Later native exit/entry reports can advance the same saved arm.
+5. A completed opt-in continues after page departure, app closure and account changes, until explicit Stop, expiry, task/arm invalidation, OS/native failure or one arrival check. Device-local authorization does not grant account credential access. There is no automatic rearm, expiry extension, boot re-registration or hidden retry service.
+6. Use **Stop background run / retry cleanup** to opt out globally on this installation. It works independently of the selected workspace and attempts native cleanup even when the encryption key/journal cannot be read. Retry if cleanup fails; do not reset protected files to hide an error. Disabling/deleting the device reminder saves local opt-out first, then attempts background cleanup. Editing/rearming, manual device arrival checks and starting a page-active native session stop an existing background run before proceeding.
+
+Cancel current action cancels an incomplete Start; it does not revoke an already completed background opt-in. Page/window inactivity stops page-active native sessions but retains a completed background run. Metadata reconciliation also respects this distinction: cancellation while leaving the page does not stop an otherwise valid background run.
+
+## Arrival and lifetime policy
+
+One run registers two conservative Windows regions, using the same inner half-radius, outer accuracy margin and ten-second dwell as Phase 14B.1. Native duration ends at the original UTC expiry, at most thirty minutes after Start. Coordinates are passed to Windows location services outside the application's encryption envelope. Native report accuracy is an estimate; dwell/entry detection can be delayed, inaccurate or unavailable. See [LOCATION_REMINDERS.md](LOCATION_REMINDERS.md) for shared freshness, mocked-provider and boundary rules.
+
+Every report must match the current run's opaque region ID, selected reminder/ArmId, current pending device task and repeat occurrence. Samples before Start, after expiry, stale/future/mock/inaccurate samples and foreign/previous-run IDs cannot consume the arm. Reliable outside evidence is saved in this run's encrypted journal, independently of old reminder evidence. One inside arrival check ends the run. The reminder's Attempted marker is persisted before native notification delivery, so failure/restart cannot automatically repeat that arm. Refresh saved reminder/run status before deciding whether to rearm.
+
+OS background access, sleep, location services, notification settings and process termination can prevent/delay activation or delivery. No UI timer keeps the background process alive and no scheduled task/Windows service is installed. Existing OS registrations may survive a system restart under Windows policy, but this app never recreates them or extends the original authorization at boot. Native expiry/cleanup and real restart behavior require device acceptance.
+
+## Headless Windows activation
+
+The package declares the location capability, a universal background-task bridge, a package-level activatable-class server and a full-trust COM executable class. An explicit foreground Start requests location/background access and registers `Todo.BackgroundGeofence.v1` using the Windows App SDK builder and LocationTrigger(Geofence). The COM CLSID matches the manifest, builder and task implementation.
+
+A custom Windows Main preserves the generated WinUI startup sequence for normal launches. Only `--todo-geofence-background` routes to the MTA COM host. Single-use COM registration gives each activation a bounded process. The task validates its registered name, obtains/completes a deferral, handles OS cancellation and applies a twenty-second cancellation budget; the idle activation host exits after at most sixty seconds.
+
+The headless branch creates no MAUI Application/window, HTTP client, account restoration, foreground timer or location permission prompt. It reads existing geofence reports only after acquiring the shared process lease. Device task reads use local SQLite; a deliberately unsupported token store and position provider guard against accidental account-token reads or fresh headless location requests. Generic packaged toast delivery uses the package AppUserModelID; its guard checks active authorization immediately before/after native show and attempts cancellation if Stop races delivery.
+
+Primary platform references: [Windows App SDK background tasks and COM registration](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/applifecycle/background-tasks), [migration/bridge requirements](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/background-task-migration-strategy), and [desktop toast identity](https://learn.microsoft.com/en-us/uwp/api/windows.ui.notifications.toastnotificationmanager.createtoastnotifier?view=winrt-26100). These describe the native mechanism; compilation is not proof of installed runtime behavior.
+
+## Durable authorization and storage
+
+- `geofence-background.db3`, schema 1, holds one encrypted versioned run: immutable reminder snapshot, random run ID, start/expiry, fresh-outside flag, Pending/Active/Stopped state and generic status. AES-256-GCM binds ciphertext to journal purpose/revision. It reuses the **existing** OS-protected location key and never creates/replaces a missing key. No position samples, travel history, account tokens or HTTP payloads are saved.
+- `geofence-control.db3`, schema 1, stores only a nonsecret blocked flag and monotonic generation. Missing data defaults to blocked. Stop writes a newer blocked generation before waiting for the native lease or reading encrypted data. Start can enable only its captured generation using transactional compare-and-swap. A later Stop cannot be undone by a delayed Start. Unsupported/corrupt metadata fails closed without reset.
+- Start blocks delivery, obtains the shared `native-geofence.lock` lease, requests contextual access, cleans older background resources, validates the selected arm and notification access, saves Pending, registers native work, bootstraps outside evidence, saves Active and finally enables its exact control generation. Errors leave delivery blocked or the journal stopped; native cleanup is retriable.
+- The same lease excludes page-active native sessions and concurrent background workers. Page-active Start checks for a reserved background journal under that lease. A busy headless activation never drains reports before obtaining ownership. Foreground metadata reconciliation runs only while the page/window is active and never samples GPS.
+- Stop commits Stopped before unregistering the named task and removing only the `todo-background-v1-` region namespace. Cleanup can fail after durable opt-out; records remain for retry. If the protected key is lost, the separate control record can still block delivery and cleanup can still be attempted. Files are never reset automatically.
+
+The journal, control database and native notification API are not one transaction. Rechecks, exact arm CAS and post-show cancellation are best effort around a notification already submitted to Windows. A crash between consumption and show can lose an alert. A crash during registration can leave bounded OS geometry, but Pending/default-blocked authorization cannot deliver. A crash after a completed Active opt-in can still permit its authorized background callback until the original expiry. OS-managed geometry is removed on normal cleanup or native expiry; no immediate crash-erasure guarantee is made.
+
+Other SQLite schemas, PostgreSQL migrations, task-sync protocol and existing protected credential formats are unchanged. Backups need the original OS key; a copied encrypted journal alone is insufficient. Signing/publisher identity, package data isolation, secure-key recovery and OS storage handling remain release acceptance.
+
+## Acceptance still required
+
+Implementation verification (2026-11-14): **37 new background cases**, **112 targeted location cases** and **641 full-suite cases** passed with zero skips (582 portable plus 59 PostgreSQL). Final Windows solution/XAML build has zero warnings/errors. Unsigned MSIX generation succeeds with the existing two PRI249/PRI263 resource warnings. Package inspection confirms the background declaration, COM identity/argument, App identity and native bridge DLL; it does not validate installed activation.
+
+Portable tests use real temporary SQLite/encryption/leases with fake platform reports/permissions/notifications. No package was installed, no COM/geofence activation was operated, and no real coordinates or credentials were read during implementation. Before release verify:
+
+- Signed deployment, native access dialogs, COM activation after UI closure, absence of a UI window, bridge loading and protected-key access from the headless process.
+- Actual exit/entry/dwell/expiry, sleep/restart, revoked permissions, locale resources, background throttling and generic toast identity/click/delivery.
+- Stop during permission/registration/callback delivery, task completion/deletion/repeat change, two windows/processes, held leases, cancellation/deferral completion, partial registration and failed cleanup.
+- Account changes leave only the explicitly authorized device run active; no account cache/token/provider access occurs. No startup/boot path silently re-registers or extends it.
+- Package-generation PRI249/PRI263 warnings from Phase 14B.1 remain unresolved release/locale checks. Mobile background adapters and broader supported-platform/boot policy remain later work (14B.3).

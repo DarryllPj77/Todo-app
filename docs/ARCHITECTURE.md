@@ -1,5 +1,11 @@
 # Architecture
 
+## Bounded Windows background runs (Phase 14B.2)
+
+BackgroundGeofenceService handles one explicitly selected device reminder for at most thirty minutes. An encrypted revisioned run journal retains task/arm identity and fresh outside evidence; a separate keyless control database provides transactional Stop generations. A delayed Start can enable only its original generation, so it cannot undo a later Stop. The shared process lease excludes page-active native registration and concurrent workers; both namespaces are cleaned separately.
+
+Packaged Windows registers a LocationTrigger through the Windows App SDK background builder and a manifest-declared full-trust COM entry point. Custom Main preserves normal WinUI startup and routes only the background switch to a bounded MTA host. That branch constructs no Application/window, HTTP client, account restoration or location permission request. It consumes native reports through the existing encrypted reminder/task/quality/one-attempt path and checks durable authorization around generic toast delivery. Completed device opt-in survives page/app/account changes; no startup/boot path silently re-registers or extends it. See BACKGROUND_GEOFENCES.md for cancellation/cleanup boundaries, packaging and pending installed-device acceptance.
+
 ## Native location sessions (Phase 14B.1)
 
 GeofenceSessionService coordinates one opt-in page owner, exact reminder/arm identities, a new outside observation per session, cancellation/version guards, quota and expiry. It routes native samples through the existing LocationReminderService persistence/quality/one-attempt path. The page reconciles metadata every fifteen seconds while active and stops on departure/deactivation; it never automatically starts/restores native monitoring.

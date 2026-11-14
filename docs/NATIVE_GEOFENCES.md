@@ -1,5 +1,7 @@
 # Phase 14B.1: Windows native geofence sessions
 
+Phase 14B.2 now provides a **separate explicit device-local background run**; see [BACKGROUND_GEOFENCES.md](BACKGROUND_GEOFENCES.md). The page-active behavior described below is unchanged. Current packages additionally declare the background bridge/COM server, and foreground native sessions cannot register while a background run reserves ownership. Neither mode is enabled merely by opening the app.
+
 This increment adds **opt-in, page-active native sessions for packaged Windows**. The normal unpackaged app, mobile builds and Debug workspace preview show an unavailable explanation and retain Phase 14A manual checks. There is no closed-app activation, OS background task, background permission request, startup restoration or automatic registration/rearm. Phase 14B remains open.
 
 Microsoft's WinUI geofencing guidance uses package identity and a location manifest capability, requests access on the foreground UI thread, and distinguishes running-app event handlers from background activation. See [Windows geofencing](https://learn.microsoft.com/en-us/windows/apps/develop/maps-and-location/geofencing) and [geofence setup/access](https://learn.microsoft.com/en-us/windows/uwp/maps-and-location/set-up-a-geofence). This project now declares the package's location capability; its default WindowsPackageType remains None.

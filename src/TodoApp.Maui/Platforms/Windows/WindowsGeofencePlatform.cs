@@ -5,7 +5,7 @@ using global::Windows.Devices.Geolocation.Geofencing;
 
 namespace TodoApp.Maui.Platforms.Windows;
 
-public sealed class WindowsGeofencePlatform(string lockPath) : INativeGeofencePlatform
+public sealed class WindowsGeofencePlatform(string lockPath, Func<Task<bool>>? backgroundReserved = null) : INativeGeofencePlatform
 {
     private const string Prefix = "todo-native-v1-";
     private FileStream? lease;
@@ -33,13 +33,16 @@ public sealed class WindowsGeofencePlatform(string lockPath) : INativeGeofencePl
         var access = await MainThread.InvokeOnMainThreadAsync(async () => await Geolocator.RequestAccessAsync());
         token.ThrowIfCancellationRequested();
         if (access != GeolocationAccessStatus.Allowed) throw new InvalidOperationException("Windows location access was denied/unavailable. Allow location in OS settings and explicitly retry.");
-        await MainThread.InvokeOnMainThreadAsync(() =>
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             token.ThrowIfCancellationRequested();
             // Native regions belong to the package, not the process. Keep a
             // cross-process lease before touching this feature's namespace.
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(lockPath))!);
             lease ??= new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            if (backgroundReserved is not null && await backgroundReserved())
+                throw new InvalidOperationException("Stop the saved background run before starting a page-active native session.");
+            token.ThrowIfCancellationRequested();
             monitor = GeofenceMonitor.Current;
             RemoveOwnedRegions(); monitor.ReadReports(); identities.Clear();
             var nonce = Guid.NewGuid().ToString("N");

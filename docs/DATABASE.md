@@ -1,5 +1,11 @@
 # Database plan
 
+## Background run journal and opt-out control (Phase 14B.2)
+
+Two independent schema-1 files are added without altering existing data. geofence-background.db3 stores one revisioned BackgroundRun ciphertext: device reminder snapshot, random run identity, fixed thirty-minute start/expiry, fresh-outside flag, state/status. AES-GCM uses the original location SecureStorage key and binds the journal purpose/revision; missing keys or tampering fail closed without reset. The key must already exist; the journal never creates/replaces it.
+
+geofence-control.db3 contains only a nonsecret Blocked flag and monotonic Generation. Missing data defaults to blocked. Stop advances the generation before waiting on native ownership or decrypting the journal. Start enables only its captured generation by SQL compare-and-swap, preventing delayed permission/registration from overriding newer opt-out. Stopped journal state is committed before native cleanup; unreadable encryption can still be blocked through the separate control record. No coordinate samples, travel history, account credentials or provider writes are saved. Existing schema versions, server migrations and protocol remain unchanged; see BACKGROUND_GEOFENCES.md for recovery and native atomicity limits.
+
 ## Native session storage boundary (Phase 14B.1)
 
 No database schema changes. Native report observations use the encrypted schema-1 location reminder state and exact ArmId/revision checks. Session owner, native identities, registration cohort and fresh-outside evidence are in memory only. Windows location services receive bounded center/radius regions outside the application's encryption envelope; no report samples, travel history or native registration journal enter SQLite. A nonsecret exclusive file lease coordinates packaged processes; it contains no location/session payload. No startup opt-in is restored. See NATIVE_GEOFENCES.md for thirty-minute OS expiry, crash cleanup and protected-key limitations.

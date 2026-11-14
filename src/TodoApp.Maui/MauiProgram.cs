@@ -61,11 +61,18 @@ public static class MauiProgram
         builder.Services.AddSingleton(provider => new SqliteLocationReminderStore(Path.Combine(dataDirectory, "location.db3"), provider.GetRequiredService<ILocationEncryptionKeyStore>()));
         builder.Services.AddSingleton<ILocationTaskSource, LocationTaskCatalog>();
         builder.Services.AddSingleton<LocationReminderService>();
+        builder.Services.AddSingleton(provider => new SqliteBackgroundGeofenceStore(Path.Combine(dataDirectory, "geofence-background.db3"), provider.GetRequiredService<ILocationEncryptionKeyStore>()));
+        builder.Services.AddSingleton(_ => new GeofenceProcessLease(Path.Combine(dataDirectory, "native-geofence.lock")));
+        builder.Services.AddSingleton<IBackgroundGeofenceBlocker>(_ => WorkspacePreview.Enabled ? new PreviewBackgroundGeofenceBlocker() : new BackgroundGeofenceBlocker(Path.Combine(dataDirectory, "geofence-control.db3")));
 #if WINDOWS
-        builder.Services.AddSingleton<INativeGeofencePlatform>(_ => WorkspacePreview.Enabled ? new UnsupportedNativeGeofencePlatform() : new Platforms.Windows.WindowsGeofencePlatform(Path.Combine(dataDirectory, "native-geofence.lock")));
+        builder.Services.AddSingleton<INativeGeofencePlatform>(provider => WorkspacePreview.Enabled ? new UnsupportedNativeGeofencePlatform() : new Platforms.Windows.WindowsGeofencePlatform(Path.Combine(dataDirectory, "native-geofence.lock"),
+            async () => (await provider.GetRequiredService<SqliteBackgroundGeofenceStore>().ReadAsync()) is { State: not BackgroundGeofenceState.Stopped }));
+        builder.Services.AddSingleton<IBackgroundGeofencePlatform>(_ => WorkspacePreview.Enabled ? new UnsupportedBackgroundGeofencePlatform() : new Platforms.Windows.WindowsBackgroundGeofencePlatform(Path.Combine(dataDirectory, "geofence-background.db3")));
 #else
         builder.Services.AddSingleton<INativeGeofencePlatform, UnsupportedNativeGeofencePlatform>();
+        builder.Services.AddSingleton<IBackgroundGeofencePlatform, UnsupportedBackgroundGeofencePlatform>();
 #endif
+        builder.Services.AddSingleton<BackgroundGeofenceService>();
         builder.Services.AddSingleton<GeofenceSessionService>();
         builder.Services.AddScoped<LocationRemindersViewModel>();
         builder.Services.AddTransient<LocationRemindersPage>();
