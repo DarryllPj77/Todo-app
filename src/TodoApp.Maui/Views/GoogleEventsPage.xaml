@@ -31,13 +31,19 @@
                 </DataTemplate></CollectionView.ItemTemplate>
             </CollectionView>
             <Label Text="{Binding LinkDetails}" LineBreakMode="WordWrap" />
+            <Button Text="Load Google / local review" Command="{Binding ReviewCommand}" Style="{StaticResource TaskAction}" />
+            <Label Text="{Binding ReviewDetails}" LineBreakMode="WordWrap" />
+            <Button Text="Use reviewed Google version" Command="{Binding UseGoogleCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Keep reviewed local version and push" Command="{Binding KeepLocalCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Accept reviewed Google deletion" Command="{Binding AcceptMissingCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Detach local link only" Command="{Binding DetachCommand}" Style="{StaticResource TaskAction}" />
             <Button Text="Retry selected pending operation" Command="{Binding RetryCommand}" Style="{StaticResource TaskAction}" />
             <Button Text="Delete selected linked Google event" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
             <Button Text="Cancel current action" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
             <Label Text="{Binding Error}" Style="{StaticResource TaskError}" LineBreakMode="WordWrap" />
             <Label Text="{Binding Status}" LineBreakMode="WordWrap" />
-            <Label Text="Every publish, delete and retry asks for confirmation. Network/cancellation failures can leave an uncertain operation: retry its saved ID/snapshot instead of creating another event. Conflicts are frozen for the next review increment. No background or two-way synchronization runs." Style="{StaticResource TaskMuted}" />
+            <Label Text="Publish, delete, retry and review resolutions ask for confirmation. Uncertain operations keep their saved identity/snapshot for Retry. Reviewed adoption changes calendar blocks only, never task completion or focus history. Unsafe events support local detach only. No background synchronization runs." Style="{StaticResource TaskMuted}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

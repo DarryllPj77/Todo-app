@@ -5,7 +5,7 @@ using TodoApp.Maui.Models;
 
 namespace TodoApp.Maui.Services;
 
-public sealed class GoogleEventLinkService(GoogleConnectionService connection, GoogleCalendarApi api, SqliteCalendarStore store)
+public sealed partial class GoogleEventLinkService(GoogleConnectionService connection, GoogleCalendarApi api, SqliteCalendarStore store, ClientSession session, TimeProvider? clock = null)
 {
     public bool IsSupported => connection.IsSupported;
     public Task<IReadOnlyList<GoogleCalendarChoice>> CalendarsAsync(string scope, CancellationToken ct) =>

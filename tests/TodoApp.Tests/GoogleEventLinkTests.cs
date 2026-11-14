@@ -10,7 +10,7 @@ using TodoApp.Maui.ViewModels;
 
 namespace TodoApp.Tests;
 
-public sealed class GoogleEventLinkTests : IDisposable
+public sealed partial class GoogleEventLinkTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "todoapp_links_" + Guid.NewGuid().ToString("N"));
     private readonly ClientHarness client = new();
@@ -20,7 +20,7 @@ public sealed class GoogleEventLinkTests : IDisposable
     private readonly HttpClient oauthHttp, apiHttp;
     private readonly GoogleConnectionService connection;
     private SqliteCalendarStore Store => new(Path.Combine(directory, "calendar.db3"), client.Clock);
-    private GoogleEventLinkService Service => new(connection, new GoogleCalendarApi(apiHttp), Store);
+    private GoogleEventLinkService Service => new(connection, new GoogleCalendarApi(apiHttp), Store, client.Session, client.Clock);
     private const string GoogleClient = "12345-client.apps.googleusercontent.com";
     private const string CalendarId = "owned@example.invalid";
     private GoogleCalendarChoice Calendar => new(CalendarId, "Work");

@@ -635,3 +635,13 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Term:** Conditional modification with ETag. **Definition:** If-Match asks a provider to change only the exact version previously acknowledged. **Short example:** A remote edit between GET and PATCH returns 412; the journal becomes Conflict and the app does not overwrite the unseen version. A confirmed deletion follows the same rule.
 
 **Term:** Identity domains. **Definition:** A local block ID, iCalendar UID and Google event resource ID identify different objects. **Short example:** Importing an ICS file does not create a trusted app link. A provider event must have the journal's reserved ID and private ownership markers before the app can change it.
+
+## Phase 13D.1 - A review is a versioned decision input
+
+**Term:** Reviewed snapshot. **Definition:** A displayed comparison must identify the exact local and provider versions that a user approved. **Short example:** If Google changes its ETag or another window edits the local block after review, Use-Google rejects the old choice rather than silently accepting newer fields.
+
+**Term:** Atomic local reconciliation. **Definition:** Commit the adopted local block and its acknowledged provider baseline together after validation. **Short example:** A Google time range that overlaps another local block rejects the transaction; neither block fields nor link metadata advance.
+
+**Term:** Snapshot title versus source identity. **Definition:** A calendar block can adopt a provider title without renaming its source task. **Short example:** TaskId, scope and captured zone stay fixed while the reviewed block title/UTC range changes; task completion and focus history are untouched.
+
+**Term:** Local detach versus provider deletion. **Definition:** Detach closes local management without transmitting a remote deletion. **Short example:** A recurring/foreign event is never forcibly overwritten; the user can detach its local link and separately handle the old provider event before explicitly publishing another.

@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 13C explicit Google event links implemented; provider/native acceptance pending.** Open **Tools > Google event links** to publish saved SyncedAccount time blocks to an owned Google calendar, conditionally push later local changes, confirm remote deletion and retry uncertain operations using durable IDs/snapshots. Google consent requires the Phase 13B Windows setup. calendar.db3 upgrades from schema 1 to 2; no API migration is needed. Device blocks/ICS imports remain separate; background/two-way sync is not enabled. All **480 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [GOOGLE_EVENT_LINKS.md](docs/GOOGLE_EVENT_LINKS.md).
+**Current status (2026-11-14): Phase 13D.1 reviewed Google reconciliation implemented; provider/native acceptance pending.** In **Tools > Google event links**, load a Google/local review, then explicitly adopt Google fields, conditionally keep/push local fields, accept a reviewed remote deletion, or detach only the local link. Local block/link updates are atomic and stale reviews are rejected; source task fields remain unchanged. calendar.db3 upgrades to schema 3 without resetting blocks/links. All **505 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. Incremental cursors/background automation remain Phase 13D.2. See [GOOGLE_RECONCILIATION.md](docs/GOOGLE_RECONCILIATION.md).
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13C suite passed **480 tests, 0 skipped** (421 portable cases and 59 PostgreSQL facts). This includes 23 new event-link cases and 70 targeted calendar/OAuth/link checks. Google responses are mocked; live provider/native acceptance remains pending. See GOOGLE_EVENT_LINKS.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13D.1 suite passed **505 tests, 0 skipped** (446 portable cases and 59 PostgreSQL facts), including 25 new review cases and 95 targeted calendar/OAuth/reconciliation checks. Provider HTTP is mocked; live Google/native acceptance remains open. See GOOGLE_RECONCILIATION.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -235,4 +235,8 @@ Follow [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md) to enable Calendar API and 
 
 ## Explicit Google event links
 
-Connect Google on Windows, create a **SyncedAccount** time block in Calendar & time blocks, then open **Tools > Google event links**. Refresh local blocks/links, load owned calendars, select the destination and block, and confirm Publish. Push later local edits explicitly; confirmed remote deletion preserves the local task/block. Uncertain writes keep a pending operation for confirmed Retry. Divergent conflicts remain frozen for Phase 13D review. See [GOOGLE_EVENT_LINKS.md](docs/GOOGLE_EVENT_LINKS.md) for migration, identity, recovery and actual-provider acceptance.
+Connect Google on Windows, create a **SyncedAccount** time block in Calendar & time blocks, then open **Tools > Google event links**. Refresh local blocks/links, load owned calendars, select the destination and block, and confirm Publish. Push later local edits explicitly; confirmed remote deletion preserves the local task/block. Uncertain writes keep a pending operation for confirmed Retry. Divergent conflicts can now be reviewed and resolved explicitly using Phase 13D.1. See [GOOGLE_EVENT_LINKS.md](docs/GOOGLE_EVENT_LINKS.md) for migration, identity, recovery and actual-provider acceptance.
+
+## Reviewed Google reconciliation
+
+Open **Tools > Google event links**, select a Linked/Conflict record and choose **Load Google / local review**. Inspect both versions before choosing **Use reviewed Google version**, **Keep reviewed local version and push**, **Accept reviewed Google deletion**, or **Detach local link only**. Each resolution requires confirmation and rechecks the reviewed context. Adoption changes only the calendar block; it never changes task completion or focus history. Unsafe events permit local detach rather than forced writes. See [GOOGLE_RECONCILIATION.md](docs/GOOGLE_RECONCILIATION.md).

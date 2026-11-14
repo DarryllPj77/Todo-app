@@ -23,9 +23,10 @@ public sealed class GoogleEventsViewModel : ObservableViewModel, IDisposable
     public ObservableCollection<GoogleEventLink> Links { get; } = new();
     public ObservableCollection<GoogleCalendarChoice> Calendars { get; } = new();
     public TimeBlock? SelectedBlock { get => block; set { SetProperty(ref block, value); Notify(); } }
-    public GoogleEventLink? SelectedLink { get => link; set { SetProperty(ref link, value); OnPropertyChanged(nameof(LinkDetails)); Notify(); } }
+    public GoogleEventLink? SelectedLink { get => link; set { SetProperty(ref link, value); OnPropertyChanged(nameof(LinkDetails)); OnPropertyChanged(nameof(ReviewDetails)); Notify(); } }
     public GoogleCalendarChoice? SelectedCalendar { get => calendar; set { SetProperty(ref calendar, value); Notify(); } }
     public string LinkDetails => SelectedLink?.Details ?? "Select a link to inspect its state. Pending retries use the original saved operation.";
+    public string ReviewDetails => SelectedLink?.Review?.Details ?? "Load a Google/local review before resolving a difference. Review alone changes no block or provider event.";
     public string Error { get => error; private set => SetProperty(ref error, value); }
     public string Status { get => status; private set => SetProperty(ref status, value); }
     public bool IsIdle => !busy;
@@ -36,6 +37,11 @@ public sealed class GoogleEventsViewModel : ObservableViewModel, IDisposable
     public AsyncCommand DeleteCommand { get; }
     public AsyncCommand RetryCommand { get; }
     public AsyncCommand CancelCommand { get; }
+    public AsyncCommand ReviewCommand { get; }
+    public AsyncCommand UseGoogleCommand { get; }
+    public AsyncCommand KeepLocalCommand { get; }
+    public AsyncCommand AcceptMissingCommand { get; }
+    public AsyncCommand DetachCommand { get; }
     public GoogleEventsViewModel(ClientSession session, SqliteCalendarStore store, GoogleEventLinkService links, ITaskNavigation navigation, TimeProvider? clock = null)
     {
         this.session = session; this.store = store; this.links = links; this.navigation = navigation; this.clock = clock ?? TimeProvider.System;
@@ -68,9 +74,36 @@ public sealed class GoogleEventsViewModel : ObservableViewModel, IDisposable
             guard(); var result = await links.RetryAsync(selected, ct); guard(); await LoadAsync(scope, guard);
             Status = result.State == GoogleLinkState.Conflict ? result.Problem : "Saved operation reconciled. Refresh the local block before pushing newer edits.";
         }, () => SelectedLink?.Pending == true, supported: true);
+        ReviewCommand = Command(async (scope, guard, ct) =>
+        {
+            var reviewed = await links.ReviewAsync(SelectedLink!, ct); guard(); await LoadAsync(scope, guard);
+            Status = reviewed.Review?.Kind == GoogleReviewKind.Unsafe ? "Google event is outside supported ownership/type rules. It was not changed; local detach remains available."
+                : "Review saved. Choose a resolution explicitly; local and Google versions will be checked again.";
+        }, () => SelectedLink?.State is GoogleLinkState.Linked or GoogleLinkState.Conflict, supported: true);
+        UseGoogleCommand = Resolution(GoogleReviewChoice.UseGoogle, "Use reviewed Google version",
+            "Replace the existing local block's title/times with the displayed Google version? If the local block is missing, only acknowledge the link; no block is recreated. Source task fields remain unchanged.");
+        KeepLocalCommand = Resolution(GoogleReviewChoice.KeepLocal, "Keep local and push",
+            "Push the displayed local block title/times over the reviewed Google version using a conditional write? A newer local or Google edit will reject this choice.");
+        AcceptMissingCommand = Resolution(GoogleReviewChoice.AcceptMissing, "Accept Google deletion",
+            "Close this link as deleted after checking absence again? The local block and task remain. A new publish requires a separate confirmation.");
+        DetachCommand = Command(async (scope, guard, ct) =>
+        {
+            var selected = SelectedLink!;
+            if (!await navigation.ConfirmGoogleEventAsync("Detach local Google link", $"Stop managing {selected.Desired.Title} in {selected.CalendarName} locally? No Google request will be made; its event may remain. New publishing may create another event. The local block/task remain.")) return;
+            guard(); await links.DetachAsync(selected, ct); guard(); await LoadAsync(scope, guard);
+            Status = "Detached locally. Google was not contacted; remove any old event separately if needed.";
+        }, () => SelectedLink?.State is GoogleLinkState.Linked or GoogleLinkState.Conflict);
         CancelCommand = new AsyncCommand(() => { Cancel(); return Task.CompletedTask; }, () => busy, _ => { });
         session.Changed += Changed;
     }
+    private AsyncCommand Resolution(GoogleReviewChoice choice, string action, string explanation) => Command(async (scope, guard, ct) =>
+    {
+        var selected = SelectedLink!;
+        if (!await navigation.ConfirmGoogleEventAsync(action, selected.Review!.Details + "\n\n" + explanation)) return;
+        guard(); var resolved = await links.ResolveAsync(selected, choice, ct); guard(); await LoadAsync(scope, guard);
+        Status = resolved.State == GoogleLinkState.Conflict ? resolved.Problem : "Reviewed choice applied. Source task fields remain unchanged; no background synchronization runs.";
+    }, () => SelectedLink?.Review is { } review && (choice == GoogleReviewChoice.AcceptMissing ? review.Kind == GoogleReviewKind.Missing
+        : review.Kind == GoogleReviewKind.Present && (choice != GoogleReviewChoice.KeepLocal || review.Local is not null)), supported: true);
     private string Scope()
     {
         if (session.Current is not { } saved || !session.IsVerified || saved.ExpiresAt <= clock.GetUtcNow())
@@ -98,7 +131,7 @@ public sealed class GoogleEventsViewModel : ObservableViewModel, IDisposable
         Blocks.Clear(); foreach (var row in blocks) Blocks.Add(row);
         Links.Clear(); foreach (var row in saved) Links.Add(row);
         SelectedBlock = Blocks.FirstOrDefault(b => b.Id == blockId); SelectedLink = Links.FirstOrDefault(l => l.BlockId == linkId);
-        Status = $"{Blocks.Count} account-local blocks, {Links.Count} link records. Conflicts remain frozen for review; no background/two-way sync runs.";
+        Status = $"{Blocks.Count} account-local blocks, {Links.Count} link records. Review differences before resolving them; no background synchronization runs.";
     }
     private void Changed() { Cancel(); Clear(); }
     private void Clear() { Blocks.Clear(); Links.Clear(); Calendars.Clear(); SelectedBlock = null; SelectedLink = null; SelectedCalendar = null; Status = "Todo account changed. Refresh the active account's blocks/links."; }
@@ -106,7 +139,8 @@ public sealed class GoogleEventsViewModel : ObservableViewModel, IDisposable
     private void Notify()
     {
         OnPropertyChanged(nameof(IsIdle)); OnPropertyChanged(nameof(IsBusy));
-        foreach (var command in new[] { RefreshCommand, LoadCalendarsCommand, PublishCommand, DeleteCommand, RetryCommand, CancelCommand }) command?.NotifyCanExecuteChanged();
+        foreach (var command in new[] { RefreshCommand, LoadCalendarsCommand, PublishCommand, DeleteCommand, RetryCommand, CancelCommand,
+            ReviewCommand, UseGoogleCommand, KeepLocalCommand, AcceptMissingCommand, DetachCommand }) command?.NotifyCanExecuteChanged();
     }
     public void Dispose() { session.Changed -= Changed; Cancel(); }
 }

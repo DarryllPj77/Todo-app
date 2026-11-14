@@ -1,6 +1,6 @@
 # Explicit Google event links - Phase 13C
 
-This increment publishes saved **SyncedAccount** time blocks to an explicitly selected owned Google calendar on Windows. It supports create, explicit push of later local changes, confirmed remote deletion, and explicit retry of an uncertain operation. It does not run in the background, pull provider edits into tasks/blocks, resolve divergent conflicts, or infer links from imported ICS copies. Phase 13D remains the reconciliation/two-way milestone.
+This increment publishes saved **SyncedAccount** time blocks to an explicitly selected owned Google calendar on Windows. It supports create, explicit push of later local changes, confirmed remote deletion, and explicit retry of an uncertain operation. It does not run in the background, pull provider edits into tasks/blocks, automatically resolve divergent conflicts, or infer links from imported ICS copies. Phase 13D.1 now supplies reviewed reconciliation through the same screen; see [GOOGLE_RECONCILIATION.md](GOOGLE_RECONCILIATION.md). Incremental automation remains separate.
 
 ## Try it
 
@@ -22,7 +22,7 @@ confirmed publish -> PendingCreate -> Linked
 confirmed push    -> PendingUpdate -> Linked
 confirmed delete  -> PendingDelete -> Deleted
 uncertain reply   -> same Pending state -> explicit retry
-unsafe/divergent provider version -> Conflict (frozen)
+unsafe/divergent provider version -> Conflict (requires review)
 Deleted + new confirmed publish -> new event/link identity
 ```
 
@@ -32,7 +32,7 @@ Google supports caller-specified event IDs with a restricted lowercase base32hex
 
 ## Durable journal and concurrency
 
-`calendar.db3` schema 2 adds GoogleEventLinks with `(Scope, BlockId)` primary key, monotonic local Revision and validated JSON. Version-1 blocks are preserved. A write transaction checks the current local block revision and expected link revision before recording a Pending operation, including the immutable desired title/time snapshot. No token is stored in this file; ownership proof is linkage metadata, not Google authorization. Access/refresh tokens remain in the Phase 13B vault.
+`calendar.db3` schema 2 introduced GoogleEventLinks with `(Scope, BlockId)` primary key, monotonic local Revision and validated JSON. Version-1 blocks are preserved. A write transaction checks the current local block revision and expected link revision before recording a Pending operation, including the immutable desired title/time snapshot. No token is stored in this file; ownership proof is linkage metadata, not Google authorization. Access/refresh tokens remain in the Phase 13B vault.
 
 Provider identity and pending operations survive local block deletion, cancellation, process restart and uncertain replies. A receipt acknowledges only the exact pending link revision/snapshot; stale windows cannot acknowledge or stage against an unseen operation. Concurrent attempts use the same reserved event ID and conditional event version, while local revision checks reject stale receipts. A completed write whose receipt was not observed remains Pending until reconciliation. Journal corruption/newer schema fails without reset; retention and backup/restore reconciliation remain release work.
 
@@ -48,7 +48,7 @@ Provider identity and pending operations survive local block deletion, cancellat
 
 ## Conflicts, disconnect and scope changes
 
-Conflicts retain local desired/published snapshots and the last acknowledged ETag. This increment deliberately offers no force-overwrite, auto-relink or destructive abandon-and-recreate action. Inspect the provider event separately and complete the Phase 13D conflict-review workflow before resolving a divergent link. A confirmed deletion is currently offered only for Linked state; pending deletion is continued only through confirmed Retry.
+Conflicts retain local desired/published snapshots and the last acknowledged ETag. Phase 13D.1 now adds persisted review and confirmed field choices, reviewed deletion acceptance and local-only detach; see [GOOGLE_RECONCILIATION.md](GOOGLE_RECONCILIATION.md). No automatic force-overwrite, auto-relink or abandon/recreate runs. Confirmed provider deletion is offered only for Linked state; pending deletion continues through confirmed Retry.
 
 Todo logout/switch/expiry cancels work and clears the screen. A write already sent may still finish at Google; its original-scope pending record remains for later recovery. Reconnect the same Todo/Google identity/client and retry it. Changing Google identity/client does not retarget old links. Google disconnect/revocation removes credentials/permission as documented in GOOGLE_CALENDAR.md; it does not remove event links, provider events or local blocks. Mobile and Debug layout preview cannot send these provider requests.
 
