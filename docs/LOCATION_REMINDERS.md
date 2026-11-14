@@ -1,6 +1,8 @@
 # Location reminders: Phase 14A
 
-This increment provides **manual foreground arrival checks**, not background geofencing. Open **Tools > Location reminders** in the normal app. No location request, permission prompt, timer or location listener runs at startup, on resume or merely by opening this page. Native background registration, restart/boot recovery and platform geofence limits belong to Phase 14B. Earlier provider/native acceptance gates remain open.
+Phase 14A manual behavior remains available. Phase 14B.1 adds optional page-active native sessions for packaged Windows; see [NATIVE_GEOFENCES.md](NATIVE_GEOFENCES.md) for packaging, OS registration privacy, lifetime and cleanup limits. Opening the page starts only metadata reconciliation, not location sampling. Closed-app/background activation is still pending.
+
+This increment provides **manual foreground arrival checks**, not background geofencing. Open **Tools > Location reminders** in the normal app. No location request, permission prompt, sampling timer or location listener starts at startup, on resume or merely by opening this page. Phase 14B.1 native registration requires a separate explicit Start in a packaged Windows build. Background activation and restart/boot recovery remain later work. Earlier provider/native acceptance gates remain open.
 
 ## Try the feature
 

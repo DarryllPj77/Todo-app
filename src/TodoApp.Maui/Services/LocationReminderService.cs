@@ -61,9 +61,9 @@ public sealed class LocationReminderService(SqliteLocationReminderStore store, I
         if (delete) { await store.DeleteAsync(disabled); ensure(); }
         return true;
     });
-    public Task<ReminderPermission> NotificationPermissionAsync(string scope, CancellationToken token) => RunAsync(scope, token, async ensure =>
+    public Task<ReminderPermission> NotificationPermissionAsync(string scope, CancellationToken token, bool request = true) => RunAsync(scope, token, async ensure =>
     {
-        var result = await notifications.PermissionAsync(true); ensure(); return result;
+        var result = await notifications.PermissionAsync(request); ensure(); return result;
     });
     public Task<PositionFix> PositionAsync(string scope, CancellationToken token) => RunAsync(scope, token, async ensure =>
     {
@@ -74,12 +74,19 @@ public sealed class LocationReminderService(SqliteLocationReminderStore store, I
             throw new InvalidOperationException("Location was stale, simulated or insufficiently accurate. Enter coordinates or try again outdoors.");
         return fix;
     });
-    public Task<string> CheckAsync(string scope, CancellationToken token) => RunAsync(scope, token, async ensure =>
+    public Task<string> CheckAsync(string scope, CancellationToken token) => RunAsync(scope, token,
+        ensure => CheckCoreAsync(scope, token, ensure, () => location.ReadAsync(token)));
+    // Native reports pass through the same persistence, quality, task and delivery rules.
+    // Restrict each report to the exact registered arm; it cannot affect other places.
+    public Task<string> ObserveNativeAsync(string scope, Guid id, Guid arm, PositionFix fix, CancellationToken token) => RunAsync(scope, token,
+        ensure => CheckCoreAsync(scope, token, ensure, () => Task.FromResult(fix), id, arm));
+    private async Task<string> CheckCoreAsync(string scope, CancellationToken token, Action ensure,
+        Func<Task<PositionFix>> readFix, Guid? id = null, Guid? arm = null)
     {
         var current = await tasks.ReadAsync(scope); ensure();
         var rows = await store.ReadAsync(scope); ensure();
         var active = new List<LocationReminder>();
-        foreach (var row in rows.Where(r => r.Enabled))
+        foreach (var row in rows.Where(r => r.Enabled && (id is null || r.Id == id && r.ArmId == arm)))
         {
             if (Matches(row, current)) active.Add(row);
             else
@@ -91,7 +98,7 @@ public sealed class LocationReminderService(SqliteLocationReminderStore store, I
         if (active.Count == 0) return "No eligible armed reminders. Refresh and review task changes.";
         var permission = await notifications.PermissionAsync(false); ensure();
         if (permission != ReminderPermission.Allowed) return "Notifications are denied/unavailable. Use Allow/check notifications first; no location was requested.";
-        var fix = await location.ReadAsync(token); ensure();
+        var fix = await readFix(); ensure();
         var attempted = 0; var outside = 0;
         foreach (var row in active)
         {
@@ -126,6 +133,6 @@ public sealed class LocationReminderService(SqliteLocationReminderStore store, I
             }
         }
         return $"Check finished: {outside} outside transitions; {attempted} arrival notification attempts. Initial inside, uncertain or inaccurate samples do not trigger an alert. No background monitoring.";
-    });
+    }
     private static bool Matches(LocationReminder row, IReadOnlyList<LocationTask> current) => current.Any(t => t.Id == row.TaskId && t.Recurrence == row.Recurrence);
 }

@@ -1,5 +1,15 @@
 # Learnings
 
+## Phase 14B.1 - Native lifetime is separate from application intent
+
+**Term:** Capability gate. **Definition:** Check that a build supports a native feature before asking for access. **Example:** The unpackaged Windows app explains that native geofence sessions need an installed package; it never requests location for a disabled feature.
+
+**Term:** Session identity. **Definition:** Bind asynchronous reports to one exact opt-in run and task arm. **Example:** An entry callback queued before Stop cannot notify after another window starts a replacement session.
+
+**Term:** Native resource lifetime. **Definition:** OS registrations can outlive the code that created them. **Example:** A crashed app may leave thirty-minute regions until expiry; removing callbacks does not itself unregister those regions. Bounded expiry, scoped cleanup and an exclusive cross-process lease address different parts of that lifecycle.
+
+**Term:** Privacy boundary. **Definition:** Encrypted application storage does not automatically protect data handed to a native service. **Example:** Registering a region passes its center/radius to Windows, so the opt-in explains this even though location.db3 remains encrypted.
+
 ## Phase 14A - Samples are uncertain, delivery is an attempt
 
 **Term:** Haversine distance. **Definition:** Estimate surface distance from latitude/longitude using a spherical Earth. **Example:** Crossing longitude 180 to -180 by a tiny amount is a short journey, not a trip around the world.

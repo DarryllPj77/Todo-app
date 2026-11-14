@@ -61,6 +61,12 @@ public static class MauiProgram
         builder.Services.AddSingleton(provider => new SqliteLocationReminderStore(Path.Combine(dataDirectory, "location.db3"), provider.GetRequiredService<ILocationEncryptionKeyStore>()));
         builder.Services.AddSingleton<ILocationTaskSource, LocationTaskCatalog>();
         builder.Services.AddSingleton<LocationReminderService>();
+#if WINDOWS
+        builder.Services.AddSingleton<INativeGeofencePlatform>(_ => WorkspacePreview.Enabled ? new UnsupportedNativeGeofencePlatform() : new Platforms.Windows.WindowsGeofencePlatform(Path.Combine(dataDirectory, "native-geofence.lock")));
+#else
+        builder.Services.AddSingleton<INativeGeofencePlatform, UnsupportedNativeGeofencePlatform>();
+#endif
+        builder.Services.AddSingleton<GeofenceSessionService>();
         builder.Services.AddScoped<LocationRemindersViewModel>();
         builder.Services.AddTransient<LocationRemindersPage>();
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(dataDirectory, "views.db3")));

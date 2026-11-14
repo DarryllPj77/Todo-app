@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 14A manual foreground location reminders are implemented: protected task-linked places, contextual one-shot requests, accuracy/freshness checks, outside-before-inside arrival state and one-attempt generic notifications. No background location listener or geofence is installed. Native/device acceptance and earlier Google/mobile/release gates remain open. Next planned increment is Phase 14B native background geofence lifecycle and platform design. See LOCATION_REMINDERS.md.
+Proceed one phase at a time after review. Phase 14B.1 packaged Windows native sessions are implemented: explicit page-active opt-in, bounded conservative regions, scoped cleanup/lease, exact callback identities, task/permission reconciliation and existing one-attempt delivery. The default unpackaged/mobile builds retain manual checks and explain native unavailability. Closed-app background activation is not implemented. Packaged/device/resource-warning acceptance and earlier Google/mobile/release gates remain open. Next increment is Phase 14B.2 background activation and supported-platform lifecycle. See NATIVE_GEOFENCES.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -279,7 +279,9 @@ ICS import remains a separate snapshot exchange and is not adopted as a provider
 
 - [x] **14A implementation - Manual foreground arrival checks:** task-linked encrypted local places, contextual one-shot location requests, accuracy/freshness and outside-before-inside rules, one-attempt state, explicit rearm/disable/delete, generic notifications, scope/session/CAS guards and a MAUI management page. Forty portable location cases pass; see [LOCATION_REMINDERS.md](LOCATION_REMINDERS.md).
 - [ ] **14A native acceptance:** actual GPS/OS permission/notification behavior, encrypted key/restart/recovery, page/window/account races, accessibility and Android/Apple builds/devices remain open. No background listener or geofence is installed.
-- [ ] **14B - Native background geofences:** choose supported platforms and implement explicit registration/unregistration, contextual background permission where required, platform quota/restart/boot handling and battery/privacy policy. Closed-app arrival detection is not implemented in 14A.
+- [x] **14B.1 implementation - Packaged Windows native sessions:** contextual access, two conservative regions per place, ten-place/thirty-minute limits, single-window/cross-process ownership, exact session/arm callbacks, metadata-only reconciliation, explicit stop/retry cleanup and optional unsigned package build. Thirty-five new portable cases pass; see [NATIVE_GEOFENCES.md](NATIVE_GEOFENCES.md).
+- [ ] **14B.1 packaged/device acceptance:** signing/install, actual permission/geofence/dwell/expiry/notification behavior, multi-process/crash cleanup, accessibility and package PRI249/PRI263 resource/locale warnings remain open. Default unpackaged/mobile/preview builds do not enable native sessions.
+- [ ] **14B.2 - Background activation and platform lifecycle:** implement supported closed-app handlers, contextual background permission where required, restart/boot recovery, platform quota/battery/privacy policy and mobile adapters. Page-active native sessions are not closed-app monitoring.
 
 Phase 14 remains open until supported native/background behavior and opt-out are verified on devices. Earlier Phase 13 provider/native gates remain open separately.
 

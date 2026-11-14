@@ -1,5 +1,9 @@
 # Database plan
 
+## Native session storage boundary (Phase 14B.1)
+
+No database schema changes. Native report observations use the encrypted schema-1 location reminder state and exact ArmId/revision checks. Session owner, native identities, registration cohort and fresh-outside evidence are in memory only. Windows location services receive bounded center/radius regions outside the application's encryption envelope; no report samples, travel history or native registration journal enter SQLite. A nonsecret exclusive file lease coordinates packaged processes; it contains no location/session payload. No startup opt-in is restored. See NATIVE_GEOFENCES.md for thirty-minute OS expiry, crash cleanup and protected-key limitations.
+
 ## Protected location places (Phase 14A)
 
 Independent location.db3 schema 1 contains LocationMetadata (one key fingerprint and decreasing negative notification counter) and LocationReminders (row ID, workspace, revision, unique negative native ID, encrypted Data). AES-256-GCM protects task/place snapshots, coordinates/radius and state; authenticated associated data binds ciphertext to scope/ID/revision/native ID. The key exists only in platform SecureStorage. Samples/travel history are never stored. A copied file needs the original protected key; missing/mismatched keys, tampering and unsupported schema fail closed without reset. Debug workspace preview disables this storage.

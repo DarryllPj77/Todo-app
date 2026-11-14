@@ -11,6 +11,9 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     private readonly LocationReminderService service;
     private readonly ClientSession session;
     private readonly ITaskNavigation navigation;
+    private readonly GeofenceSessionService native;
+    private readonly bool ownsNative;
+    private readonly Guid owner = Guid.NewGuid();
     private CancellationTokenSource lifetime = new();
     private int generation;
     private bool busy;
@@ -46,6 +49,8 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     public string Radius { get => radius; set => SetProperty(ref radius, value ?? ""); }
     public string Error { get => error; private set => SetProperty(ref error, value); }
     public string Status { get => status; private set => SetProperty(ref status, value); }
+    public string NativeCapability => native.Capability;
+    public string NativeStatus => native.Notice;
     public AsyncCommand RefreshCommand { get; }
     public AsyncCommand SaveCommand { get; }
     public AsyncCommand NewCommand { get; }
@@ -55,9 +60,12 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     public AsyncCommand DisableCommand { get; }
     public AsyncCommand DeleteCommand { get; }
     public AsyncCommand CancelCommand { get; }
-    public LocationRemindersViewModel(LocationReminderService service, ClientSession session, ITaskNavigation navigation)
+    public AsyncCommand StartNativeCommand { get; }
+    public AsyncCommand StopNativeCommand { get; }
+    public LocationRemindersViewModel(LocationReminderService service, ClientSession session, ITaskNavigation navigation, GeofenceSessionService? native = null)
     {
         this.service = service; this.session = session; this.navigation = navigation;
+        this.native = native ?? new(service, new UnsupportedNativeGeofencePlatform(), session); ownsNative = native is null;
         RefreshCommand = Command(RefreshAsync);
         SaveCommand = Command(SaveAsync);
         NewCommand = Command(() => { ResetDraft(); return Task.CompletedTask; });
@@ -67,6 +75,9 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
         DisableCommand = Command(() => RemoveAsync(false), () => SelectedReminder is not null);
         DeleteCommand = Command(() => RemoveAsync(true), () => SelectedReminder is not null);
         CancelCommand = new(() => { Cancel(); Status = "Current check canceled. Refresh to review saved state."; return Task.CompletedTask; }, () => true, _ => { });
+        StartNativeCommand = Command(StartNativeAsync, () => this.native.IsSupported);
+        StopNativeCommand = Command(() => this.native.StopAsync(owner));
+        this.native.Changed += NativeChanged;
         session.Changed += OnSessionChanged;
     }
     private sealed record Context(string Scope, int Generation, int Version, CancellationToken Token);
@@ -110,14 +121,16 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
             int.TryParse(Radius.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var meters) ? meters : 0);
         LocationRules.Validate(draft);
         if (!await navigation.ConfirmLocationActionAsync("Save and arm place", "Store this task and place encrypted on this device? Each arm requires an outside check followed by an inside check and permits one generic notification attempt. No background monitoring or upload occurs.")) return;
-        Ensure(context); await service.ArmAsync(context.Scope, prior, draft, context.Token); Ensure(context);
+        Ensure(context); await native.StopAsync(owner); Ensure(context);
+        await service.ArmAsync(context.Scope, prior, draft, context.Token); Ensure(context);
         ResetDraft(); await RefreshAsync();
     }
     private async Task PositionAsync()
     {
         var context = Capture();
         if (!await navigation.ConfirmLocationActionAsync("Use current location", "Request one foreground location fix to fill the coordinate fields? The OS may ask for location access. The sample is not saved until you confirm Save and arm; no location history is collected.")) return;
-        Ensure(context); var fix = await service.PositionAsync(context.Scope, context.Token); Ensure(context);
+        Ensure(context); await native.StopAsync(owner); Ensure(context);
+        var fix = await service.PositionAsync(context.Scope, context.Token); Ensure(context);
         Latitude = fix.Latitude.ToString("F6", CultureInfo.InvariantCulture); Longitude = fix.Longitude.ToString("F6", CultureInfo.InvariantCulture);
         Status = "Coordinates filled from one location fix. Review the place and radius before saving.";
     }
@@ -125,7 +138,8 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     {
         var context = Capture();
         if (!await navigation.ConfirmLocationActionAsync("Check arrivals now", "Request one foreground location fix and compare armed places in this workspace? The OS may ask for location access. A confirmed arrival may show one generic task notification. No sample/history is stored or uploaded.")) return;
-        Ensure(context); var result = await service.CheckAsync(context.Scope, context.Token); Ensure(context);
+        Ensure(context); await native.StopAsync(owner); Ensure(context);
+        var result = await service.CheckAsync(context.Scope, context.Token); Ensure(context);
         await RefreshAsync(); Ensure(context); Status = result;
     }
     private async Task PermissionAsync()
@@ -139,17 +153,28 @@ public sealed class LocationRemindersViewModel : ObservableViewModel, IDisposabl
     {
         var context = Capture(); var row = SelectedReminder ?? throw new ArgumentException("Select a saved reminder.");
         if (!await navigation.ConfirmLocationActionAsync(delete ? "Delete saved place" : "Disable reminder", delete ? "Delete this local place/reminder and cancel its generic notification? The task remains saved." : "Disable this location reminder and cancel its generic notification?")) return;
-        Ensure(context); await service.RemoveAsync(context.Scope, row, delete, context.Token); Ensure(context); ResetDraft(); await RefreshAsync();
+        Ensure(context);
+        try { await service.RemoveAsync(context.Scope, row, delete, context.Token); }
+        finally { await native.StopAsync(owner); }
+        Ensure(context); ResetDraft(); await RefreshAsync();
     }
+    private async Task StartNativeAsync()
+    {
+        var context = Capture();
+        if (!await navigation.ConfirmLocationActionAsync("Start native location session", "Monitor 1-10 armed places while this page/window stays active, for up to 30 minutes? Windows may ask for location access, and one initial location fix will be read. Saved centers are registered with OS location services; no sample history or API upload is saved. A new outside observation is required before entry into a conservative inner region. The first arrival attempt ends the session. Closing/leaving the app does not enable background delivery.")) return;
+        Ensure(context); await native.StartAsync(owner, context.Scope, context.Token); Ensure(context);
+    }
+    public async Task PollNativeAsync() { if (!busy) await native.ReconcileAsync(owner); }
+    private void NativeChanged() { OnPropertyChanged(nameof(NativeStatus)); Notify(); }
     private void ResetDraft() { SelectedReminder = null; SelectedTask = null; PlaceName = Latitude = Longitude = ""; Radius = "200"; }
-    public void Cancel() { generation++; lifetime.Cancel(); lifetime.Dispose(); lifetime = new(); }
+    public void Cancel() { generation++; lifetime.Cancel(); native.Cancel(owner); lifetime.Dispose(); lifetime = new(); }
     private void Clear() { Cancel(); Tasks.Clear(); Reminders.Clear(); ResetDraft(); Status = "Workspace changed. Refresh to load saved places."; Error = ""; Notify(); }
     private void OnSessionChanged() => Clear();
     private void Notify()
     {
         OnPropertyChanged(nameof(IsIdle));
-        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand }) command?.NotifyCanExecuteChanged();
+        foreach (var command in new[] { RefreshCommand, SaveCommand, NewCommand, PositionCommand, CheckCommand, PermissionCommand, DisableCommand, DeleteCommand, StartNativeCommand, StopNativeCommand }) command?.NotifyCanExecuteChanged();
     }
     public void Leave() { Cancel(); ResetDraft(); }
-    public void Dispose() { session.Changed -= OnSessionChanged; lifetime.Cancel(); lifetime.Dispose(); }
+    public void Dispose() { session.Changed -= OnSessionChanged; native.Changed -= NativeChanged; native.Cancel(owner); if (ownsNative) native.Dispose(); lifetime.Cancel(); lifetime.Dispose(); }
 }

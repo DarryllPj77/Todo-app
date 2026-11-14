@@ -1,5 +1,11 @@
 # Architecture
 
+## Native location sessions (Phase 14B.1)
+
+GeofenceSessionService coordinates one opt-in page owner, exact reminder/arm identities, a new outside observation per session, cancellation/version guards, quota and expiry. It routes native samples through the existing LocationReminderService persistence/quality/one-attempt path. The page reconciles metadata every fifteen seconds while active and stops on departure/deactivation; it never automatically starts/restores native monitoring.
+
+WindowsGeofencePlatform is gated on installed package identity and location capability. It marshals native access/registration/reports to the UI thread, holds a cross-process file lease, registers two conservative bounded regions per place and removes only this feature's namespace. Native session intent is ephemeral; crashes can leave OS-managed geometry until expiry/next explicit cleanup. Other builds use an explicit unavailable adapter. No closed-app task/activation handler, schema/migration change or provider/task mutation is added. See NATIVE_GEOFENCES.md for ownership, OS privacy boundary, packaging warnings and pending native acceptance.
+
 ## Manual location reminders (Phase 14A)
 
 LocationRules provides Haversine distance and conservative freshness/accuracy classifications. SqliteLocationReminderStore encrypts task/place snapshots in independent schema-1 location.db3 using AES-GCM and a SecureStorage-only key. Scope-bound authenticated data, transactional revisions and nonreused negative notification IDs protect separate workspaces and coexist with positive time-reminder IDs.

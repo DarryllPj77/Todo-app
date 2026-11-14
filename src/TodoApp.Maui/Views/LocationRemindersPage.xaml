@@ -4,8 +4,8 @@
              x:Class="TodoApp.Maui.Views.LocationRemindersPage" x:DataType="vm:LocationRemindersViewModel"
              Title="Location reminders" Style="{StaticResource TaskPage}">
     <ScrollView><VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="850" HorizontalOptions="Fill">
-        <Label Text="Check arrivals manually" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
-        <Label Text="Checks run only when you press Check arrivals now. No background geofence is installed. Each arm needs a reliable outside check followed by an inside check. Delivery depends on location accuracy, notification permission and OS policy." />
+        <Label Text="Location reminders" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Text="Manual checks run when you press Check arrivals now. Packaged Windows also offers an explicit native session below. Both require reliable outside evidence before inside arrival. No closed-app background task is installed; delivery depends on location accuracy, notification permission and OS policy." />
         <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}" IsEnabled="{Binding IsIdle}" />
         <Button Text="Refresh tasks and saved places" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
         <CollectionView ItemsSource="{Binding Reminders}" SelectedItem="{Binding SelectedReminder}" SelectionMode="Single" HeightRequest="220" IsEnabled="{Binding IsIdle}">
@@ -25,6 +25,11 @@
         <Button Text="Save and arm / rearm" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
         <Button Text="Allow/check notifications" Command="{Binding PermissionCommand}" Style="{StaticResource TaskAction}" />
         <Button Text="Check arrivals now" Command="{Binding CheckCommand}" Style="{StaticResource TaskAction}" />
+        <Label Text="Native session (packaged Windows)" FontSize="20" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+        <Label Text="{Binding NativeCapability}" LineBreakMode="WordWrap" />
+        <Button Text="Start native session for armed places" Command="{Binding StartNativeCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Stop native session / retry cleanup" Command="{Binding StopNativeCommand}" Style="{StaticResource TaskAction}" />
+        <Label Text="{Binding NativeStatus}" LineBreakMode="WordWrap" />
         <Button Text="Disable selected reminder" Command="{Binding DisableCommand}" Style="{StaticResource TaskAction}" />
         <Button Text="Delete selected place" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
         <Button Text="Cancel current action" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />

@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 14A manual foreground location reminders implemented; native/device acceptance pending.** Open **Tools > Location reminders** to save encrypted task-linked places, explicitly check arrivals and manage rearm/opt-out. Each arm needs a reliable outside check followed by an inside check and permits one generic notification attempt. No background geofence/listener or location upload is enabled. All **569 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [LOCATION_REMINDERS.md](docs/LOCATION_REMINDERS.md). Earlier Google/provider/mobile acceptance remains open.
+**Current status (2026-11-14): Phase 14B.1 Windows native geofence sessions implemented; packaged/device acceptance pending.** Open **Tools > Location reminders** for manual checks and optional page-active native sessions in an installed packaged Windows build. The default unpackaged app explains native unavailability. Sessions require explicit consent, fresh outside evidence and one-attempt delivery; no closed-app background activation or location upload is added. All **604 tests passed, 0 skipped**; Windows solution/XAML build has **0 warnings/errors**. An unsigned test MSIX bundle was built; package-generation resource warnings and actual deployment/location testing remain open. See [NATIVE_GEOFENCES.md](docs/NATIVE_GEOFENCES.md). Earlier provider/mobile acceptance remains open.
 
 ## Technology and prerequisites
 
