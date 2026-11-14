@@ -1,6 +1,6 @@
-# Phase 15A: Android launcher quick capture
+# Android quick capture: launcher and text sharing
 
-Implemented on 2026-11-14 after the user selected Android quick capture ahead of Apple tooling. Phase 14B.4 and earlier device/provider acceptance remain pending. This is the first Phase 15 surface; Windows hotkeys, share targets, widgets and browser extensions are future work.
+Implemented on 2026-11-14 after the user selected Android quick capture ahead of Apple tooling. Phase 14B.4 and earlier device/provider acceptance remain pending. Phase 15A is the launcher surface; Phase 15B adds plain-text sharing. Windows hotkeys, widgets and browser extensions remain future work.
 
 ## Try it yourself
 
@@ -13,9 +13,23 @@ Implemented on 2026-11-14 after the user selected Android quick capture ahead of
 
 Native phone behavior is not yet accepted. No phone/emulator installation, permission change or launcher interaction was performed by the assistant.
 
+## Phase 15B: share text into a draft
+
+From a notes app or browser, select text or a link, choose **Share**, then select Todo App / Quick capture (the name shown depends on the Android launcher and Sharesheet). The target advertises only single `ACTION_SEND` with `text/plain`, available on the app's existing API 21+ minimum. This surface does not require the API 25 launcher shortcut feature.
+
+Review **Review shared text**, edit the fields if needed, choose the destination and tap **Save task**. Device only is always the default, including when signed in. Account selection and subsequent offline queue/sync behavior are identical to launcher capture. Sharing itself never saves or uploads a task; Cancel/Back discards an unsubmitted draft.
+
+A nonblank subject becomes the title and the entire shared body becomes the description. Without a subject, the first nonblank line becomes the title and the remaining lines become the description. CRLF/CR newlines become LF; surrounding whitespace is trimmed using the normal domain rules. Titles must fit 200 characters and descriptions 4000. Overlong titles/descriptions, multiline subjects, empty text, NUL/unsupported control characters and malformed extras open an empty editable form with a generic notice. No partial/truncated import is saved. Raw input is bounded to 8192 UTF-16 characters for body and 512 for subject before copying; styled CharSequence input is copied as plain characters without retaining spans.
+
+Only the two text extras are read. Image/file streams, ClipData, HTML extras, URI permissions and external task/account/origin identifiers are ignored. HTTP/content/file URL text stays literal text; the app does not fetch it, interpret HTML or open attachments. Other actions/MIME types close immediately even when explicitly addressed. The launcher action still ignores all extras and opens a blank form.
+
+The Activity drops foreign extras from its own intent after input extraction. Drafts are not copied into saved-instance Bundles or SQLite until explicit Save. Android/sending apps may retain their own copy of the original shared intent; this app does not control those copies. Re-creation with saved state opens an empty form with a recovery notice instead of re-importing original text. Rotation covered by the existing Activity configuration keeps the current form; process death/other configuration changes can discard unsaved edits. An already submitted Save may still commit after closure, so check the workspace before another capture. Each separate deliberate share opens a fresh capture; there is no content-based deduplication between separate shares.
+
+Implementation follows [Android's official receiving-data guidance](https://developer.android.com/develop/ui/compose/sharing/receive), including a narrow MIME filter and a review/edit step. It adds no packages, permissions, database schemas, server endpoints or sync protocol changes.
+
 ## Design and data flow
 
-`MainActivity` declares a static `android.app.shortcuts` resource. Its generic Add task entry explicitly starts `QuickCaptureActivity` with one fixed action. The exported capture activity ignores every intent extra; no external title, account, ID, URL or token is imported. Other actions close immediately. The entry opens a compact native form without creating the normal MAUI window, attaching its runtimes or navigating away from its editor. Its separate empty task affinity keeps launcher shortcut task flags away from the main app task, and it is excluded from Recents.
+`MainActivity` declares a static `android.app.shortcuts` resource. Its generic Add task entry explicitly starts `QuickCaptureActivity` with one fixed action. The launcher action ignores every intent extra. Phase 15B also accepts bounded plain-text shares as editable prefills; external account/ID/origin/token values never select a destination. Other actions/types close immediately. The entry opens a compact native form without creating the normal MAUI window, attaching its runtimes or navigating away from its editor. Its separate empty task affinity keeps launcher shortcut task flags away from the main app task, and it is excluded from Recents.
 
 The native view delegates to the portable `QuickCaptureViewModel` and `QuickCaptureService`. Domain `TaskItem` validation trims title/description and enforces 200/4000-character limits. Captures are pending, normal priority, without due date, category, tags, parent, prerequisites, quadrant assignment or recurrence. Advanced fields remain available in the normal editor. No new permissions, packages or server endpoint are required. Capture does not start/rearm a geofence run or request a position/notification permission; existing background reminder policy still applies.
 
@@ -31,7 +45,7 @@ Receipts are retained up to 10,000 per device database or account partition. At 
 
 ## Verification performed
 
-All 689 tests passed with no failures/skips (630 portable, 59 PostgreSQL), including 18 new capture cases. The Android standalone debug APK and Windows solution compile with zero warnings/errors. APK inspection confirms v1/v2/v3 signatures, embedded assemblies, explicit capture activity/task attributes, launcher metadata and versioned shortcut resources with labels/icon/target. apksigner emits AndroidX META-INF/JAR coverage warnings; release packaging remains a separate gate. No native phone/launcher outcome is inferred from these checks.
+Phase 15B final regression: all 708 tests passed with no failures/skips (649 portable, 59 PostgreSQL). The 37 targeted capture cases include 19 new share cases and the earlier 18 capture cases. The Android standalone debug APK and Windows solution compile with zero warnings/errors. APK inspection confirms v1/v2/v3 signatures, embedded assemblies, explicit capture activity/task attributes, its ACTION_SEND/DEFAULT/text/plain filter, preserved launcher metadata and versioned shortcut resources with labels/icon/target. apksigner emits AndroidX META-INF/JAR coverage warnings; release packaging remains a separate gate. No native phone/launcher outcome is inferred from these checks.
 
 ## Acceptance still required
 
@@ -39,7 +53,9 @@ All 689 tests passed with no failures/skips (630 portable, 59 PostgreSQL), inclu
 - Save/cancel offline device drafts, whitespace/length boundaries, keyboard scrolling, rotation/background/process death and interrupted saves. Verify a committed save can be found after the screen disappears.
 - Choose a restored account offline, confirm its email/origin, queue, reopen the synced workspace, verify and upload once. Test expired sessions, sign-out/API changes and multiple accounts without retargeting.
 - Exercise TalkBack labels/live errors, large fonts, small screens, dark mode and keyboard-only/switch navigation on actual devices. The form currently uses the Android light dialog theme.
-- Check external activation with other actions/extras; it must never prefill or auto-save. Review launcher OEM behavior, backup/restore and release signing separately.
+- Check that launcher activation ignores extras; share activation imports only bounded text/subject and never auto-saves. Try browsers/notes apps, selected text, links, styled text, missing/malformed extras, oversized bodies/subjects, attachments and unsupported types. Confirm Cancel creates no task and account selection remains explicit.
+- Verify two shares create separate review forms without overwriting a submitted draft or disturbing the main editor. Recreate/background/kill during review and saving; original text must not auto-save or silently replay. Check that a completed task can be found before starting another capture.
+- Review launcher/Sharesheet OEM behavior, backup/restore and release signing separately.
 - Complete the earlier Windows/Android geofence acceptance, Apple support and Google/provider gates independently. Compilation and portable tests do not establish these runtime outcomes.
 
 The static entry follows [Android's official shortcut creation documentation](https://developer.android.com/develop/ui/compose/system/shortcuts/creating-shortcuts). Native Android types remain in Platforms/Android; the portable service, view model and real SQLite behavior are tested without an emulator.

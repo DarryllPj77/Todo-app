@@ -1,5 +1,9 @@
 # Database plan
 
+## Text share capture reuse (Phase 15B)
+
+No schema, migration, protected credential, server endpoint or protocol changes. A shared draft stays in Activity memory until explicit Save, which uses the existing schema-7 device/account capture receipts. Rejected or canceled shares create no task/outbox/receipt. Raw body/subject, URI grants and attachment streams are not copied into app databases or saved-instance Bundles. The Android OS/sender may independently retain the original intent. Existing task/backup protection limits remain; see ANDROID_QUICK_CAPTURE.md.
+
 ## Quick capture receipts (Phase 15A)
 
 Device tasks and the account replica now use schema **7**. QuickCaptureReceipts stores device capture/task ID and SHA-256 normalized title/description fingerprint; a receipt and new task commit together. The replica adds CaptureReceipts keyed by capture/task ID inside each origin/user partition, committed with the local row and immutable outgoing operation. Receipts survive task deletion and are bounded to 10,000 per device database/partition; capacity refuses new captures without pruning old receipts. A repeated matching capture confirms the original save without modifying an edited/deleted task. A different payload with the same ID fails. No separate draft database or duplicate plaintext draft is retained. Existing version-6 rows/queues migrate without reset; old app versions reject schema 7. Server migrations remain eight and sync protocol remains 6. See ANDROID_QUICK_CAPTURE.md for recovery/backup and runtime acceptance limits.

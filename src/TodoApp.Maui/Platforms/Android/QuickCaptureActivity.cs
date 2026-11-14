@@ -6,6 +6,8 @@ using global::Android.Views;
 using global::Android.Widget;
 using Microsoft.Extensions.DependencyInjection;
 using TodoApp.Maui.ViewModels;
+using TodoApp.Maui.Services;
+using Intent = global::Android.Content.Intent;
 using Button = global::Android.Widget.Button;
 using View = global::Android.Views.View;
 using ScrollView = global::Android.Widget.ScrollView;
@@ -18,6 +20,8 @@ namespace TodoApp.Maui.Platforms.Android;
     Theme = "@android:style/Theme.Material.Light.Dialog.NoActionBar", Label = "Quick capture",
     TaskAffinity = "", ExcludeFromRecents = true,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden)]
+[IntentFilter(new[] { AndroidShareCapture.SendAction }, Categories = new[] { Intent.CategoryDefault },
+    DataMimeType = AndroidShareCapture.PlainText, Label = "Add task to Todo App")]
 public sealed class QuickCaptureActivity : Activity
 {
     public const string CaptureAction = "com.companyname.todoapp.maui.QUICK_CAPTURE";
@@ -30,16 +34,24 @@ public sealed class QuickCaptureActivity : Activity
     private Button account = null!;
     private Button save = null!;
     private Button cancel = null!;
+    private string inputNotice = "";
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
-        // Exported activation never imports text, account IDs, tokens or URLs.
-        if (Intent?.Action != CaptureAction) { Finish(); return; }
+        var isShare = AndroidShareCapture.Accepts(Intent?.Action, Intent?.Type);
+        if (Intent?.Action != CaptureAction && !isShare) { Finish(); return; }
+        var prefill = savedInstanceState is not null
+            ? new CapturePrefill("", null, "Capture reopened. Check the selected workspace for an earlier save before entering a new task.")
+            : isShare ? ReadSharedInput() : new CapturePrefill("", null, "");
+        inputNotice = prefill.Notice;
+        // Do not retain foreign extras on our Activity intent. Android and the
+        // sender may still retain their own copy; no payload enters our Bundle.
+        Intent = new Intent(CaptureAction);
         var layout = new LinearLayout(this) { Orientation = Orientation.Vertical };
         var padding = (int)(20 * Resources!.DisplayMetrics!.Density);
         layout.SetPadding(padding, padding, padding, padding);
-        var heading = new TextView(this) { Text = "Quick capture", TextSize = 24 };
+        var heading = new TextView(this) { Text = isShare ? "Review shared text" : "Quick capture", TextSize = 24 };
         layout.AddView(heading);
         title = new EditText(this) { Hint = "Task title (required)", InputType = InputTypes.ClassText | InputTypes.TextFlagCapSentences, SaveEnabled = false };
         title.SetSingleLine(true);
@@ -47,6 +59,8 @@ public sealed class QuickCaptureActivity : Activity
         description = new EditText(this) { Hint = "Description (optional)", InputType = InputTypes.ClassText | InputTypes.TextFlagMultiLine, SaveEnabled = false };
         description.SetMaxLines(4);
         description.SetFilters(new IInputFilter[] { new InputFilterLengthFilter(4000) });
+        title.Text = prefill.Title;
+        description.Text = prefill.Description;
         layout.AddView(title);
         layout.AddView(description);
         destination = new TextView(this);
@@ -97,10 +111,32 @@ public sealed class QuickCaptureActivity : Activity
     {
         if (model is null) return;
         destination.Text = "Save to: " + model.Destination.Label;
-        error.Text = model.Error;
+        error.Text = model.Error.Length > 0 ? model.Error : inputNotice;
         title.Enabled = description.Enabled = device.Enabled = account.Enabled = model.CanEdit;
         save.Enabled = cancel.Enabled = !model.IsBusy && !model.IsSaved;
         save.Text = model.IsBusy ? "Working…" : model.CanEdit ? "Save task" : "Retry same save";
+    }
+
+    private CapturePrefill ReadSharedInput()
+    {
+        try
+        {
+            return AndroidShareCapture.Parse(Intent?.Action, Intent?.Type,
+                ReadBoundedExtra(global::Android.Content.Intent.ExtraText, AndroidShareCapture.MaxIncomingTextLength),
+                ReadBoundedExtra(global::Android.Content.Intent.ExtraSubject, AndroidShareCapture.MaxIncomingSubjectLength));
+        }
+        catch (Exception) { return AndroidShareCapture.Rejected; } // Untrusted/malformed extras; never log their content.
+    }
+
+    private string? ReadBoundedExtra(string name, int limit)
+    {
+        using var value = Intent!.GetCharSequenceExtraFormatted(name);
+        if (value is null) return null;
+        var length = value.Length();
+        if (length < 0 || length > limit) throw new ArgumentException("Shared text exceeds the input bound.");
+        var characters = new char[length];
+        for (var i = 0; i < length; i++) characters[i] = value.CharAt(i);
+        return new string(characters); // Strip spans; never call a payload's ToString or follow links.
     }
 
     protected override void OnDestroy()

@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 15B - Incoming shared text is a draft, not a command
+
+**Term:** Narrow intent filter. **Definition:** Advertise only the action and MIME type the app can actually handle, then validate them again on entry. **Short example:** ACTION_SEND with text/plain opens review; SEND_MULTIPLE or image/png cannot activate a file import through the exported component.
+
+**Term:** Bounded plain-character extraction. **Definition:** Check a shared CharSequence length before copying its characters, dropping spans and ignoring links/attachment permissions. **Short example:** A browser URL is shown as text, not fetched. Overlong input opens a blank form with a notice instead of silently losing part of a task.
+
+**Term:** Review before persistence. **Definition:** An external payload may suggest text but cannot choose a workspace or trigger Save. **Short example:** Sharing while signed in still defaults to Device only; account queueing requires an explicit choice and the existing pinned-session checks.
+
+
 ## Phase 15A - A capture surface needs a stable save identity
 
 **Term:** Transactional capture receipt. **Definition:** Commit a stable capture ID and payload fingerprint with the task or account outbox operation. **Short example:** Save succeeds but the screen closes before confirmation; retrying that capture confirms the receipt without creating another task, overwriting a later edit or resurrecting a deletion.

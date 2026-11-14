@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 15A implements Android launcher quick capture after the user chose Android over the pending Apple increment. Device capture and account-scoped offline queueing reuse domain validation with transactional retry receipts. See ANDROID_QUICK_CAPTURE.md. Phase 14B.4 Apple support, Windows/Android native acceptance, earlier Google acceptance and release gates remain pending. Next Android increment: select and implement one additional capture surface after phone acceptance of 15A.
+Proceed one phase at a time after review. Phase 15B adds Android plain-text share capture to the Phase 15A launcher surface. Both require review and explicit Save with a device default; selected account saves use the existing offline queue and retry receipts. See ANDROID_QUICK_CAPTURE.md. Phone acceptance for both surfaces, Phase 14B.4 Apple support and earlier native/provider/release gates remain pending. Next feature increment: Phase 15C Android widget capture, after reviewing the open device checks.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -303,7 +303,9 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 
 - [x] **15A - Android launcher shortcut implementation:** compact explicit Save/Cancel, device default, selected account offline queue, shared validation, transactional retry receipts and tests. See ANDROID_QUICK_CAPTURE.md.
 - [ ] **15A device acceptance:** verify launcher/cold/warm activation, interrupted saves, editor stack, accessibility and account/offline behavior on a phone.
-- [ ] **15B - Additional capture surfaces:** choose and implement one at a time; widgets, share targets, Windows hotkeys and browser extension remain unimplemented.
+- [x] **15B - Android plain-text share implementation:** narrow single-text filter, bounded subject/body prefill, review/edit and explicit Save through the existing device/account capture service.
+- [ ] **15B device acceptance:** real Sharesheet/apps, malformed/oversized/styled text, lifecycle/draft recovery, main-editor stack, offline/account and accessibility checks.
+- [ ] **15C - Android widget capture:** next proposed Android surface; Windows hotkeys/browser extension remain future work.
 - [ ] Each enabled capture surface handles offline work and authentication safely on its target devices.
 
 ## Phase 16 — Release hardening
