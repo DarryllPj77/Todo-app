@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
+             xmlns:models="clr-namespace:TodoApp.Maui.Models"
+             xmlns:calendar="clr-namespace:TodoApp.Domain.Calendar;assembly=TodoApp.Domain"
+             x:Class="TodoApp.Maui.Views.CalendarPage" x:DataType="vm:CalendarViewModel"
+             Title="Calendar &amp; time blocks" Style="{StaticResource TaskPage}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+            <Label Text="Make time for a task" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Save local time blocks, then export a selected block for manual calendar import. Google Calendar sign-in and automatic sync are not connected yet."
+                   Style="{StaticResource TaskMuted}" />
+            <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}"
+                    IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Calendar workspace" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Text="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
+                <Button Grid.Column="1" Text="New block" Command="{Binding NewCommand}" Style="{StaticResource TaskAction}" />
+            </Grid>
+            <Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
+            <Label Text="{Binding Status}" Style="{StaticResource TaskMuted}" />
+            <Border Style="{StaticResource TaskCard}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="{Binding DraftTitle}" FontSize="20" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                    <Picker Title="Pending task" ItemsSource="{Binding Tasks}" ItemDisplayBinding="{Binding Title, x:DataType=models:CalendarTask}"
+                            SelectedItem="{Binding SelectedTask}" IsVisible="{Binding IsNewBlock}" IsEnabled="{Binding IsIdle}"
+                            SemanticProperties.Description="Task for the new time block" />
+                    <Label Text="Start date" />
+                    <DatePicker Date="{Binding Day}" MinimumDate="2000-01-01" MaximumDate="2099-12-31" IsEnabled="{Binding IsIdle}"
+                                SemanticProperties.Description="Time block start date" />
+                    <Label Text="Start time" />
+                    <TimePicker Time="{Binding StartTime}" Format="HH:mm" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Time block start time" />
+                    <Label Text="Duration in minutes (1-1440)" />
+                    <Entry Text="{Binding Duration}" Keyboard="Numeric" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Duration in whole minutes" />
+                    <Label Text="{Binding ZoneLabel}" Style="{StaticResource TaskMuted}" />
+                    <Button Text="Save local block" Command="{Binding SaveCommand}" Style="{StaticResource TaskAction}" />
+                    <Button Text="Export selected saved block (.ics)" Command="{Binding ExportCommand}" Style="{StaticResource TaskAction}" />
+                    <Button Text="Delete selected local block" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="Saved blocks" FontSize="20" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+            <Label Text="Save the draft, or use New block / Refresh to discard it, before selecting another block. Switching workspace or account clears the draft. Captured titles remain after task edits/deletion."
+                   Style="{StaticResource TaskMuted}" />
+            <CollectionView ItemsSource="{Binding Blocks}" SelectedItem="{Binding SelectedBlock}" SelectionMode="Single"
+                            IsEnabled="{Binding CanSelectBlock}" HeightRequest="300" SemanticProperties.Description="Saved local time blocks">
+                <CollectionView.EmptyView><Label Text="No blocks saved in this workspace." Padding="12" /></CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="calendar:TimeBlock">
+                        <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="{Binding Title}" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                                <Label Text="{Binding Summary}" Style="{StaticResource TaskMuted}" LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <Label Text="Export contains the selected task title and fixed UTC times. Choose a destination in the share dialog. Imports are separate copies: edits/deletes here do not update them, and repeated imports may duplicate events."
+                   Style="{StaticResource TaskMuted}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

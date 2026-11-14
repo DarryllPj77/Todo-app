@@ -269,6 +269,9 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenCalendarAsync() => Task.CompletedTask;
+        public Task<bool> ConfirmDiscardCalendarDraftAsync() => Task.FromResult(false);
+        public Task<bool> ConfirmDeleteCalendarBlockAsync(string title) => Task.FromResult(false);
         public Task OpenFocusAsync() => Task.CompletedTask;
     public Task OpenRecurrenceAsync() => Task.CompletedTask;
     public Task<bool> ConfirmRecurrenceConflictAsync(string title) => Task.FromResult(false);

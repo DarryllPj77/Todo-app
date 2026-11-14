@@ -58,6 +58,10 @@ public static class MauiProgram
         if (WorkspacePreview.Enabled) builder.Services.AddSingleton<IReminderPlatform, WorkspacePreview.Notifications>();
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(dataDirectory, "views.db3")));
         builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(dataDirectory, "focus.db3")));
+        builder.Services.AddSingleton(_ => new SqliteCalendarStore(Path.Combine(dataDirectory, "calendar.db3")));
+        builder.Services.AddSingleton<ICalendarFileExporter, CalendarFileExporter>();
+        builder.Services.AddScoped<CalendarViewModel>();
+        builder.Services.AddTransient<CalendarPage>();
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();

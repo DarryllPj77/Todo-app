@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 12G adaptive workspace implemented; native acceptance partial.** The device home screen now offers categories, literal search, desktop categories/tasks/details panes, and compact Tasks/Details navigation with selection retention. Open **Tools** for existing advanced features and synced/account workspaces. All **410 tests passed, none skipped**; Windows/XAML build **0 warnings/errors**. The native wide preview, category filtering and selected details were checked; compact verification was stopped by the user. Mobile/accessibility and earlier native acceptance remain open. See [ADAPTIVE_WORKSPACE.md](docs/ADAPTIVE_WORKSPACE.md). No new migration is needed.
+**Current status (2026-11-14): Phase 13A calendar planning implemented; native acceptance pending.** Open **Tools > Calendar & time blocks** to save task-linked local time blocks, reschedule them, and export one saved block as an ICS file for manual calendar import. Google Calendar is the chosen first provider; OAuth and automatic/two-way sync remain later increments. All **431 tests passed, none skipped** (372 portable cases and 59 PostgreSQL facts); Windows/XAML build has **0 warnings/errors**. See [CALENDAR.md](docs/CALENDAR.md). No new API migration is needed; earlier native/mobile acceptance remains open.
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 12G suite passed **410 tests, 0 skipped** (351 portable cases; 59 PostgreSQL facts). Adaptive workspace adds six portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 13A suite passed **431 tests, 0 skipped** (372 portable cases; 59 PostgreSQL facts). Calendar planning adds 21 portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -224,3 +224,7 @@ Create another SqliteLocalTaskService with the same path to read saved data agai
 Start with [ARCHITECTURE.md](docs/ARCHITECTURE.md), then [LEARNINGS.md](docs/LEARNINGS.md). Read TaskItem alongside TaskItemTests to see how each business rule is checked. Follow [ROADMAP.md](docs/ROADMAP.md) after reviewing this phase. No later phase starts automatically.
 
 This folder was not a Git repository at initial inspection. It is now initialized on `main`, with `origin` set to `https://github.com/DarryllPj77/Todo-app.git`. The foundation is recorded in commit `2b24e81` (`Create Todo App Phase 1 foundation`). See Git history and remote tracking status for subsequent documentation commits and publication status. No merge was performed.
+
+## Calendar planning
+
+Rebuild the client and open **Tools > Calendar & time blocks**. Choose a pending device/current-account cached task, a start date/time and elapsed duration, then **Save local block**. Select a saved block to reschedule, export or delete it. Export opens the system share dialog for a selected-block ICS snapshot; imports are separate copies and may duplicate on repeated import. Google OAuth is not connected yet. See [CALENDAR.md](docs/CALENDAR.md) for the complete workflow, time-zone rules, native checks and next increments.

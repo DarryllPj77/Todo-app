@@ -215,3 +215,9 @@ No server migration, task column, or sync contract is added. Existing versions r
 ## Adaptive workspace (Phase 12G)
 
 This increment changes MAUI presentation/navigation only. Task and sync files stay at version 6, views at 3, reminders/focus at 1, server at eight migrations, and protocol at 6. No migration/reset/import is required. The optional Debug layout preview uses separate SQLite files in its explicitly supplied directory; normal application data is not copied or merged. See ADAPTIVE_WORKSPACE.md.
+
+## Calendar planning (Phase 13A)
+
+calendar.db3 is a new independent schema-1 local file. CalendarBlocks stores globally unique block Id, workspace Scope, positive Revision and validated JSON; an index filters by Scope. A write transaction checks expected revision, immutable captured task/title and half-open interval overlap before saving. New blocks are capped at 500 per scope. UTC instants are authoritative; unavailable/changed OS zone rules do not recalculate existing records during read/export. Bad/newer data fails without reset. Account partitions use the existing API-origin/account key but calendar blocks do not enter task synchronization.
+
+Existing task/sync files remain version 6, views 3, reminders/focus 1, PostgreSQL eight migrations, and sync protocol 6. No new server migration or task-file reset is required. Exported ICS files are selected-block snapshots; they are not provider mapping rows or sync cursors. See CALENDAR.md for import/cache retention and later Google OAuth/event-link policy.

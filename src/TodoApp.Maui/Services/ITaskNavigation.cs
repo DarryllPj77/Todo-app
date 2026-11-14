@@ -2,6 +2,9 @@ namespace TodoApp.Maui.Services;
 
 public interface ITaskNavigation
 {
+    Task OpenCalendarAsync();
+    Task<bool> ConfirmDiscardCalendarDraftAsync();
+    Task<bool> ConfirmDeleteCalendarBlockAsync(string title);
     Task EditTaskAsync(Guid? taskId);
     Task CloseEditorAsync();
     Task<bool> ConfirmDeleteAsync(string title);

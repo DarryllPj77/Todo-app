@@ -26,6 +26,11 @@ public sealed class TaskNavigationService : ITaskNavigation
     public async Task CloseEditorAsync() => await GetRoot().Navigation.PopAsync();
 
     public Task OpenFocusAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<FocusPage>());
+    public Task OpenCalendarAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<CalendarPage>());
+    public Task<bool> ConfirmDiscardCalendarDraftAsync() => GetRoot().CurrentPage.DisplayAlertAsync(
+        "Discard calendar draft?", "Discard unsaved time-block changes? Saved blocks remain.", "Discard draft", "Keep editing");
+    public Task<bool> ConfirmDeleteCalendarBlockAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(
+        "Delete local time block?", $"Remove the local block for {title}? Imported calendar copies must be removed separately. The task remains saved.", "Delete local block", "Cancel");
     public Task OpenRecurrenceAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<RecurrencePage>());
     public Task<bool> ConfirmRecurrenceConflictAsync(string title) => GetRoot().CurrentPage.DisplayAlertAsync(
         "Keep local task fields?", $"Queue local fields for {title} with the displayed repeat-rule preview against the server occurrence? Completed occurrences will not be undone.", "Keep local", "Cancel");

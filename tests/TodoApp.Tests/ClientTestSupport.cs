@@ -102,6 +102,10 @@ internal sealed class ClientHarness : IDisposable
 
 internal sealed class ClientNavigation : ITaskNavigation
 {
+    public Task OpenCalendarAsync() => Task.CompletedTask;
+    public Func<Task<bool>>? CalendarConfirmation { get; set; }
+    public Task<bool> ConfirmDiscardCalendarDraftAsync() => CalendarConfirmation?.Invoke() ?? Task.FromResult(Confirm);
+    public Task<bool> ConfirmDeleteCalendarBlockAsync(string title) => CalendarConfirmation?.Invoke() ?? Task.FromResult(Confirm);
     public bool Confirm { get; set; }
     public Task OpenFocusAsync() => Task.CompletedTask;
     public Task OpenRecurrenceAsync() => Task.CompletedTask;

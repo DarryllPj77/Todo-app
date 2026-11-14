@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 12G adaptive device workspace is implemented: desktop categories/tasks/details, compact navigation, search, retained selection and Tools navigation. All 410 tests pass and Windows compilation succeeds. Wide native preview checks passed; compact/mobile/accessibility and earlier feature acceptance remain open. See ADAPTIVE_WORKSPACE.md. Phase 13 calendar integration is the next implementation milestone after provider/OAuth design; Phase 12 acceptance remains open.
+Proceed one phase at a time after review. Phase 13A local calendar planning is implemented: scoped time blocks, overlap/stale-edit guards and selected-block ICS export. Google Calendar is the selected first provider for the next OAuth increment. No Google authorization or automatic synchronization is connected yet. Phase 13 and earlier native/release acceptance remain open; see CALENDAR.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -245,6 +245,16 @@ A saved view remains a device-local query definition. Focus history is also devi
 **Completion checklist:**
 
 - [ ] Token security, revoked access, time zones, duplicates, and conflicts tested.
+
+### Phase 13 increments
+
+- [x] **13A - Local planning and file exchange:** task-linked scoped calendar.db3 version-1 blocks, fixed UTC/original zone semantics, DST validation, transactional nonoverlap, revision checks, snapshot retention, draft-aware MAUI page and selected-block RFC 5545 export. Twenty-one new portable cases pass. Google Calendar is the chosen first provider.
+- [ ] **13A native acceptance:** actual screen, share dialog/file delivery, manual Google import, mobile build/FileProvider/iPad anchor, accessibility and account/lifecycle checks; see CALENDAR.md.
+- [ ] **13B - Google OAuth:** configured installed-app credentials, supported platform flows, browser PKCE/state, secure tokens, refresh/revocation/disconnect and Todo-account separation.
+- [ ] **13C - Explicit Google event links:** selected calendar, durable event identity, idempotent retries/uncertain writes, conditional updates and confirmed remote deletion.
+- [ ] **13D - Reconciliation/two-way policy:** field ownership, incremental cursors/resets, reviewed conflicts/deletions/recurring exceptions; provider acceptance before automatic writes.
+
+ICS import is a separate snapshot exchange. It does not implement Google authorization, duplicate-free provider updates, task completion, or automatic synchronization. Phase 13 remains open.
 
 ## Phase 14 — Location features
 

@@ -609,3 +609,11 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Why it matters:** Device type cannot predict a desktop window's size or a phone's orientation. Rebuilding pages when the width changes can lose selections or unsaved editor drafts. Existing editor pages and service validation remain the write boundary; the root layout only changes visibility and column widths.
 
 **Short example:** A selected Work task stays open when a window crosses 1180 logical pixels. Searching for unrelated text clears it; Complete cannot then operate on a hidden task. Case-insensitive category keys distinguish virtual groups from real categories with reserved-looking names. Counts describe the service filter before local search. Isolated Debug preview data makes visual checks possible without touching the user's normal task files or saved account session.
+
+## Phase 13A - Calendar intervals and data exchange
+
+**Term:** Half-open time interval. **Definition:** The start is included and the end is excluded. Two blocks overlap when first.Start < second.End and second.Start < first.End. **Short example:** 09:00-09:30 and 09:30-10:00 are adjacent, not overlapping. Checking this inside the same transaction as the write prevents two windows from both reserving the same slot.
+
+**Term:** Wall time versus elapsed duration. **Definition:** A local calendar clock value needs a time zone to become an instant; elapsed minutes are measured on the UTC timeline. **Short example:** A two-hour block that starts before a daylight-saving jump still lasts 120 minutes even if its displayed end clock is three hours later. Skipped/repeated starts require a different unambiguous selection.
+
+**Term:** iCalendar UID and content-line folding. **Definition:** A stable UID identifies an exported event, while folding wraps long UTF-8 content lines at 75 octets without splitting a Unicode character. **Short example:** Exporting a rescheduled block keeps its UID and increases SEQUENCE. Escaped newlines cannot inject another VEVENT. Import is a copy operation; stable IDs alone do not implement provider synchronization.

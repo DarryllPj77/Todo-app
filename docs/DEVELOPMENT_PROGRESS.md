@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 12G - Adaptive workspace implemented; native acceptance partial.** Added device categories/tasks/read-only details panes, compact Tasks/Details navigation, category/search narrowing, refresh/resize selection retention, and a consolidated Tools launcher. All **410 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**; Windows/XAML build has **0 warnings/errors**. Native isolated wide preview/category selection/details were checked; the user stopped Computer Use before compact verification. No schema/API changes. Phase 12 native/mobile/accessibility acceptance remains open.
+**Phase 13A - Local calendar planning implemented; native acceptance pending.** Added task-linked time blocks with fixed UTC/original-zone semantics, scoped durable calendar.db3, transactional overlap/revision guards, draft-aware Calendar page and selected-block ICS export. Google Calendar was selected by the user as the first provider; OAuth/event-link/two-way increments remain pending. Full regression: **431 passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Final Windows/XAML build: **0 warnings/errors**. No server migration or task/sync protocol change. Native sharing/import/mobile and earlier acceptance remain open.
 
 ## Completed work
 
@@ -198,19 +198,28 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 - `8329aef` - `Implement Phase 12C.2 task dependencies`: verified at the start of Phase 12D.
 - `6464399` - `Implement Phase 12D urgency and importance planning`: verified at the start of Phase 12E.
 - `1482320` - `Implement Phase 12E completion-based task recurrence`: verified at the start of Phase 12F.
-- Phase 12F has no committed milestone yet. No merge or force-push ran.
+- `66dd406` - `Implement Phase 12F focus sessions and local time history`: verified at the start of Phase 13A.
+- `74d3aef` - `Implement Phase 12G adaptive MAUI workspace`: verified at the start of Phase 13A. Phase 13A remains uncommitted; no merge or force-push ran.
 
 ## Next task
 
-Rebuild the client and follow ADAPTIVE_WORKSPACE.md for compact navigation, resize, edits, accessibility and mobile acceptance. Complete the earlier feature documents' native checks, including FOCUS.md lifecycle/timers. Phase 13 optional calendar integration is the next implementation milestone, subject to provider/OAuth design. Existing eight migrations/protocol 6 remain prerequisites for account-task features. Existing TLS/SecureStorage/notification/mobile acceptance stays open.
+Rebuild and follow CALENDAR.md for native block CRUD/draft/scrolling, sharing and manual Google test-calendar import. Next implementation is Phase 13B Google consent/token lifecycle, using configured installed-app credentials and supported platform OAuth flows; no Google setup is needed for current local planning. Earlier Phase 12, TLS/SecureStorage, notification, mobile and release checks stay open.
 
 ## What to learn now
 
-Trace selected task ID through category/search narrowing, refresh and resize. Distinguish read-only layout state from editor drafts and service writes; distinguish portable behavior tests from native layout/accessibility acceptance. See LEARNINGS.md and ADAPTIVE_WORKSPACE.md.
+Trace a pending task into an immutable title snapshot, original-zone wall time, fixed UTC interval, transaction/revision check, and an escaped/folded iCalendar event. Distinguish calendar-file exchange from provider authorization and reconciliation; see LEARNINGS.md and CALENDAR.md.
 
 ## Phase 12G verification and delivery
 
 - Six added workspace regression cases; 22 targeted list/editor/workspace tests pass. Full suite: 410 passed, 0 skipped; isolated PostgreSQL test databases remaining: 0. Repository test cluster stopped; installed PostgreSQL service remains running.
 - Windows solution/XAML build passed with 0 warnings/errors after normal-access NuGet restore; initial sandbox restore failed without changing dependencies.
 - Isolated Debug preview showed the wide three-pane workspace, category filtering and selected details. User stopped Computer Use before compact inspection. Preview runtime is separate from normal app data; mobile and full native acceptance remain pending.
-- Phase 12G changes remain uncommitted on main over 66dd406. User .vscode/ files are excluded from this task. No commit/push was executed.
+- Phase 12G was uncommitted at delivery over 66dd406 and is now committed as 74d3aef (verified this turn). User .vscode/ files remain excluded from this task. No commit/push was executed by the assistant.
+
+## Phase 13A delivery
+
+- Domain/Calendar defines TimeBlock/TimeBlockDraft, start/duration/DST rules, half-open overlap, and deterministic escaped/folded UTF-8 RFC 5545 output with stable UID/SEQUENCE.
+- SqliteCalendarStore adds independent schema-1 calendar.db3, per-scope reads, transactional overlap/500-block/revision checks, immutable task/title identity, and unsupported/corrupt-data failure without reset. Existing task/sync/views/reminders/focus/server formats are unchanged.
+- CalendarViewModel/page supports device/current-account cached tasks, local block CRUD, draft discard confirmation, stale export checks and account/version/expiry guards. File export shares only a selected saved block and has a dedicated Android cache FileProvider root plus iPad anchor. No provider/token/network integration was added.
+- Added 21 calendar cases. Full regression: 431 passed, 0 skipped (372 portable and 59 PostgreSQL). Final calendar cases were rechecked after tightening persisted-data validation. Windows build/native acceptance details are recorded in CALENDAR.md.
+- Phase 13A is uncommitted on main over 74d3aef. Phase 12G is committed; unrelated .vscode/ remains excluded. The assistant did not commit, pull, push, create a Google client or send anything to Google.

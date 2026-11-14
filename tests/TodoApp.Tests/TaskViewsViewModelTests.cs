@@ -149,6 +149,9 @@ public sealed class TaskViewsViewModelTests : IDisposable
     }
     private sealed class ViewNavigation : ITaskNavigation
     {
+        public Task OpenCalendarAsync() => Task.CompletedTask;
+        public Task<bool> ConfirmDiscardCalendarDraftAsync() => Task.FromResult(false);
+        public Task<bool> ConfirmDeleteCalendarBlockAsync(string title) => Task.FromResult(false);
         public bool Confirm { get; set; }
         public Guid? EditedId { get; private set; }
         public int SyncOpened { get; private set; }
