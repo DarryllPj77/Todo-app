@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 13B Windows Google consent/token lifecycle is implemented: browser PKCE/state, protected Todo-account-bound grants, manual refresh/identity checks, cancellation and disconnect/revocation. Live Google/native acceptance and mobile authorization remain open. Next is 13C explicit calendar/event links; no calendar event writes or automatic sync are enabled yet. See GOOGLE_CALENDAR.md.
+Proceed one phase at a time after review. Phase 13C explicit Google event links are implemented: selected owned calendars, durable pending operations/identities, conditional title/time pushes, confirmed deletion and uncertain-write reconciliation. No background or provider-to-local synchronization runs. Actual Google/native acceptance, mobile OAuth and Phase 13D conflict/reconciliation policy remain open; see GOOGLE_EVENT_LINKS.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -252,10 +252,11 @@ A saved view remains a device-local query definition. Focus history is also devi
 - [ ] **13A native acceptance:** actual screen, share dialog/file delivery, manual Google import, mobile build/FileProvider/iPad anchor, accessibility and account/lifecycle checks; see CALENDAR.md.
 - [x] **13B Windows implementation - Google OAuth:** configurable Desktop client, system-browser IPv4 loopback PKCE/state/cancellation, protected Todo-account/origin/Google-subject binding, identity checks, refresh rotation, fail-closed restoration markers and explicit disconnect/revocation. Twenty-six new portable/loopback cases pass; see GOOGLE_CALENDAR.md.
 - [ ] **13B provider/native/mobile acceptance:** real configured Google consent and token lifecycle, SecureStorage/restart, browser/firewall/account-race checks and supported mobile flows remain open. Mobile/preview authorization is disabled.
-- [ ] **13C - Explicit Google event links:** selected calendar, durable event identity, idempotent retries/uncertain writes, conditional updates and confirmed remote deletion.
+- [x] **13C Windows implementation - Explicit Google event links:** selected owned calendars, schema-2 calendar journal, reserved UUID event identity/private ownership markers, captured snapshots, revision guards, conditional ETag updates/deletes, confirmed explicit writes/retries and uncertain-write reconciliation. Twenty-three new cases pass; see GOOGLE_EVENT_LINKS.md.
+- [ ] **13C provider/native acceptance:** actual Google listing/writes/restart/retry/conditional conflict behavior, two-window/session races and native layout remain open. No live Google account was modified during implementation.
 - [ ] **13D - Reconciliation/two-way policy:** field ownership, incremental cursors/resets, reviewed conflicts/deletions/recurring exceptions; provider acceptance before automatic writes.
 
-ICS import is a separate snapshot exchange. It does not implement Google authorization, duplicate-free provider updates, task completion, or automatic synchronization. Phase 13 remains open.
+ICS import remains a separate snapshot exchange and is not adopted as a provider link. OAuth and explicit provider links are implemented separately; task completion, provider-to-local adoption and automatic synchronization are not inferred. Phase 13 remains open.
 
 ## Phase 14 — Location features
 

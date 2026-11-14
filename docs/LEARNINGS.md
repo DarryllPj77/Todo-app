@@ -627,3 +627,11 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Term:** Fail-closed restoration marker. **Definition:** Persist a non-secret block before replacing/removing a protected credential and unblock only after successful save. **Short example:** If SecureStorage deletion fails, a blocked stale refresh token cannot be restored on restart. If the marker fails too, in-process blocking remains and the UI reports the unresolved restart risk.
 
 **Term:** Capture context before a serialization gate. **Definition:** An operation must keep the account that authorized it while waiting for another window. **Short example:** A queued Google Connect for Todo account A is rejected after switching to B, instead of capturing B when it finally acquires the semaphore.
+
+## Phase 13C - A remote side effect needs durable identity
+
+**Term:** Durable pending operation. **Definition:** Save the intended provider identity and immutable payload before sending a network write. **Short example:** If Google creates an event but its reply is lost, retry reads the same reserved event ID and verifies ownership/title/times instead of allocating another event. New local edits wait until that captured operation finishes.
+
+**Term:** Conditional modification with ETag. **Definition:** If-Match asks a provider to change only the exact version previously acknowledged. **Short example:** A remote edit between GET and PATCH returns 412; the journal becomes Conflict and the app does not overwrite the unseen version. A confirmed deletion follows the same rule.
+
+**Term:** Identity domains. **Definition:** A local block ID, iCalendar UID and Google event resource ID identify different objects. **Short example:** Importing an ICS file does not create a trusted app link. A provider event must have the journal's reserved ID and private ownership markers before the app can change it.

@@ -111,6 +111,24 @@ public sealed class GoogleConnectionService : IDisposable
         catch (GoogleAuthorizationException error) when (error.InvalidGrant) { Block(context.Scope); throw; }
     }, ct);
     public Task<bool> ForgetAsync(CancellationToken ct) => RunAsync((context, _) => { Block(context.Scope); return Task.FromResult(true); }, ct);
+    // The token stays inside services. Provider work shares the consent/disconnect gate.
+    internal Task<T> UseGrantAsync<T>(string scope, string? subject, string? clientId,
+        Func<GoogleGrant, Action, CancellationToken, Task<T>> action, CancellationToken ct) => RunAsync(async (context, token) =>
+    {
+        if (!broker.IsSupported || context.Scope != scope) throw new GoogleAuthorizationException("Choose the active Todo account on Windows desktop.");
+        var grant = await LoadAsync(context) ?? throw new GoogleAuthorizationException("Connect Google for this Todo account first.");
+        try
+        {
+            if (grant.ExpiresAt <= clock.GetUtcNow().AddMinutes(1)) { grant = await protocol.RefreshAsync(grant, token); Ensure(context); }
+            grant = await protocol.IdentifyAsync(grant, token); Ensure(context);
+            if (subject is not null && grant.Subject != subject || clientId is not null && grant.ClientId != clientId)
+                throw new GoogleAuthorizationException("This link belongs to a different Google account/client. Reconnect the original identity before using it.");
+            await SaveAsync(context, grant, token);
+            void Guard() { Ensure(context); token.ThrowIfCancellationRequested(); }
+            Guard(); var result = await action(grant, Guard, token); Guard(); return result;
+        }
+        catch (GoogleAuthorizationException error) when (error.InvalidGrant) { Block(context.Scope); throw; }
+    }, ct);
     public Task<bool> RevokeAsync(CancellationToken ct) => RunAsync(async (context, token) =>
     {
         if (!broker.IsSupported) throw new GoogleAuthorizationException("Use Windows desktop to revoke this Google connection, or remove access in your Google Account.");

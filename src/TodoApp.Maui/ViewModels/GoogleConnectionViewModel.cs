@@ -12,7 +12,7 @@ public sealed class GoogleConnectionViewModel : ObservableViewModel, IDisposable
     private bool busy;
     private int operationVersion;
     private string clientId = "", secret = "", error = "";
-    private string status = "Sign in to a Todo account, then connect Google. No calendar events are sent in this increment.";
+    private string status = "Sign in to a Todo account, then connect Google. Publish planned blocks separately through Google event links.";
     private GoogleConnectionInfo? connection;
     public string ClientId { get => clientId; set => SetProperty(ref clientId, value ?? ""); }
     public string ClientSecret { get => secret; set => SetProperty(ref secret, value ?? ""); }
@@ -31,7 +31,7 @@ public sealed class GoogleConnectionViewModel : ObservableViewModel, IDisposable
     public GoogleConnectionViewModel(GoogleConnectionService google, ClientSession session, ITaskNavigation navigation)
     {
         this.google = google; this.session = session; this.navigation = navigation;
-        ConnectCommand = Command(async ct => { SetConnection(await google.ConnectAsync(ClientId, ClientSecret, ct)); Status = "Google consent saved securely for this Todo account. Calendar event sync is not enabled yet."; }, supported: true);
+        ConnectCommand = Command(async ct => { SetConnection(await google.ConnectAsync(ClientId, ClientSecret, ct)); Status = "Google consent saved securely for this Todo account. Open Google event links for explicit publishing; no background sync runs."; }, supported: true);
         CheckCommand = Command(async ct => { SetConnection(await google.CheckAsync(ct)); Status = connection is null ? "No local Google connection. Enter a Desktop app client and Connect." : "Google identity verified; an expiring token was refreshed if needed. No calendar events were read or changed."; }, supported: true);
         ForgetCommand = Command(async ct =>
         {

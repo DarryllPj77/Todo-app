@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 13B Windows Google consent/token lifecycle implemented; native/provider acceptance pending.** Open **Tools > Google Calendar connection** after signing into the Todo API and configuring a Google Desktop OAuth client. Browser PKCE/state, protected account-bound tokens, manual refresh/check, cancellation, local disconnect and confirmed revocation are implemented. Event links/synchronization remain Phase 13C/13D; mobile Google authorization is disabled pending its supported flow. See [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md). All **457 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. Existing local planning/export remains available; no new migration is needed.
+**Current status (2026-11-14): Phase 13C explicit Google event links implemented; provider/native acceptance pending.** Open **Tools > Google event links** to publish saved SyncedAccount time blocks to an owned Google calendar, conditionally push later local changes, confirm remote deletion and retry uncertain operations using durable IDs/snapshots. Google consent requires the Phase 13B Windows setup. calendar.db3 upgrades from schema 1 to 2; no API migration is needed. Device blocks/ICS imports remain separate; background/two-way sync is not enabled. All **480 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [GOOGLE_EVENT_LINKS.md](docs/GOOGLE_EVENT_LINKS.md).
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13B suite passed **457 tests, 0 skipped** (398 portable cases; 59 PostgreSQL facts). This includes 26 new OAuth/lifecycle/loopback cases; no live Google service was used in automated tests. See GOOGLE_CALENDAR.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13C suite passed **480 tests, 0 skipped** (421 portable cases and 59 PostgreSQL facts). This includes 23 new event-link cases and 70 targeted calendar/OAuth/link checks. Google responses are mocked; live provider/native acceptance remains pending. See GOOGLE_EVENT_LINKS.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -231,4 +231,8 @@ Rebuild the client and open **Tools > Calendar & time blocks**. Choose a pending
 
 ## Google Calendar connection
 
-Follow [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md) to enable Calendar API and configure a Desktop app OAuth client. Rebuild the Windows client, sign into the Todo API, then open **Tools > Google Calendar connection**. Enter the client ID and optional client secret, and choose **Connect in browser**. Never enter a Google password in the app. **Check saved connection / refresh token**, local disconnect and separately confirmed revocation are available. Actual Google consent and SecureStorage/browser acceptance remain manual checks; this increment does not send calendar events.
+Follow [GOOGLE_CALENDAR.md](docs/GOOGLE_CALENDAR.md) to enable Calendar API and configure a Desktop app OAuth client. Rebuild the Windows client, sign into the Todo API, then open **Tools > Google Calendar connection**. Enter the client ID and optional client secret, and choose **Connect in browser**. Never enter a Google password in the app. **Check saved connection / refresh token**, local disconnect and separately confirmed revocation are available. Actual Google consent and SecureStorage/browser acceptance remain manual checks. Explicit event publishing is available separately through **Tools > Google event links**; no automatic sync runs.
+
+## Explicit Google event links
+
+Connect Google on Windows, create a **SyncedAccount** time block in Calendar & time blocks, then open **Tools > Google event links**. Refresh local blocks/links, load owned calendars, select the destination and block, and confirm Publish. Push later local edits explicitly; confirmed remote deletion preserves the local task/block. Uncertain writes keep a pending operation for confirmed Retry. Divergent conflicts remain frozen for Phase 13D review. See [GOOGLE_EVENT_LINKS.md](docs/GOOGLE_EVENT_LINKS.md) for migration, identity, recovery and actual-provider acceptance.

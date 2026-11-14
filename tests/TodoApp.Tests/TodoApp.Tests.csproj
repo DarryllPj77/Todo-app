@@ -25,6 +25,8 @@
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleOAuth*.cs" Link="Client\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleLoopbackBroker.cs" Link="Client\GoogleLoopbackBroker.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleConnectionService.cs" Link="Client\GoogleConnectionService.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleCalendarApi.cs" Link="Client\GoogleCalendarApi.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleEventLinkService.cs" Link="Client\GoogleEventLinkService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\ViewModels\*.cs" Link="Client\ViewModels\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Models\*.cs" Link="Client\Models\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\FocusTaskCatalog.cs" Link="Client\FocusTaskCatalog.cs" />

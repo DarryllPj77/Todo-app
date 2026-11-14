@@ -28,6 +28,8 @@ public sealed class TaskNavigationService : ITaskNavigation
     public Task OpenFocusAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<FocusPage>());
     public Task OpenCalendarAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<CalendarPage>());
     public Task OpenGoogleConnectionAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<GoogleConnectionPage>());
+    public Task OpenGoogleEventsAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<GoogleEventsPage>());
+    public Task<bool> ConfirmGoogleEventAsync(string action, string details) => GetRoot().CurrentPage.DisplayAlertAsync(action + "?", details, "Confirm " + action.ToLowerInvariant(), "Cancel");
     public Task<bool> ConfirmGoogleDisconnectAsync(bool revoke) => GetRoot().CurrentPage.DisplayAlertAsync(
         revoke ? "Revoke Google access?" : "Disconnect Google locally?",
         revoke ? "Revoke this Google project's granted access across its clients, then block/remove local credentials? Existing calendar events and local blocks remain."

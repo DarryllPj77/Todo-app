@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Maui.Models"
+             xmlns:calendar="clr-namespace:TodoApp.Domain.Calendar;assembly=TodoApp.Domain"
+             x:Class="TodoApp.Maui.Views.GoogleEventsPage" x:DataType="vm:GoogleEventsViewModel"
+             Title="Google event links" Style="{StaticResource TaskPage}">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
+            <Label Text="Publish a planned block" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Windows only. Connect Google first. This screen publishes only saved SyncedAccount time blocks for the signed-in Todo account. Device blocks and imported ICS copies are separate." Style="{StaticResource TaskMuted}" />
+            <Button Text="Refresh local blocks and links" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Load owned Google calendars" Command="{Binding LoadCalendarsCommand}" Style="{StaticResource TaskAction}" />
+            <Picker Title="Google destination calendar" ItemsSource="{Binding Calendars}" ItemDisplayBinding="{Binding Label, x:DataType=models:GoogleCalendarChoice}"
+                    SelectedItem="{Binding SelectedCalendar}" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Owned Google destination calendar" />
+            <Label Text="Account-local time block" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding Blocks}" SelectedItem="{Binding SelectedBlock}" SelectionMode="Single" HeightRequest="220" IsEnabled="{Binding IsIdle}">
+                <CollectionView.EmptyView><Label Text="Create a block in Calendar &amp; time blocks using SyncedAccount, then refresh." Padding="12" /></CollectionView.EmptyView>
+                <CollectionView.ItemTemplate><DataTemplate x:DataType="calendar:TimeBlock">
+                    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8"><VerticalStackLayout Spacing="4">
+                        <Label Text="{Binding Title}" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                        <Label Text="{Binding Summary}" Style="{StaticResource TaskMuted}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout></Border>
+                </DataTemplate></CollectionView.ItemTemplate>
+            </CollectionView>
+            <Button Text="Publish / push selected local block" Command="{Binding PublishCommand}" Style="{StaticResource TaskAction}" />
+            <Label Text="Saved Google links and pending operations" FontSize="20" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+            <CollectionView ItemsSource="{Binding Links}" SelectedItem="{Binding SelectedLink}" SelectionMode="Single" HeightRequest="240" IsEnabled="{Binding IsIdle}">
+                <CollectionView.EmptyView><Label Text="No event links in this Todo account." Padding="12" /></CollectionView.EmptyView>
+                <CollectionView.ItemTemplate><DataTemplate x:DataType="calendar:GoogleEventLink">
+                    <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8"><Label Text="{Binding Label}" LineBreakMode="WordWrap" /></Border>
+                </DataTemplate></CollectionView.ItemTemplate>
+            </CollectionView>
+            <Label Text="{Binding LinkDetails}" LineBreakMode="WordWrap" />
+            <Button Text="Retry selected pending operation" Command="{Binding RetryCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Delete selected linked Google event" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
+            <Button Text="Cancel current action" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Error}" Style="{StaticResource TaskError}" LineBreakMode="WordWrap" />
+            <Label Text="{Binding Status}" LineBreakMode="WordWrap" />
+            <Label Text="Every publish, delete and retry asks for confirmation. Network/cancellation failures can leave an uncertain operation: retry its saved ID/snapshot instead of creating another event. Conflicts are frozen for the next review increment. No background or two-way synchronization runs." Style="{StaticResource TaskMuted}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

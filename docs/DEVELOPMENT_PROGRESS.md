@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 13B Windows Google consent/token lifecycle implemented; provider/native/mobile acceptance pending.** Added system-browser PKCE/state loopback consent, protected Todo-account/origin/Google-subject binding, manual refresh/identity checks, cancellation, local disconnect and separately confirmed provider revocation. Mobile and preview authorization are disabled. Full regression: **457 passed, 0 failed, 0 skipped** (398 portable and **59 PostgreSQL facts**). Windows solution/XAML: **0 warnings/errors**. No calendar event writes/sync, server migration or database/protocol changes. Live Google consent, native SecureStorage/browser and earlier acceptance remain open.
+**Phase 13C explicit Google event links implemented; provider/native acceptance pending.** Added owned-calendar selection, account/Google identity-bound event links, calendar.db3 schema-2 operation journal, captured snapshots/reserved IDs, conditional ETag pushes/deletion and confirmed uncertain-write retry. All **480 tests passed, 0 failed, 0 skipped** (421 portable and **59 PostgreSQL facts**); final Windows solution/XAML build has **0 warnings/errors**. No live Google account was modified. Phase 13D conflict/reconciliation/two-way policy and mobile/native acceptance remain open. No new API migration or task-sync protocol change.
 
 ## Completed work
 
@@ -203,11 +203,11 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 
 ## Next task
 
-Configure a dedicated Google Desktop OAuth client and follow GOOGLE_CALENDAR.md for live consent, actual SecureStorage/restart, browser/socket/cancel, account switching and refresh/revocation acceptance. Next implementation is Phase 13C explicit calendar/event links with selected calendars, durable provider identity, idempotent retries and conditional writes; automatic/two-way synchronization remains later. Supported mobile OAuth and earlier native/release acceptance stay open.
+Follow GOOGLE_EVENT_LINKS.md with a configured Google test calendar for native publish/push/delete/restart/retry/conditional-conflict acceptance. Next implementation is Phase 13D explicit conflict/reconciliation policy before provider-to-local or automatic synchronization. Supported mobile OAuth, actual SecureStorage/browser and earlier native/release gates remain open.
 
 ## What to learn now
 
-Trace fresh PKCE/state through browser callback, code exchange, authenticated Google subject, protected account-bound save, refresh and explicit revocation. Review fail-closed restoration markers and why queued work captures its account before waiting. Distinguish OAuth consent/token management from calendar event synchronization; see LEARNINGS.md and GOOGLE_CALENDAR.md.
+Trace a confirmed publish into a transactionally saved pending snapshot/provider ID, conditional HTTP write and revision-checked receipt. Review lost-response recovery, private ownership markers, ETags and why ICS IDs/local block IDs/provider event IDs are different. See LEARNINGS.md and GOOGLE_EVENT_LINKS.md.
 
 ## Phase 12G verification and delivery
 
@@ -228,4 +228,11 @@ Trace fresh PKCE/state through browser callback, code exchange, authenticated Go
 
 - Added 26 OAuth/lifecycle/real-loopback cases. Full regression: 457 passed, 0 skipped; Windows solution/XAML build: 0 warnings/errors. Google endpoints use mock responses; no live Google account was contacted. Native consent/SecureStorage/mobile checks remain open.
 - Isolated PostgreSQL test databases remaining: 0; repository test cluster stopped, installed PostgreSQL service remains running. No app windows or user development servers were stopped.
-- Phase 13A milestone 8e15128 is committed and verified. Phase 13B remains uncommitted on main; .vscode/ is excluded. No commit/pull/push, Google project/client creation or provider authorization was performed by the assistant.
+- Phase 13A milestone 8e15128 is committed and verified. Phase 13B was uncommitted at delivery and is now committed as bc62835 (verified at the start of Phase 13C); .vscode/ is excluded. No commit/pull/push, Google project/client creation or provider authorization was performed by the assistant.
+
+## Phase 13C verification and delivery
+
+- Added 23 event-link cases. Seventy targeted calendar/OAuth/link checks passed; full regression: 480 passed, 0 skipped (421 portable and 59 PostgreSQL). Final Windows solution/XAML build: 0 warnings/errors. Tests cover schema-1 upgrade preservation, journal CAS/concurrency, reserved-ID/409 recovery, lost create/update/delete replies, captured-snapshot retry, ownership/type/412 conflicts, orphan cleanup, identity/destination pinning, pagination and account-confirmation/write races.
+- calendar.db3 upgrades to schema 2; existing block data is preserved. No new server migration, task/sync schema or protocol change. Provider tokens remain in SecureStorage; the SQLite journal contains linkage metadata only.
+- Provider HTTP is mocked; no actual Google account/events, native confirmations or mobile flow were operated. Live/provider/native acceptance remains open. Isolated PostgreSQL test databases remaining: 0; repository cluster stopped and installed PostgreSQL service remains running.
+- Phase 13B milestone bc62835 is committed and verified. Phase 13C remains uncommitted on main; unrelated .vscode/ remains excluded. No commit, pull, push or provider write was performed by the assistant.

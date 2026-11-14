@@ -1,6 +1,6 @@
 # Google Calendar consent - Phase 13B desktop
 
-This increment implements Windows system-browser consent, PKCE/state, protected account-bound token storage, manual connection checking/refresh, cancellation, local disconnect and explicit Google revocation. It does **not** create, list, update, delete or synchronize calendar events. Local planning/ICS export remains in CALENDAR.md. Actual Google consent, native SecureStorage and browser/socket acceptance remain required.
+This increment implements Windows system-browser consent, PKCE/state, protected account-bound token storage, manual connection checking/refresh, cancellation, local disconnect and explicit Google revocation. This connection screen itself does **not** create, list, update, delete or synchronize calendar events. Phase 13C now supplies separate explicit publishing through Tools > Google event links; see [GOOGLE_EVENT_LINKS.md](GOOGLE_EVENT_LINKS.md). Local planning/ICS export remains in CALENDAR.md. Actual Google consent, native SecureStorage and browser/socket acceptance remain required.
 
 ## Configure and try it
 
@@ -54,7 +54,7 @@ Google documents that revocation affects a project's granted scopes across its c
 - [ ] Narrow/keyboard/light/dark/large-text/screen-reader UI and account labels. No native browser/share/account operation was performed by automated desktop control in this increment.
 - [ ] Mobile platform-specific supported authorization and toolchain/device acceptance. Existing Phase 13A and earlier native gates remain open.
 
-Next is **13C: explicit Google calendar/event links** with selected calendars, durable provider IDs, idempotent retries, conditional edits and confirmed remote deletion. Two-way conflict/reconciliation policy remains 13D. Consent and tokens alone do not implement synchronization.
+**13C explicit event links are now implemented separately** with selected calendars, durable provider IDs, pending-operation recovery, conditional edits and confirmed remote deletion; see [GOOGLE_EVENT_LINKS.md](GOOGLE_EVENT_LINKS.md). Actual provider/native acceptance and Phase 13D two-way conflict/reconciliation remain open. Consent alone does not synchronize events.
 
 ## Verification recorded on 2026-11-14
 

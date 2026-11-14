@@ -269,6 +269,8 @@ public sealed class TaskViewModelTests
 
     private sealed class TestNavigation : ITaskNavigation
     {
+        public Task OpenGoogleEventsAsync() => Task.CompletedTask;
+        public Task<bool> ConfirmGoogleEventAsync(string action, string details) => Task.FromResult(false);
         public Task OpenGoogleConnectionAsync() => Task.CompletedTask;
         public Task<bool> ConfirmGoogleDisconnectAsync(bool revoke) => Task.FromResult(false);
         public Task OpenCalendarAsync() => Task.CompletedTask;

@@ -77,6 +77,7 @@ public sealed class TaskListViewModel : ObservableViewModel
     public AsyncCommand FocusCommand { get; }
     public AsyncCommand CalendarCommand { get; }
     public AsyncCommand GoogleConnectionCommand { get; }
+    public AsyncCommand GoogleEventsCommand { get; }
     public AsyncCommand RecurrenceCommand { get; }
     public AsyncCommand PlanningCommand { get; }
     public AsyncCommand DependenciesCommand { get; }
@@ -141,6 +142,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         FocusCommand = Command(navigation.OpenFocusAsync);
         CalendarCommand = Command(navigation.OpenCalendarAsync);
         GoogleConnectionCommand = Command(navigation.OpenGoogleConnectionAsync);
+        GoogleEventsCommand = Command(navigation.OpenGoogleEventsAsync);
         RecurrenceCommand = Command(navigation.OpenRecurrenceAsync);
         PlanningCommand = Command(navigation.OpenPlanningAsync);
         DependenciesCommand = Command(navigation.OpenDependenciesAsync);
@@ -258,6 +260,7 @@ public sealed class TaskListViewModel : ObservableViewModel
         FocusCommand.NotifyCanExecuteChanged();
         CalendarCommand.NotifyCanExecuteChanged();
         GoogleConnectionCommand.NotifyCanExecuteChanged();
+        GoogleEventsCommand.NotifyCanExecuteChanged();
         RecurrenceCommand.NotifyCanExecuteChanged();
         PlanningCommand.NotifyCanExecuteChanged();
         DependenciesCommand.NotifyCanExecuteChanged();

@@ -225,3 +225,9 @@ Existing task/sync files remain version 6, views 3, reminders/focus 1, PostgreSQ
 ## Google protected credentials (Phase 13B)
 
 Google grants use version-1 SecureStorage entries keyed by a SHA-256 digest of the existing Todo API-origin/account partition. Protected JSON contains client ID/optional Desktop secret, verified Google subject/email, granted scopes, access/refresh tokens and UTC expiry. Preferences holds only the corresponding non-secret restoration block marker; credentials never enter SQLite, outbox payloads, PostgreSQL or source control. Google disconnect does not delete time blocks or provider events. Existing database versions and protocol 6 remain unchanged. See GOOGLE_CALENDAR.md for write/block failure and revocation policies.
+
+## Google event-link journal (Phase 13C)
+
+calendar.db3 upgrades transactionally from version 1 to 2 by adding GoogleEventLinks (Scope, BlockId, Revision, Data), keyed by Scope/BlockId. Existing CalendarBlocks are preserved. JSON stores Todo scope, stable Google subject/client, destination calendar, UUID-derived event ID, private ownership proof, state, desired/published block snapshots, acknowledged ETag and safe conflict message. The proof is link metadata, not an OAuth credential. SecureStorage remains the only token vault.
+
+Pending create/update/delete is committed before remote I/O. Stale block/link revisions cannot stage new work; a receipt must match the exact pending revision. Delete/recreate reserves a new provider ID. Local block deletion does not cascade into links or Google events; orphaned records remain for explicit cleanup. Older schema-1 clients refuse the upgraded file. Task/sync remain 6, views 3, reminders/focus 1, PostgreSQL eight migrations and protocol 6; no new server migration is required. Backup/restore and journal retention remain release acceptance. See GOOGLE_EVENT_LINKS.md.

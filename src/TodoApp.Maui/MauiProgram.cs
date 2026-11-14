@@ -74,6 +74,12 @@ public static class MauiProgram
         builder.Services.AddSingleton<GoogleConnectionService>();
         builder.Services.AddScoped<GoogleConnectionViewModel>();
         builder.Services.AddTransient<GoogleConnectionPage>();
+        builder.Services.AddSingleton(_ => new GoogleCalendarApi(new HttpClient(WorkspacePreview.Enabled
+            ? new WorkspacePreview.OfflineHandler() : new HttpClientHandler { AllowAutoRedirect = false })
+        { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 262144 }));
+        builder.Services.AddSingleton<GoogleEventLinkService>();
+        builder.Services.AddScoped<GoogleEventsViewModel>();
+        builder.Services.AddTransient<GoogleEventsPage>();
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();

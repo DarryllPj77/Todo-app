@@ -7,7 +7,7 @@ namespace TodoApp.Infrastructure.Services;
 public sealed class CalendarConflictException() : InvalidOperationException("This block changed or was removed in another window. Refresh and review before trying again.");
 
 // Independent device-local planning file. No task/outbox mutation or provider tokens.
-public sealed class SqliteCalendarStore(string path, TimeProvider? clock = null)
+public sealed partial class SqliteCalendarStore(string path, TimeProvider? clock = null)
 {
     public Task<IReadOnlyList<TimeBlock>> ReadAsync(string scope) => ExecuteAsync(scope, Read);
 
@@ -69,13 +69,23 @@ public sealed class SqliteCalendarStore(string path, TimeProvider? clock = null)
         using var transaction = connection.BeginTransaction(deferred: false);
         using var schema = connection.CreateCommand(); schema.Transaction = transaction; schema.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(schema.ExecuteScalar());
-        if (version is < 0 or > 1) throw new InvalidDataException("Calendar data requires a compatible app. Nothing was reset.");
+        if (version is < 0 or > 2) throw new InvalidDataException("Calendar data requires a compatible app. Nothing was reset.");
         if (version == 0)
         {
             schema.CommandText = """
                 CREATE TABLE CalendarBlocks (Id TEXT PRIMARY KEY, Scope TEXT NOT NULL, Revision INTEGER NOT NULL CHECK(Revision>0), Data TEXT NOT NULL);
                 CREATE INDEX IX_CalendarBlocks_Scope ON CalendarBlocks(Scope);
                 PRAGMA user_version=1;
+                """;
+            schema.ExecuteNonQuery();
+        }
+        if (version < 2)
+        {
+            schema.CommandText = """
+                CREATE TABLE IF NOT EXISTS GoogleEventLinks (
+                    Scope TEXT NOT NULL, BlockId TEXT NOT NULL, Revision INTEGER NOT NULL CHECK(Revision>0), Data TEXT NOT NULL,
+                    PRIMARY KEY (Scope,BlockId));
+                PRAGMA user_version=2;
                 """;
             schema.ExecuteNonQuery();
         }

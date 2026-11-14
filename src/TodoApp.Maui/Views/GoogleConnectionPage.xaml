@@ -6,7 +6,7 @@
         <VerticalStackLayout Padding="20" Spacing="14" MaximumWidthRequest="760" HorizontalOptions="Fill">
             <Label Text="Connect Google Calendar" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
             <Label Text="{Binding PlatformNote}" Style="{StaticResource TaskMuted}" />
-            <Label Text="This connects Google to the signed-in Todo account and API address. Consent includes your Google identity, calendar list, and events on calendars you own. Event creation/sync comes in the next increment." />
+            <Label Text="This connects Google to the signed-in Todo account and API address. Consent includes your Google identity, calendar list, and events on calendars you own. Publish blocks separately through Tools > Google event links; no background sync runs." />
             <Label Text="Desktop app OAuth client ID" />
             <Entry Text="{Binding ClientId}" Placeholder="Client ID from Google Cloud" IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Google Desktop app client ID" />
             <Label Text="Desktop client secret (optional if not required by your client)" />
