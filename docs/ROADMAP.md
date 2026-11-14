@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 15C adds a stateless Android home-screen Add task widget alongside launcher/share capture. Taps open blank review with a device default and explicit Save; no task/account data or periodic refresh is published to the host. See ANDROID_QUICK_CAPTURE.md. All three Android surfaces still need phone acceptance. Next: Phase 16A Android release-hardening preparation and acceptance tracking; Apple support, earlier native/provider gates and optional Windows/browser capture remain pending.
+Proceed one phase at a time after review. Phase 16A adds reproducible debug-APK auditing, failure-case tests and explicit Android release/readiness evidence. See ANDROID_RELEASE_READINESS.md. A passing artifact audit is not release approval; all Android capture/geofence phone gates, backup/restore, approved signing/distribution, Apple and earlier provider/Windows acceptance remain open. Next: Phase 16B Android backup/transfer and transport-policy hardening, followed by the required recovery/device acceptance.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -321,7 +321,8 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 
 **Completion checklist:**
 
-- [ ] **16A - Android release-hardening preparation:** audit/automate package and configuration checks, record exact device/provider/accessibility/backup/signing gates and recovery procedures. No release/native gate is complete until its evidence exists.
+- [x] **16A - Android release-hardening preparation implementation:** automatic debug-APK signature/manifest/resource/assembly audit, hash-bound report, 23 PowerShell policy/parser cases and release/recovery checklist. See ANDROID_RELEASE_READINESS.md. No release/native gate is closed by this check.
+- [ ] **16B - Android backup/transfer and transport policy:** review/implement supported-version configuration and recovery coverage for task data, protected credentials and encrypted journals; test before claiming restore/privacy acceptance.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 

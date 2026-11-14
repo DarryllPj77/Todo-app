@@ -27,5 +27,6 @@ try {
     }
     & $dotnetCommand build @commonArguments -t:SignAndroidPackage -p:AndroidPackageFormats=apk -p:EmbedAssembliesIntoApk=true
     if ($LASTEXITCODE -ne 0) { throw "Android build failed (exit $LASTEXITCODE). See docs/ANDROID_GEOFENCES.md." }
+    & (Join-Path $PSScriptRoot 'Test-AndroidPackage.ps1')
     Write-Output "Debug APK output: $artifacts. No device install, emulator launch or permission operation was performed."
 } finally { $env:DOTNET_ROOT = $previousDotnetRoot }

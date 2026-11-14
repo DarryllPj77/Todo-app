@@ -1,5 +1,12 @@
 # Architecture
 
+## Android artifact audit boundary (Phase 16A)
+
+Build-Android.ps1 now invokes Test-AndroidPackage.ps1 after debug signing. AndroidPackageAudit.psm1 converts aapt2's actual compiled XML tree into a normalized DOM and validates the current permission/export/SDK/capture baseline. The orchestrator verifies APK signatures, resource IDs and packaged variants/layout, embedded app/domain/infrastructure ABIs and unchanged APK hash, then writes an ignored JSON report tied to APK and audit-code hashes. Native commands use argument arrays; no app database, credential, phone or provider is accessed. Invalid/unknown parser forms and unexpected manifest changes fail rather than broadening accepted capabilities.
+
+ArtifactStatus only describes this debug-baseline check; ReleaseReady remains false. Backup/transport attributes are recorded for explicit review rather than silently changed or assumed safe. Signatures verify APK integrity without certifying an approved release signer, and an artifact hash is not source provenance/reproducible-build proof. Windows/core/runtime schemas remain unaffected. See ANDROID_RELEASE_READINESS.md for tool behavior, open acceptance gates and recovery boundaries.
+
+
 ## Android quick capture (Phases 15A/15B/15C)
 
 The static launcher shortcut opens an exported native QuickCaptureActivity with a fixed action and separate task affinity. The launcher action ignores external payloads; the additional ACTION_SEND/text/plain filter imports only a bounded title/description prefill. Neither entry creates the normal MAUI window or attaches its runtimes. A portable QuickCaptureViewModel coordinates explicit Save/Cancel, validation, frozen retries and duplicate-submit prevention; QuickCaptureService selects device storage or pins the current origin/user/session generation for the existing account cache. Device-only capture does not restore credentials. Account selection can restore an unverified but unexpired session without HTTP; SyncEngine still verifies before server access. Authorization is checked inside the cache transaction and before commit. No API client/engine is called by capture.

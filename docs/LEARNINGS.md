@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 16A - Artifact checks and release acceptance answer different questions
+
+**Term:** Artifact identity. **Definition:** A SHA-256 hash identifies the exact package bytes inspected, not the source commit or signing authority. **Short example:** A report for yesterday's APK cannot establish today's build, even when both files have the same name.
+
+**Term:** Fail-closed baseline audit. **Definition:** Reject unexpected permissions, exported components, broad MIME routing or unknown native-tool output instead of treating them as harmless. **Short example:** Making a private widget receiver public breaks the audit until its purpose and boundary are reviewed.
+
+**Term:** Signature integrity versus signer trust. **Definition:** A valid APK signature proves bytes match its signer, while approval requires knowing which certificate is authorized. **Short example:** Debug v1/v2/v3 verification can pass while release signing, phone acceptance and backup recovery remain open.
+
+
 ## Phase 15C - A widget can be a stateless entry point
 
 **Term:** RemoteViews boundary. **Definition:** A launcher renders a limited native layout supplied by another app, rather than embedding its full MAUI page. **Short example:** The Todo widget publishes only a generic Add task button; the task editor still opens inside the app for review and Save.

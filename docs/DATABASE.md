@@ -1,5 +1,10 @@
 # Database plan
 
+## Release-readiness inspection (Phase 16A)
+
+No app data/configuration/schema change. The audit reads only the APK and tool metadata and writes an ignored JSON report; it never opens todoapp.db3, sync.db3, protected credentials or encrypted journals. Confirmed compiled backup attributes remain allowBackup=true with no explicit fullBackupContent/dataExtractionRules. Define/test supported cloud/device-transfer behavior and consistent recovery in Phase 16B before promising backup privacy or portability. Existing task/sync schema 7 and other local stores, eight PostgreSQL migrations and protocol 6 remain unchanged. See ANDROID_RELEASE_READINESS.md for upgrade, lost-key, uncertain-save and live-SQLite backup limits.
+
+
 ## Home-screen widget reuse (Phase 15C)
 
 No database/schema/server/protocol changes. Widget updates read no task, receipt, replica or credential store; only generic static layout and click metadata are supplied to the Android host. There is no widget configuration table or persistent draft. A tap opens the existing blank capture form; explicit Save uses device/sync schema 7 and existing transactional receipts. Removing a widget has no task/account/reminder side effect. Host-managed placement/preview state is outside app databases. See ANDROID_QUICK_CAPTURE.md for lifecycle/backup limits and pending device acceptance.
