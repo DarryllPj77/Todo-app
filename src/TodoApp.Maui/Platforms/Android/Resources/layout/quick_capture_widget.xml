@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="8dp">
+  <Button
+      android:id="@+id/quick_capture_widget_button"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:minWidth="48dp"
+      android:minHeight="48dp"
+      android:padding="8dp"
+      android:background="@drawable/quick_capture_widget_background"
+      android:backgroundTint="@null"
+      android:text="@string/quick_capture_widget_button"
+      android:contentDescription="@string/quick_capture_widget_description"
+      android:textColor="#FFFFFF"
+      android:textSize="18sp"
+      android:textAllCaps="false"
+      android:maxLines="2"
+      android:gravity="center" />
+</FrameLayout>

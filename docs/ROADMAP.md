@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 15B adds Android plain-text share capture to the Phase 15A launcher surface. Both require review and explicit Save with a device default; selected account saves use the existing offline queue and retry receipts. See ANDROID_QUICK_CAPTURE.md. Phone acceptance for both surfaces, Phase 14B.4 Apple support and earlier native/provider/release gates remain pending. Next feature increment: Phase 15C Android widget capture, after reviewing the open device checks.
+Proceed one phase at a time after review. Phase 15C adds a stateless Android home-screen Add task widget alongside launcher/share capture. Taps open blank review with a device default and explicit Save; no task/account data or periodic refresh is published to the host. See ANDROID_QUICK_CAPTURE.md. All three Android surfaces still need phone acceptance. Next: Phase 16A Android release-hardening preparation and acceptance tracking; Apple support, earlier native/provider gates and optional Windows/browser capture remain pending.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -305,7 +305,8 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 - [ ] **15A device acceptance:** verify launcher/cold/warm activation, interrupted saves, editor stack, accessibility and account/offline behavior on a phone.
 - [x] **15B - Android plain-text share implementation:** narrow single-text filter, bounded subject/body prefill, review/edit and explicit Save through the existing device/account capture service.
 - [ ] **15B device acceptance:** real Sharesheet/apps, malformed/oversized/styled text, lifecycle/draft recovery, main-editor stack, offline/account and accessibility checks.
-- [ ] **15C - Android widget capture:** next proposed Android surface; Windows hotkeys/browser extension remain future work.
+- [x] **15C - Android widget capture implementation:** generic static home-screen button, private provider, fixed Activity PendingIntent, zero periodic updates and existing explicit capture flow.
+- [ ] **15C device acceptance:** launcher picker, multiple instances, resizing/preview/accessibility, cold/warm task stacks, restore/update/force-stop and offline/account behavior. Windows hotkeys/browser extension remain future work.
 - [ ] Each enabled capture surface handles offline work and authentication safely on its target devices.
 
 ## Phase 16 — Release hardening
@@ -320,6 +321,7 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 
 **Completion checklist:**
 
+- [ ] **16A - Android release-hardening preparation:** audit/automate package and configuration checks, record exact device/provider/accessibility/backup/signing gates and recovery procedures. No release/native gate is complete until its evidence exists.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 

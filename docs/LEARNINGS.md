@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 15C - A widget can be a stateless entry point
+
+**Term:** RemoteViews boundary. **Definition:** A launcher renders a limited native layout supplied by another app, rather than embedding its full MAUI page. **Short example:** The Todo widget publishes only a generic Add task button; the task editor still opens inside the app for review and Save.
+
+**Term:** Immutable Activity PendingIntent. **Definition:** Give the widget host a fixed operation to open a component instead of accepting arbitrary fill-in commands. **Short example:** On API 23+, Immutable fixes the capture intent; all versions still use the existing fixed action, ignore extras and default to Device only.
+
+**Term:** No periodic work for static content. **Definition:** A widget that displays no changing data does not need a refresh timer or data service. **Short example:** updatePeriodMillis=0 leaves updates/restoration to the host while publishing the same static button, without reading tasks or rearming reminders.
+
+
 ## Phase 15B - Incoming shared text is a draft, not a command
 
 **Term:** Narrow intent filter. **Definition:** Advertise only the action and MIME type the app can actually handle, then validate them again on entry. **Short example:** ACTION_SEND with text/plain opens review; SEND_MULTIPLE or image/png cannot activate a file import through the exported component.

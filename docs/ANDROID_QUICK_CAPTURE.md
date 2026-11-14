@@ -1,6 +1,6 @@
-# Android quick capture: launcher and text sharing
+# Android quick capture: launcher, sharing and widget
 
-Implemented on 2026-11-14 after the user selected Android quick capture ahead of Apple tooling. Phase 14B.4 and earlier device/provider acceptance remain pending. Phase 15A is the launcher surface; Phase 15B adds plain-text sharing. Windows hotkeys, widgets and browser extensions remain future work.
+Implemented on 2026-11-14 after the user selected Android quick capture ahead of Apple tooling. Phase 14B.4 and earlier device/provider acceptance remain pending. Phase 15A is the launcher surface, Phase 15B adds plain-text sharing and Phase 15C adds a home-screen capture widget. Windows hotkeys and browser extensions remain future work.
 
 ## Try it yourself
 
@@ -27,6 +27,18 @@ The Activity drops foreign extras from its own intent after input extraction. Dr
 
 Implementation follows [Android's official receiving-data guidance](https://developer.android.com/develop/ui/compose/sharing/receive), including a narrow MIME filter and a review/edit step. It adds no packages, permissions, database schemas, server endpoints or sync protocol changes.
 
+## Phase 15C: home-screen Add task widget
+
+After building and installing the current APK, long-press an empty area of your Android home screen, open **Widgets**, find **Todo App quick capture**, and drag it onto the home screen. Exact picker labels/steps depend on the launcher. The widget works with the app's API 21+ minimum and a launcher that supports app widgets; it does not require the API 25 app-shortcut feature. Newer launchers receive a two-column/one-row size hint; older launchers calculate their own size from minimum dimensions. It can resize horizontally and vertically.
+
+Tap **+ Add task** to open a new blank capture form. Enter a task, keep Device only or explicitly choose the current account, then Save. Cancel creates no task. This is an entry widget, not an inline editor, task list, account selector or sync control. It uses the same domain validation, pinned account authorization, offline queue and schema-7 receipts as the other capture surfaces. There is no automatic Save or upload.
+
+The widget contains only a generic button/accessible description; no task title, count, email, origin, draft or saved session is passed to the launcher. A nonexported AppWidgetProvider publishes static RemoteViews and a component/action-bound Activity PendingIntent. It uses Immutable on API 23+; API 21/22 have no immutable flag, but the fixed capture action ignores all incoming extras and defaults to Device only. No widget ID or account identity selects a destination. A direct Activity launch with NewTask/MultipleTask keeps the existing main editor/capture task separate. Each deliberate tap can open a separate form with its own capture ID; check for earlier saves before creating another.
+
+`updatePeriodMillis=0` disables widget periodic refresh. Widget update/restore only rebuilds the static view and click action; it resolves no app services, reads no databases/credentials, makes no HTTP/location/permission request, starts no geofence run and schedules no alarm/job. Framework process creation still initializes the Android application; the widget code does not create a MAUI window or attach its runtimes. Instances have no app-owned configuration or state to delete. Removing/re-adding a widget does not remove tasks, sign out an account or alter existing reminder choices. No programmatic pin/configuration flow is included; use the launcher's normal picker.
+
+On saved-state capture recreation, the existing empty-form recovery notice applies. A widget's static preview is generic too. Native host behavior, resizing, keyboard/TalkBack, task-stack preservation and background launch restrictions require real-device acceptance. On modern Android, the visible widget host must supply the appropriate PendingIntent launch privileges; this provider does not grant broad creator-side background launch privileges. Check cold taps with the selected launcher, and inspect ActivityTaskManager/BAL logs if Android blocks them; a debug build cannot establish host compatibility. See [Android activity security guidance](https://developer.android.com/guide/components/activities/secure-bal). Follow [Android's widget provider documentation](https://developer.android.com/develop/ui/views/appwidgets) and [update-frequency guidance](https://developer.android.com/develop/ui/views/appwidgets/advanced); builds do not prove launcher behavior.
+
 ## Design and data flow
 
 `MainActivity` declares a static `android.app.shortcuts` resource. Its generic Add task entry explicitly starts `QuickCaptureActivity` with one fixed action. The launcher action ignores every intent extra. Phase 15B also accepts bounded plain-text shares as editable prefills; external account/ID/origin/token values never select a destination. Other actions/types close immediately. The entry opens a compact native form without creating the normal MAUI window, attaching its runtimes or navigating away from its editor. Its separate empty task affinity keeps launcher shortcut task flags away from the main app task, and it is excluded from Recents.
@@ -45,7 +57,7 @@ Receipts are retained up to 10,000 per device database or account partition. At 
 
 ## Verification performed
 
-Phase 15B final regression: all 708 tests passed with no failures/skips (649 portable, 59 PostgreSQL). The 37 targeted capture cases include 19 new share cases and the earlier 18 capture cases. The Android standalone debug APK and Windows solution compile with zero warnings/errors. APK inspection confirms v1/v2/v3 signatures, embedded assemblies, explicit capture activity/task attributes, its ACTION_SEND/DEFAULT/text/plain filter, preserved launcher metadata and versioned shortcut resources with labels/icon/target. apksigner emits AndroidX META-INF/JAR coverage warnings; release packaging remains a separate gate. No native phone/launcher outcome is inferred from these checks.
+Phase 15C final regression: all 708 existing tests passed with no failures/skips (649 portable, 59 PostgreSQL). The 37 targeted capture cases include 19 new share cases and the earlier 18 capture cases. The Android standalone debug APK and Windows solution compile with zero warnings/errors. APK inspection confirms v1/v2/v3 signatures, embedded assemblies, explicit capture activity/task attributes, its ACTION_SEND/DEFAULT/text/plain filter, preserved launcher metadata and versioned shortcut resources with labels/icon/target. Widget inspection also confirms a nonexported provider with APPWIDGET_UPDATE filter/metadata, packaged button/accessible description, 64dp minimum height, home-screen resizing, zero periodic updates and the generated versioned preview/two-by-one cell hints. apksigner emits AndroidX META-INF/JAR coverage warnings; release packaging remains a separate gate. No native phone/launcher outcome is inferred from these checks.
 
 ## Acceptance still required
 
@@ -56,6 +68,8 @@ Phase 15B final regression: all 708 tests passed with no failures/skips (649 por
 - Check that launcher activation ignores extras; share activation imports only bounded text/subject and never auto-saves. Try browsers/notes apps, selected text, links, styled text, missing/malformed extras, oversized bodies/subjects, attachments and unsupported types. Confirm Cancel creates no task and account selection remains explicit.
 - Verify two shares create separate review forms without overwriting a submitted draft or disturbing the main editor. Recreate/background/kill during review and saving; original text must not auto-save or silently replay. Check that a completed task can be found before starting another capture.
 - Review launcher/Sharesheet OEM behavior, backup/restore and release signing separately.
+- Add, resize, remove/re-add and restore multiple widgets on API 21/22 and modern launchers where available. Check minimum tap area/large fonts/TalkBack, light/dark display and preview. Cold/warm taps must open blank review with Device only; no task/account data should appear on the home screen. Confirm Save/Cancel, explicit account selection/offline queue and existing editor/draft preservation.
+- Reboot/update/force-stop/reopen with widgets present; confirm static widget rebinding does not sign in, sync, prompt for location/notification permissions or restart reminder runs. Removing widgets must preserve tasks and reminder choices.
 - Complete the earlier Windows/Android geofence acceptance, Apple support and Google/provider gates independently. Compilation and portable tests do not establish these runtime outcomes.
 
 The static entry follows [Android's official shortcut creation documentation](https://developer.android.com/develop/ui/compose/system/shortcuts/creating-shortcuts). Native Android types remain in Platforms/Android; the portable service, view model and real SQLite behavior are tested without an emulator.

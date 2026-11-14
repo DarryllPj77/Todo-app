@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="quick_capture_widget_name">Todo App quick capture</string>
+  <string name="quick_capture_widget_button">+ Add task</string>
+  <string name="quick_capture_widget_description">Add a task. Opens capture for review.</string>
+</resources>

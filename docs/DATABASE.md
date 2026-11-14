@@ -1,5 +1,9 @@
 # Database plan
 
+## Home-screen widget reuse (Phase 15C)
+
+No database/schema/server/protocol changes. Widget updates read no task, receipt, replica or credential store; only generic static layout and click metadata are supplied to the Android host. There is no widget configuration table or persistent draft. A tap opens the existing blank capture form; explicit Save uses device/sync schema 7 and existing transactional receipts. Removing a widget has no task/account/reminder side effect. Host-managed placement/preview state is outside app databases. See ANDROID_QUICK_CAPTURE.md for lifecycle/backup limits and pending device acceptance.
+
 ## Text share capture reuse (Phase 15B)
 
 No schema, migration, protected credential, server endpoint or protocol changes. A shared draft stays in Activity memory until explicit Save, which uses the existing schema-7 device/account capture receipts. Rejected or canceled shares create no task/outbox/receipt. Raw body/subject, URI grants and attachment streams are not copied into app databases or saved-instance Bundles. The Android OS/sender may independently retain the original intent. Existing task/backup protection limits remain; see ANDROID_QUICK_CAPTURE.md.
