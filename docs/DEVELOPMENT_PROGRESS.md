@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 12F - Focus/time history implemented; native acceptance pending.** Device-local Pomodoro focus/short/long breaks now support pause/resume, manual transitions, monotonic timing, five-second checkpoints, scoped durable history, and derived task TimeSpent. Process/session/revision guards and interruption recovery prevent duplicate or unobserved credit. All **404 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**. Windows solution/XAML build has 0 warnings/errors. focus.db3 is new schema 1; existing task/sync/views/reminder/server formats remain unchanged. No new API migration is needed. Next is 12G adaptive workspace; native timer/lifecycle/mobile acceptance remains open.
+**Phase 12G - Adaptive workspace implemented; native acceptance partial.** Added device categories/tasks/read-only details panes, compact Tasks/Details navigation, category/search narrowing, refresh/resize selection retention, and a consolidated Tools launcher. All **410 tests passed, 0 failed, 0 skipped**, including **59 PostgreSQL facts**; Windows/XAML build has **0 warnings/errors**. Native isolated wide preview/category selection/details were checked; the user stopped Computer Use before compact verification. No schema/API changes. Phase 12 native/mobile/accessibility acceptance remains open.
 
 ## Completed work
 
@@ -202,8 +202,15 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 
 ## Next task
 
-Rebuild the client and follow FOCUS.md for pause/resume/stop, checkpoint/restart/suspend, desktop app switching, manual breaks, one-session/two-window/process, account/expiry, task/recurrence changes, and history native acceptance. No new API migration is needed. Existing eight migrations/protocol 6 remain prerequisites for current account-task features. Next is 12G adaptive desktop/mobile workspace, with reviewed navigation/layout/accessibility. Existing TLS/SecureStorage/notification/mobile acceptance stays open.
+Rebuild the client and follow ADAPTIVE_WORKSPACE.md for compact navigation, resize, edits, accessibility and mobile acceptance. Complete the earlier feature documents' native checks, including FOCUS.md lifecycle/timers. Phase 13 optional calendar integration is the next implementation milestone, subject to provider/OAuth design. Existing eight migrations/protocol 6 remain prerequisites for account-task features. Existing TLS/SecureStorage/notification/mobile acceptance stays open.
 
 ## What to learn now
 
-Trace monotonic ticks through live state, a revisioned checkpoint, terminal ledger status, and derived TimeSpent. Separate UTC labels from elapsed duration, breaks from focus, captured task/occurrence identity from current task state, and local history from server task sync. Review OS file leases versus SQL uniqueness/revisions and conservative recovery without phantom duration. See LEARNINGS.md and FOCUS.md.
+Trace selected task ID through category/search narrowing, refresh and resize. Distinguish read-only layout state from editor drafts and service writes; distinguish portable behavior tests from native layout/accessibility acceptance. See LEARNINGS.md and ADAPTIVE_WORKSPACE.md.
+
+## Phase 12G verification and delivery
+
+- Six added workspace regression cases; 22 targeted list/editor/workspace tests pass. Full suite: 410 passed, 0 skipped; isolated PostgreSQL test databases remaining: 0. Repository test cluster stopped; installed PostgreSQL service remains running.
+- Windows solution/XAML build passed with 0 warnings/errors after normal-access NuGet restore; initial sandbox restore failed without changing dependencies.
+- Isolated Debug preview showed the wide three-pane workspace, category filtering and selected details. User stopped Computer Use before compact inspection. Preview runtime is separate from normal app data; mobile and full native acceptance remain pending.
+- Phase 12G changes remain uncommitted on main over 66dd406. User .vscode/ files are excluded from this task. No commit/push was executed.

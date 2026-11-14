@@ -601,3 +601,11 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Definition:** A timer can have a small unsaved tail, but recovery should never infer unseen work from the time an app was closed.
 
 **Short example:** Five-second checkpoints bound crash loss. Restart marks the abandoned session Interrupted at its saved timestamp; no auto-resume or closed-app duration is credited. An OS process lease, one-active SQL index, revisions, and account guards solve different concurrency problems. See FOCUS.md.
+
+## Phase 12G - Adaptive navigation preserves state rather than recreating it
+
+**Concept:** Available logical width chooses layout; the ViewModel owns task/category/search selection independently. Read-only details survive resize and successful refresh by stable task ID. A filter or deletion that removes that ID must clear details and disable its commands.
+
+**Why it matters:** Device type cannot predict a desktop window's size or a phone's orientation. Rebuilding pages when the width changes can lose selections or unsaved editor drafts. Existing editor pages and service validation remain the write boundary; the root layout only changes visibility and column widths.
+
+**Short example:** A selected Work task stays open when a window crosses 1180 logical pixels. Searching for unrelated text clears it; Complete cannot then operate on a hidden task. Case-insensitive category keys distinguish virtual groups from real categories with reserved-looking names. Counts describe the service filter before local search. Isolated Debug preview data makes visual checks possible without touching the user's normal task files or saved account session.

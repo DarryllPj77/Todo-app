@@ -211,3 +211,7 @@ focus.db3 is a new independent schema-1 local file. FocusSessions stores sequenc
 TimeSpent sums exact Focus-session ticks in the selected scope and task; breaks and paused gaps never contribute. Session title/recurrence snapshots preserve history after task changes/deletion without a foreign-key cascade. An OS-held focus.db3.runtime.lock handle excludes a second writer process while other app instances may read authorized history. Checkpoints are recovered conservatively after interruption; no UTC gap is credited.
 
 No server migration, task column, or sync contract is added. Existing versions remain tasks 6, sync 6, views 3, reminders 1; PostgreSQL has eight migrations and sync protocol 6. Local focus history is ordinary unencrypted task metadata, not a credential store or cross-device aggregate. See FOCUS.md for timing, lifecycle, recovery, data-protection/retention limits, and native acceptance.
+
+## Adaptive workspace (Phase 12G)
+
+This increment changes MAUI presentation/navigation only. Task and sync files stay at version 6, views at 3, reminders/focus at 1, server at eight migrations, and protocol at 6. No migration/reset/import is required. The optional Debug layout preview uses separate SQLite files in its explicitly supplied directory; normal application data is not copied or merged. See ADAPTIVE_WORKSPACE.md.

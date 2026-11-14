@@ -17,6 +17,48 @@ public sealed class TaskListViewModel : ObservableViewModel
     private string errorMessage = "";
     private TaskRow? selectedTask;
     private FilterOption selectedFilter;
+    private IReadOnlyList<TaskRow> loadedRows = [];
+    private WorkspaceCategory? selectedCategory;
+    private string searchText = "";
+    private bool isWideLayout;
+    private bool showingDetails;
+
+    public ObservableCollection<WorkspaceCategory> Categories { get; } = new();
+    public bool IsWideLayout => isWideLayout;
+    public bool IsCompactLayout => !isWideLayout;
+    public bool IsTaskPaneVisible => isWideLayout || !showingDetails;
+    public bool IsDetailsPaneVisible => isWideLayout || showingDetails;
+    public string DetailsHeading => SelectedTask?.Title ?? "Task details";
+    public AsyncCommand ShowTasksCommand { get; }
+    public AsyncCommand ShowDetailsCommand { get; }
+
+    public WorkspaceCategory? SelectedCategory
+    {
+        get => selectedCategory;
+        set
+        {
+            if (SetProperty(ref selectedCategory, value)) ApplyQuery();
+        }
+    }
+
+    public string SearchText
+    {
+        get => searchText;
+        set { if (SetProperty(ref searchText, value ?? "")) ApplyQuery(); }
+    }
+
+    // Logical pixels, independent of platform/device names and orientation.
+    public void SetViewportWidth(double width)
+    {
+        if (SetProperty(ref isWideLayout, width >= 1180, nameof(IsWideLayout))) NotifyPanes();
+    }
+
+    private void NotifyPanes()
+    {
+        OnPropertyChanged(nameof(IsCompactLayout));
+        OnPropertyChanged(nameof(IsTaskPaneVisible));
+        OnPropertyChanged(nameof(IsDetailsPaneVisible));
+    }
 
     public ObservableCollection<TaskRow> Tasks { get; } = new();
     public IReadOnlyList<FilterOption> Filters { get; } = new[]
@@ -75,6 +117,8 @@ public sealed class TaskListViewModel : ObservableViewModel
             {
                 OnPropertyChanged(nameof(HasSelection));
                 OnPropertyChanged(nameof(ToggleText));
+                OnPropertyChanged(nameof(DetailsHeading));
+                if (value is null) { showingDetails = false; NotifyPanes(); }
                 UpdateCommands();
             }
         }
@@ -85,6 +129,8 @@ public sealed class TaskListViewModel : ObservableViewModel
         this.tasks = tasks;
         this.navigation = navigation;
         selectedFilter = Filters[0];
+        ShowTasksCommand = new AsyncCommand(() => { showingDetails = false; NotifyPanes(); return Task.CompletedTask; }, () => true, _ => { });
+        ShowDetailsCommand = new AsyncCommand(() => { showingDetails = true; NotifyPanes(); return Task.CompletedTask; }, () => HasSelection, _ => { });
         RefreshCommand = Command(LoadTasksAsync);
         AddCommand = Command(() => navigation.EditTaskAsync(null));
         EditCommand = Command(() => navigation.EditTaskAsync(SelectedTask!.Id), needsSelection: true);
@@ -129,13 +175,32 @@ public sealed class TaskListViewModel : ObservableViewModel
     private async Task LoadTasksAsync()
     {
         var loaded = await tasks.GetTasksAsync(SelectedFilter.Value);
-        SelectedTask = null;
-        Tasks.Clear();
-        foreach (var task in loaded)
-        {
-            Tasks.Add(new TaskRow(task));
-        }
+        loadedRows = loaded.Select(task => new TaskRow(task)).ToArray();
+        var prior = SelectedCategory;
+        Categories.Clear();
+        Categories.Add(new WorkspaceCategory(null, loadedRows.Count, IsAll: true));
+        foreach (var group in loadedRows.GroupBy(row => row.CategoryName, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+            Categories.Add(new WorkspaceCategory(group.Key, group.Count()));
+        // Set directly: replacing picker items can send a transient null selection.
+        selectedCategory = Categories.FirstOrDefault(category => prior is not null && category.IsAll == prior.IsAll
+            && StringComparer.OrdinalIgnoreCase.Equals(category.Name, prior.Name)) ?? Categories[0];
+        OnPropertyChanged(nameof(SelectedCategory));
+        ApplyQuery();
+    }
 
+    private void ApplyQuery()
+    {
+        var id = SelectedTask?.Id;
+        var wasShowingDetails = showingDetails;
+        var query = SearchText.Trim();
+        var visible = loadedRows.Where(row => (SelectedCategory?.Matches(row) ?? true)
+            && (query.Length == 0 || row.SearchableText.Contains(query, StringComparison.OrdinalIgnoreCase))).ToArray();
+        Tasks.Clear();
+        foreach (var row in visible) Tasks.Add(row);
+        SelectedTask = Tasks.FirstOrDefault(row => row.Id == id);
+        showingDetails = wasShowingDetails && HasSelection;
+        NotifyPanes();
         OnPropertyChanged(nameof(CountText));
     }
 
@@ -176,6 +241,7 @@ public sealed class TaskListViewModel : ObservableViewModel
 
     private void UpdateCommands()
     {
+        ShowDetailsCommand.NotifyCanExecuteChanged();
         RefreshCommand.NotifyCanExecuteChanged();
         AddCommand.NotifyCanExecuteChanged();
         EditCommand.NotifyCanExecuteChanged();

@@ -27,23 +27,24 @@ public static class MauiProgram
         builder.Services.AddScoped<TaskListPage>();
         builder.Services.AddTransient<TaskEditorViewModel>();
         builder.Services.AddTransient<TaskEditorPage>();
-        builder.Services.AddSingleton(_ => new SqliteLocalTaskService(Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")));
+        var dataDirectory = WorkspacePreview.DirectoryPath ?? FileSystem.AppDataDirectory;
+        builder.Services.AddSingleton(_ => WorkspacePreview.CreateTasks(dataDirectory));
         builder.Services.AddSingleton<ILocalTaskService, ReminderAwareTaskService>();
-        builder.Services.AddSingleton<ISecureTokenStore, SecureTokenStore>();
-        builder.Services.AddSingleton<IClientSettings, ClientSettings>();
+        builder.Services.AddSingleton<ISecureTokenStore>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.Tokens() : new SecureTokenStore());
+        builder.Services.AddSingleton<IClientSettings>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.Settings() : new ClientSettings());
         builder.Services.AddSingleton<ClientSession>();
-        builder.Services.AddSingleton(_ => new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        builder.Services.AddSingleton(_ => new HttpClient(WorkspacePreview.Enabled ? new WorkspacePreview.OfflineHandler() : new HttpClientHandler { AllowAutoRedirect = false })
         {
             Timeout = TimeSpan.FromSeconds(15)
         });
         builder.Services.AddSingleton<TodoApiClient>();
         builder.Services.AddSingleton(provider =>
         {
-            var store = new SqliteSyncStore(Path.Combine(FileSystem.AppDataDirectory, "sync.db3"));
+            var store = new SqliteSyncStore(Path.Combine(dataDirectory, "sync.db3"));
             store.Written += () => provider.GetRequiredService<ReminderService>().RefreshSafelyAsync();
             return store;
         });
-        builder.Services.AddSingleton(_ => new SqliteReminderStore(Path.Combine(FileSystem.AppDataDirectory, "reminders.db3")));
+        builder.Services.AddSingleton(_ => new SqliteReminderStore(Path.Combine(dataDirectory, "reminders.db3")));
         builder.Services.AddSingleton<ReminderTaskCatalog>();
         builder.Services.AddSingleton<ReminderService>();
         builder.Services.AddSingleton<ReminderRuntime>();
@@ -54,8 +55,9 @@ public static class MauiProgram
 #elif IOS || MACCATALYST
         builder.Services.AddSingleton<IReminderPlatform, AppleReminderPlatform>();
 #endif
-        builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(FileSystem.AppDataDirectory, "views.db3")));
-        builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(FileSystem.AppDataDirectory, "focus.db3")));
+        if (WorkspacePreview.Enabled) builder.Services.AddSingleton<IReminderPlatform, WorkspacePreview.Notifications>();
+        builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(dataDirectory, "views.db3")));
+        builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(dataDirectory, "focus.db3")));
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();

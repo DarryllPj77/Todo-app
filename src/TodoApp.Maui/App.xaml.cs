@@ -19,6 +19,14 @@ public partial class App : Application
         var navigation = new NavigationPage(page);
         scope.ServiceProvider.GetRequiredService<Services.TaskNavigationService>().Attach(navigation);
         var window = new Window(navigation);
+        if (Services.WorkspacePreview.Enabled)
+        {
+            window.Title = "Todo layout preview";
+            window.Width = 1400;
+            window.Height = 900;
+            window.Destroying += (_, _) => scope.Dispose();
+            return window;
+        }
         var reminders = services.GetRequiredService<Services.ReminderRuntime>();
         var focus = services.GetRequiredService<Services.FocusRuntime>();
         window.Created += async (_, _) => { await reminders.AttachAsync(window.Dispatcher); await focus.AttachAsync(window); };

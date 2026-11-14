@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 12F focus/time history implemented; native acceptance pending.** Open **Focus & history** for configurable Pomodoro focus/break sessions, pause/resume, task TimeSpent, and durable device-local history. Monotonic timing, checkpoints, interruption recovery, scope guards, one-session/process protection, and manual breaks have explicit policies. Rebuild the client using [FOCUS.md](docs/FOCUS.md); no new API migration is needed. All **404 tests passed, none skipped**; Windows build **0 warnings/errors**. Next is 12G adaptive workspace; native/mobile timer/lifecycle acceptance remains open.
+**Current status (2026-11-14): Phase 12G adaptive workspace implemented; native acceptance partial.** The device home screen now offers categories, literal search, desktop categories/tasks/details panes, and compact Tasks/Details navigation with selection retention. Open **Tools** for existing advanced features and synced/account workspaces. All **410 tests passed, none skipped**; Windows/XAML build **0 warnings/errors**. The native wide preview, category filtering and selected details were checked; compact verification was stopped by the user. Mobile/accessibility and earlier native acceptance remain open. See [ADAPTIVE_WORKSPACE.md](docs/ADAPTIVE_WORKSPACE.md). No new migration is needed.
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 12F suite passed **404 tests, 0 skipped** (345 portable cases; 59 PostgreSQL facts). Focus adds 32 portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The full Phase 12G suite passed **410 tests, 0 skipped** (351 portable cases; 59 PostgreSQL facts). Adaptive workspace adds six portable cases without changing server behavior. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -161,7 +161,7 @@ Use an existing category name to reuse a category visible among stored tasks, or
 ### Check account and server tasks
 
 1. Configure PostgreSQL, the JWT secret, and all eight migrations using DATABASE.md. Start the API with its HTTPS profile and trust its development certificate on Windows.
-2. Run the Windows client and open **Account & server** in the task-list toolbar. Its default API address is `https://localhost:7114/`.
+2. Run the Windows client and open **Account & server** through **Tools** on the task list. Its default API address is `https://localhost:7114/`.
 3. Register a disposable account with a 12?128 character password, or sign in. Create, edit, complete/reopen, filter, and delete disposable **server** tasks.
 4. Close/reopen the app and open Account again. A saved session must pass `/api/auth/me` before server tasks load. Verify real platform storage persistence here; automated tests substitute the platform store.
 5. Stop the API and try Refresh. Check the friendly connection error, then go Back and confirm device-local CRUD still works. Restart the API and retry explicitly.
@@ -178,19 +178,19 @@ Windows compilation and the local task-list toolbar were verified. Native Accoun
 
 ### Check offline synchronization
 
-Close the older running app before rebuilding with `scripts/Run-Windows.ps1`. Sign in through **Account & server**, then open **Synced tasks** from the main toolbar. Save locally to queue changes; Sync sends them and downloads server changes. Cached CRUD works while the API is unavailable. Explicit **Retry now** overrides persisted retry backoff. Keep mine / Use server resolves conflicts while preserving both versions until you choose.
+Close the older running app before rebuilding with `scripts/Run-Windows.ps1`. Sign in through **Account & server**, then open **Synced tasks** through **Tools**. Save locally to queue changes; Sync sends them and downloads server changes. Cached CRUD works while the API is unavailable. Explicit **Retry now** overrides persisted retry backoff. Keep mine / Use server resolves conflicts while preserving both versions until you choose.
 
 Follow the [two-device and interrupted-sync checklist](docs/SYNCHRONIZATION.md#run-and-manually-verify). Signing out hides this cache but retains pending work for the same account/API. Cached content is ordinary SQLite, not encrypted. Expired saved sessions require sign-in again before selecting the cache; no offline login is provided. Sync retries run only while the page is open, with connectivity treated as a hint. Existing device-only tasks are not imported. Native acceptance remains pending.
 
 ### Check reminders
 
-Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Reminders** in the main toolbar. Click **Allow / check notification permission**, choose an incomplete device task or active account's cached task, and save an explicit date/time at least one minute ahead. Refresh and inspect its scheduling status. A due date alone does not create an alert.
+Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Reminders** through **Tools**. Click **Allow / check notification permission**, choose an incomplete device task or active account's cached task, and save an explicit date/time at least one minute ahead. Refresh and inspect its scheduling status. A due date alone does not create an alert.
 
 **On this unpackaged Windows build, keep the app running.** It evaluates reminders every 15 seconds and attempts a recent due alert once; it does not promise closed-app delivery. Follow [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for replacement/cancellation, permission denial, time changes, and mobile acceptance. Complete/delete a task or change its due date to cancel its reminder. Title changes retain the instant. Sign-out suspends account reminders; device-only reminders continue. Choices stay on this device, and notification text omits task/account details.
 
 ### Check custom filters and saved views
 
-Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** in the main toolbar. Choose Device or SyncedAccount, combine search/completion/priority/category/due rules, and click **Apply filters**. Enter a name and **Save as new view & apply** to reuse those rules later. Update/rename and confirmed deletion affect only the definition.
+Close the older app, rebuild with `scripts/Run-Windows.ps1`, and open **Saved views** through **Tools**. Choose Device or SyncedAccount, combine search/completion/priority/category/due rules, and click **Apply filters**. Enter a name and **Save as new view & apply** to reuse those rules later. Update/rename and confirmed deletion affect only the definition.
 
 Device views read device tasks; account views read only that API/account's current cache, so sync first to fetch server changes. Date rules use this device's day and recalculate on Apply/Refresh. Named views are local preferences, not task copies or cross-device subscriptions. Applying/deleting one does not change tasks, queues, conflicts, or reminders. Follow [SAVED_VIEWS.md](docs/SAVED_VIEWS.md) for the full checklist. Phase 12B now adds AllListed/AnyListed/Untagged rules and literal tag search; the rest of Phase 12 remains open.
 

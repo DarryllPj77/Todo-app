@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 12F device-local focus/time history is implemented: configurable focus/short/long breaks, monotonic timing/checkpoints, one active session, lifecycle/account recovery, derived TimeSpent, and scoped history UI. No API/schema/protocol change is required. Rebuild using FOCUS.md and complete native acceptance. Next is 12G adaptive workspace; Phase 12 remains open.
+Proceed one phase at a time after review. Phase 12G adaptive device workspace is implemented: desktop categories/tasks/details, compact navigation, search, retained selection and Tools navigation. All 410 tests pass and Windows compilation succeeds. Wide native preview checks passed; compact/mobile/accessibility and earlier feature acceptance remain open. See ADAPTIVE_WORKSPACE.md. Phase 13 calendar integration is the next implementation milestone after provider/OAuth design; Phase 12 acceptance remains open.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -227,9 +227,10 @@ Proceed one phase at a time after review. Phase 12F device-local focus/time hist
 - [x] **12D - Urgency/importance:** manual four-quadrant classification plus Unclassified, independent priority/due date, transactional upgrades, strict API enum, protocol-5 queue/receipt compatibility, scoped planning UI/conflict review, summaries, and saved-view rules implemented. Native acceptance remains in EISENHOWER.md.
 - [x] **12E - Recurrence:** date-only daily/weekly/monthly interval rules, anchored short-month handling, same-task completion/monotonic counters, idempotent retries/tombstone floor, dependency policy, transactional upgrades, protocol-6 queue/receipt/conflict handling, reminder reconciliation, and Recurring tasks UI implemented. Native acceptance remains in RECURRENCE.md; no server scheduler is needed for this completion-based model.
 - [x] **12F - Focus/time history:** configurable Pomodoro focus/short/long breaks, pause/resume/manual transitions, monotonic elapsed time, durable focus.db3 ledger/checkpoints/recovery, one-session/process guards, scoped derived TimeSpent/history, task/recurrence/account interruption, and Focus & history UI implemented. Data stays local; native lifecycle/timer acceptance remains in FOCUS.md.
-- [ ] **12G - Adaptive workspace:** desktop categories/tasks/details panes and mobile navigation after each feature's data/UI boundaries are stable.
+- [x] **12G - Adaptive workspace implementation:** device categories/tasks/read-only details panes at 1180 logical pixels, compact Tasks/Details navigation, literal search, selection retention, and consolidated Tools navigation. Six new behavior cases pass; no data/API migration. See ADAPTIVE_WORKSPACE.md.
+- [ ] **12G native acceptance:** wide Windows preview/category selection/details checked; compact native inspection was stopped by the user. Mobile, accessibility, editing and full acceptance remain open.
 
-A saved view remains a device-local query definition. Focus history is also device-local and scoped independently of task sync; TimeSpent is derived from its ledger. Recurrence advances one stable task after explicit completion. Adaptive layout and remaining native/release acceptance stay open; Phase 12 is not yet complete.
+A saved view remains a device-local query definition. Focus history is also device-local and scoped independently of task sync; TimeSpent is derived from its ledger. Recurrence advances one stable task after explicit completion. Adaptive layout is implemented; remaining native/release acceptance stays open. Phase 12 is not yet complete.
 
 ## Phase 13 — Calendar integration
 

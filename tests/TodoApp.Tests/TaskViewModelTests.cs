@@ -208,7 +208,7 @@ public sealed class TaskViewModelTests
         Assert.Equal(first.Id, navigation.EditedId);
         await list.ToggleCommand.ExecuteAsync();
         Assert.True(first.IsCompleted);
-        Assert.False(list.HasSelection);
+        Assert.Equal(first.Id, list.SelectedTask?.Id);
 
         list.SelectedFilter = list.Filters.Single(filter => filter.Value == TaskFilter.Pending);
         await list.RefreshAsync();
