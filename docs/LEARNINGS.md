@@ -645,3 +645,13 @@ Only concepts used in this project are recorded here. Examples describe the curr
 **Term:** Snapshot title versus source identity. **Definition:** A calendar block can adopt a provider title without renaming its source task. **Short example:** TaskId, scope and captured zone stay fixed while the reviewed block title/UTC range changes; task completion and focus history are untouched.
 
 **Term:** Local detach versus provider deletion. **Definition:** Detach closes local management without transmitting a remote deletion. **Short example:** A recurring/foreign event is never forcibly overwritten; the user can detach its local link and separately handle the old provider event before explicitly publishing another.
+
+## Phase 13D.2 - A cursor acknowledges a complete batch
+
+**Term:** Complete-page cursor checkpoint. **Definition:** Persist a remote continuation/sync cursor only after every page and its local effects commit successfully. **Short example:** A failure on page two leaves the old cursor and notices unchanged, so retry can fetch the same changes instead of skipping them.
+
+**Term:** Cohort compare-and-swap. **Definition:** A network scan is based on a specific set of local link identities/revisions; validate that set again before acknowledging its cursor. **Short example:** A new link or another window's review during pagination rejects the old batch, preventing newly linked changes or pending intent from being skipped.
+
+**Term:** Read-only automation policy. **Definition:** Opt-in detection can run without granting automatic conflict resolution. **Short example:** A Google cancellation creates a notice, not a local deletion. The user still loads a fresh review and confirms a resolution. Turning monitoring off preserves cursor progress and prevents an older scan from restoring opt-in.
+
+**Term:** Remote reset versus local intent. **Definition:** An invalid collection cursor invalidates a provider snapshot checkpoint, not the user's outbox or tasks. **Short example:** A 410 restarts a full in-memory read; local blocks and pending Google operations survive even if the reset scan fails.

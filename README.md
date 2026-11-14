@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-14): Phase 13D.1 reviewed Google reconciliation implemented; provider/native acceptance pending.** In **Tools > Google event links**, load a Google/local review, then explicitly adopt Google fields, conditionally keep/push local fields, accept a reviewed remote deletion, or detach only the local link. Local block/link updates are atomic and stale reviews are rejected; source task fields remain unchanged. calendar.db3 upgrades to schema 3 without resetting blocks/links. All **505 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. Incremental cursors/background automation remain Phase 13D.2. See [GOOGLE_RECONCILIATION.md](docs/GOOGLE_RECONCILIATION.md).
+**Current status (2026-11-14): Phase 13D.2 Google cursors and opt-in monitoring implemented; provider/native acceptance pending.** Open **Tools > Google change monitoring** for full/incremental checks and optional page-active read-only monitoring. Complete-page cursors, 410 reset, retry backoff and linked-event notices preserve pending intent; no automatic publishing, adoption or deletion runs. calendar.db3 upgrades to schema 4 without resetting local data. All **529 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [GOOGLE_MONITORING.md](docs/GOOGLE_MONITORING.md).
 
 ## Technology and prerequisites
 
@@ -52,7 +52,7 @@ dotnet test TodoApp.Core.slnf --no-build --no-restore
 
 The filter excludes native MAUI compilation. Tests link actual portable client services/ViewModels, but the separate Windows build validates XAML/platform code.
 
-The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13D.1 suite passed **505 tests, 0 skipped** (446 portable cases and 59 PostgreSQL facts), including 25 new review cases and 95 targeted calendar/OAuth/reconciliation checks. Provider HTTP is mocked; live Google/native acceptance remains open. See GOOGLE_RECONCILIATION.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
+The default test run needs no database: portable REST tests explicitly substitute memory and test-only authentication. Fifty-nine PostgreSQL facts skip unless TODOAPP_TEST_POSTGRES is set. The Phase 13D.2 suite passed **529 tests, 0 skipped** (470 portable cases and 59 PostgreSQL facts), including 24 new monitoring cases and 119 targeted calendar/OAuth/reconciliation/feed checks. Provider HTTP is mocked; live Google/native acceptance remains open. See GOOGLE_MONITORING.md. See DATABASE.md for the full run; fake authentication is never registered by the normal API.
 
 ## Run the API
 
@@ -240,3 +240,7 @@ Connect Google on Windows, create a **SyncedAccount** time block in Calendar & t
 ## Reviewed Google reconciliation
 
 Open **Tools > Google event links**, select a Linked/Conflict record and choose **Load Google / local review**. Inspect both versions before choosing **Use reviewed Google version**, **Keep reviewed local version and push**, **Accept reviewed Google deletion**, or **Detach local link only**. Each resolution requires confirmation and rechecks the reviewed context. Adoption changes only the calendar block; it never changes task completion or focus history. Unsafe events permit local detach rather than forced writes. See [GOOGLE_RECONCILIATION.md](docs/GOOGLE_RECONCILIATION.md).
+
+## Google change monitoring
+
+Publish an account-local block, then open **Tools > Google change monitoring**. Load/select its Google calendar and Scan now; the initial scan reads the calendar collection, caches no unlinked payloads, and stores a complete-page cursor. Enable page-open checks only after reviewing its confirmation. Notices appear on existing links; refresh Google event links and load a fresh review before acting. Disable is local-only, scans back off/pause on failure, and pending writes are never auto-retried. All **529 tests passed, 0 skipped**; Windows/XAML build has **0 warnings/errors**. See [GOOGLE_MONITORING.md](docs/GOOGLE_MONITORING.md).

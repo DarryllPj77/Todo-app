@@ -2,6 +2,7 @@ namespace TodoApp.Maui.Services;
 
 public interface ITaskNavigation
 {
+    Task OpenGoogleFeedAsync();
     Task OpenGoogleEventsAsync();
     Task<bool> ConfirmGoogleEventAsync(string action, string details);
     Task OpenGoogleConnectionAsync();

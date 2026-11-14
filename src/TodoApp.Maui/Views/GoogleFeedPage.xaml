@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels" xmlns:models="clr-namespace:TodoApp.Maui.Models"
+             xmlns:calendar="clr-namespace:TodoApp.Domain.Calendar;assembly=TodoApp.Domain"
+             x:Class="TodoApp.Maui.Views.GoogleFeedPage" x:DataType="vm:GoogleFeedViewModel"
+             Title="Google change monitoring" Style="{StaticResource TaskPage}">
+    <ScrollView><VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="850" HorizontalOptions="Fill">
+        <Label Text="Check Google changes" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Text="Windows read-only monitoring. Initial/reset scans read the selected calendar collection, discard unlinked payloads, and flag existing app links for review. No automatic publish, local adoption or deletion occurs." />
+        <Button Text="Refresh saved monitors" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Load owned Google calendars" Command="{Binding LoadCalendarsCommand}" Style="{StaticResource TaskAction}" />
+        <Picker Title="Owned Google calendar" ItemsSource="{Binding Calendars}" SelectedItem="{Binding SelectedCalendar}" ItemDisplayBinding="{Binding Label, x:DataType=models:GoogleCalendarChoice}"
+                IsEnabled="{Binding IsIdle}" SemanticProperties.Description="Google calendar to check" />
+        <Button Text="Scan selected calendar now" Command="{Binding ScanCalendarCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Enable page-open checks for calendar" Command="{Binding EnableCommand}" Style="{StaticResource TaskAction}" />
+        <Label Text="Saved monitors" FontSize="20" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+        <CollectionView ItemsSource="{Binding Feeds}" SelectedItem="{Binding SelectedFeed}" SelectionMode="Single" HeightRequest="240" IsEnabled="{Binding IsIdle}">
+            <CollectionView.EmptyView><Label Text="No saved monitors. Publish an account time block, then choose its Google calendar." Padding="12" /></CollectionView.EmptyView>
+            <CollectionView.ItemTemplate><DataTemplate x:DataType="calendar:GoogleCalendarFeed">
+                <Border Style="{StaticResource TaskCard}" Margin="0,0,0,8"><Label Text="{Binding Label}" LineBreakMode="WordWrap" /></Border>
+            </DataTemplate></CollectionView.ItemTemplate>
+        </CollectionView>
+        <Label Text="{Binding FeedDetails}" LineBreakMode="WordWrap" />
+        <Button Text="Scan selected saved monitor now" Command="{Binding ScanFeedCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Disable selected monitor" Command="{Binding DisableCommand}" Style="{StaticResource TaskAction}" />
+        <Button Text="Cancel current check" Command="{Binding CancelCommand}" Style="{StaticResource TaskAction}" />
+        <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        <Label Text="{Binding Error}" Style="{StaticResource TaskError}" LineBreakMode="WordWrap" />
+        <Label Text="{Binding Status}" LineBreakMode="WordWrap" />
+        <Label Text="Enabled monitors run about once per minute only while this page/window is active and online. Failures back off or pause; Scan now overrides delay. Leaving/deactivating the page/window cancels work. No operating-system background job is installed. Open Google event links and load a fresh review before resolving detected changes." Style="{StaticResource TaskMuted}" />
+    </VerticalStackLayout></ScrollView>
+</ContentPage>

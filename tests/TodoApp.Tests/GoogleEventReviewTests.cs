@@ -26,7 +26,7 @@ public sealed partial class GoogleEventLinkTests
         }
         Assert.Equal(block, Assert.Single(await Store.ReadAsync(Scope))); Assert.Equal(linked, Assert.Single(await Store.LinksAsync(Scope)));
         using var check = new SqliteConnection($"Data Source={Path.Combine(directory, "calendar.db3")};Pooling=False"); await check.OpenAsync();
-        using var version = check.CreateCommand(); version.CommandText = "PRAGMA user_version;"; Assert.Equal(3L, await version.ExecuteScalarAsync());
+        using var version = check.CreateCommand(); version.CommandText = "PRAGMA user_version;"; Assert.Equal(4L, await version.ExecuteScalarAsync());
     }
     [Fact]
     public async Task ReviewPersistsSideBySideSnapshotWithoutChangingEitherVersion()

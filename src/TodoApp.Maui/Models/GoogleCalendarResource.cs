@@ -11,8 +11,9 @@ public sealed record GoogleEventResource(string Id, string ETag, string Proof, s
 {
     public bool Matches(CalendarBlockSnapshot snapshot) => Title == snapshot.Title && StartUtc == snapshot.StartUtc && EndUtc == snapshot.EndUtc;
 }
-public sealed class GoogleCalendarHttpException(HttpStatusCode status) : Exception($"Google Calendar returned {(int)status}. Pending work was retained; refresh/review before retrying.")
+public sealed class GoogleCalendarHttpException(HttpStatusCode status, TimeSpan? retryAfter = null) : Exception($"Google Calendar returned {(int)status}. Pending work was retained; refresh/review before retrying.")
 {
     public HttpStatusCode Status { get; } = status;
+    public TimeSpan? RetryAfter { get; } = retryAfter;
 }
 public sealed class GoogleEventConflictException(string message) : Exception(message);

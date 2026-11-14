@@ -28,6 +28,8 @@
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleCalendarApi.cs" Link="Client\GoogleCalendarApi.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleEventLinkService.cs" Link="Client\GoogleEventLinkService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleEventReviewService.cs" Link="Client\GoogleEventReviewService.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleCalendarFeedApi.cs" Link="Client\GoogleCalendarFeedApi.cs" />
+    <Compile Include="..\..\src\TodoApp.Maui\Services\GoogleCalendarFeedService.cs" Link="Client\GoogleCalendarFeedService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\ViewModels\*.cs" Link="Client\ViewModels\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Models\*.cs" Link="Client\Models\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\FocusTaskCatalog.cs" Link="Client\FocusTaskCatalog.cs" />

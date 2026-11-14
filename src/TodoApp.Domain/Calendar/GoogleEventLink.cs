@@ -18,10 +18,10 @@ public sealed record CalendarBlockSnapshot(Guid BlockId, long BlockRevision, str
 
 public sealed record GoogleEventLink(Guid LinkId, string Scope, Guid BlockId, long Revision, string Subject, string ClientId,
     string CalendarId, string CalendarName, string Proof, string EventId, GoogleLinkState State,
-    CalendarBlockSnapshot Desired, CalendarBlockSnapshot? Published, string ETag, string Problem, GoogleEventReview? Review = null)
+    CalendarBlockSnapshot Desired, CalendarBlockSnapshot? Published, string ETag, string Problem, GoogleEventReview? Review = null, GoogleChangeNotice? Notice = null)
 {
     public bool Pending => State is GoogleLinkState.PendingCreate or GoogleLinkState.PendingUpdate or GoogleLinkState.PendingDelete;
-    public string Label => $"{Desired.Title} · {State} · {CalendarName}";
-    public string Details => $"{State}\nCalendar: {CalendarName}\nCaptured start: {Desired.StartUtc:u}\nCaptured end: {Desired.EndUtc:u}\nLast acknowledged local revision: {Published?.BlockRevision.ToString() ?? "None"}\nCaptured operation revision: {Desired.BlockRevision}\n{Problem}";
+    public string Label => $"{Desired.Title} · {State} · {CalendarName}" + (Notice is null ? "" : " · Google change detected");
+    public string Details => $"{State}\nCalendar: {CalendarName}\nCaptured start: {Desired.StartUtc:u}\nCaptured end: {Desired.EndUtc:u}\nLast acknowledged local revision: {Published?.BlockRevision.ToString() ?? "None"}\nCaptured operation revision: {Desired.BlockRevision}\n{Problem}\n{Notice?.Message}";
     public override string ToString() => "Google event link";
 }

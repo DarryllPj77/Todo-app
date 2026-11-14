@@ -33,7 +33,7 @@ public sealed partial class SqliteCalendarStore
             if (existing.State != GoogleLinkState.Linked) throw new ArgumentException("Retry/review the existing operation before publishing another version.");
             if (existing.Subject != subject || existing.ClientId != clientId || existing.CalendarId != calendarId)
                 throw new ArgumentException("This block is linked to another Google account/client/calendar. Delete that linked event before changing its destination.");
-            link = existing with { Revision = existing.Revision + 1, Desired = CalendarBlockSnapshot.From(block), State = GoogleLinkState.PendingUpdate, Problem = "", Review = null };
+            link = existing with { Revision = existing.Revision + 1, Desired = CalendarBlockSnapshot.From(block), State = GoogleLinkState.PendingUpdate, Problem = "", Review = null, Notice = null };
         }
         WriteLink(connection, transaction, link); return link;
     });
@@ -43,7 +43,7 @@ public sealed partial class SqliteCalendarStore
         var current = ReadLinks(connection, transaction, scope).SingleOrDefault(l => l.BlockId == blockId && l.Revision == expectedRevision)
             ?? throw new CalendarConflictException();
         if (current.State != GoogleLinkState.Linked) throw new ArgumentException("Only a reviewed, linked event can be deleted. Retry pending work or review the conflict first.");
-        var link = current with { Revision = current.Revision + 1, State = GoogleLinkState.PendingDelete, Problem = "", Review = null };
+        var link = current with { Revision = current.Revision + 1, State = GoogleLinkState.PendingDelete, Problem = "", Review = null, Notice = null };
         WriteLink(connection, transaction, link); return link;
     });
 
@@ -56,7 +56,7 @@ public sealed partial class SqliteCalendarStore
             || state == GoogleLinkState.Linked && expected.State == GoogleLinkState.PendingDelete
             || state == GoogleLinkState.Linked && string.IsNullOrWhiteSpace(etag)) throw new ArgumentException("Invalid calendar operation transition.");
         var next = current with { Revision = checked(current.Revision + 1), State = state, ETag = etag,
-            Published = state == GoogleLinkState.Linked ? current.Desired : current.Published, Problem = problem, Review = null };
+            Published = state == GoogleLinkState.Linked ? current.Desired : current.Published, Problem = problem, Review = null, Notice = null };
         WriteLink(connection, transaction, next); return next;
     });
 
@@ -76,7 +76,9 @@ public sealed partial class SqliteCalendarStore
                 || link.ETag is null || link.ETag.Length > 1024 || link.ETag.Any(char.IsControl)
                 || link.State is GoogleLinkState.Linked or GoogleLinkState.PendingDelete && (link.Published is null || link.ETag.Length == 0)
                 || link.State == GoogleLinkState.PendingUpdate && link.ETag.Length == 0
-                || link.Review is { } review && !ValidReview(review, link))
+                || link.Review is { } review && !ValidReview(review, link)
+                || link.Notice is { } notice && (!Enum.IsDefined(notice.Kind) || notice.DetectedUtc.Offset != TimeSpan.Zero
+                    || notice.ETag is null || notice.ETag.Length > 1024 || notice.ETag.Any(char.IsControl) || notice.Message is null || notice.Message.Length > 1024))
                 throw new InvalidDataException("Invalid Google link; nothing was reset.");
             result.Add(link);
         }

@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 13D.1 reviewed Google reconciliation is implemented: persisted side-by-side snapshots, explicit adoption/local push/remote-deletion acceptance/local detach, fresh-version checks and transactional overlap-safe block/link updates. Source tasks are unchanged. Phase 13D.2 incremental cursor/opt-in automation work, live Google/native acceptance and mobile OAuth remain open. See GOOGLE_RECONCILIATION.md.
+Proceed one phase at a time after review. Phase 13D.2 cursors and opt-in read-only Google monitoring are implemented: atomic complete-page cursor/notices, reset/backoff, protected pending intent and page-active checks. Provider writes/adoption remain explicit reviewed actions; no unattended mutation/OS background job is enabled. Live Google/native/mobile/release acceptance stays open. Next planned feature is Phase 14 location reminders, beginning with supported-platform/privacy design. See GOOGLE_MONITORING.md.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -256,7 +256,8 @@ A saved view remains a device-local query definition. Focus history is also devi
 - [ ] **13C provider/native acceptance:** actual Google listing/writes/restart/retry/conditional conflict behavior, two-window/session races and native layout remain open. No live Google account was modified during implementation.
 - [x] **13D.1 - Reviewed reconciliation:** schema-3 persisted Google/local reviews, title/time field policy, explicit adoption/conditional local push/deletion acceptance/local detach, stale review/session guards, transactional overlap/CAS checks, orphan and exact-UTC/DST handling. Twenty-five new review cases pass; see GOOGLE_RECONCILIATION.md.
 - [ ] **13D.1 provider/native acceptance:** real Google review/resolution/races, native selection/confirmations/accessibility and earlier platform/storage acceptance remain open.
-- [ ] **13D.2 - Incremental cursors and opt-in automation:** bounded collection pagination, durable cursor advancement/reset, preserved pending intent and explicit automation policy. No background synchronization is enabled by 13D.1.
+- [x] **13D.2 - Incremental cursors and opt-in monitoring:** schema-4 bound cursor/opt-in profiles, bounded full/incremental pages, atomic cursor/notices with cohort CAS, 410 full reset, backoff/Retry-After/pause, authoritative local opt-out and page-active read-only checks. Twenty-four new cases pass; see GOOGLE_MONITORING.md.
+- [ ] **13D.2 provider/native acceptance:** actual Google pagination/reset/access/rate-limit behavior, page/window/network lifecycle, privacy/unlinked payload handling and earlier gates remain open. No automatic provider publishing/adoption/deletion is enabled.
 
 ICS import remains a separate snapshot exchange and is not adopted as a provider link. OAuth and explicit provider links are implemented separately; task completion and automatic synchronization are not inferred. Provider-to-local block adoption now requires an explicit reviewed choice. Phase 13 remains open.
 

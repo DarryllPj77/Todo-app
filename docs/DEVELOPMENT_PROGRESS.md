@@ -4,7 +4,7 @@ Last updated: **2026-11-14 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 13D.1 reviewed Google reconciliation implemented; provider/native acceptance pending.** Added persisted side-by-side reviews, explicit Google adoption/local push/deletion acceptance/local detach, provider/local version rechecks and transactional overlap-safe block/link changes. Source task fields remain unchanged. calendar.db3 upgrades to schema 3, preserving data. Full regression: **505 passed, 0 failed, 0 skipped** (446 portable and **59 PostgreSQL facts**); Windows solution/XAML build has **0 warnings/errors**. Phase 13D.2 cursors/opt-in automation and earlier provider/native/mobile acceptance remain open. No live Google account was modified.
+**Phase 13D.2 Google cursors/opt-in monitoring implemented; provider/native acceptance pending.** Added schema-4 identity-bound monitor profiles, bounded full/incremental reads, atomic cursor/notices with cohort CAS, 410 reset, persisted backoff/Retry-After/pause, authoritative local disable and active-page read-only checks. Pending operations and local blocks remain intact; no automatic provider mutation/adoption runs. All **529 tests passed, 0 failed, 0 skipped** (470 portable, **59 PostgreSQL facts**); final Windows solution/XAML build has **0 warnings/errors**. Actual Google/page lifecycle/mobile and earlier acceptance remain open.
 
 ## Completed work
 
@@ -203,11 +203,11 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 
 ## Next task
 
-Follow GOOGLE_RECONCILIATION.md with a real Google test calendar for native review/resolution/stale-window/confirmation/restart acceptance. Next implementation is Phase 13D.2 incremental cursors and opt-in automation policy, preserving existing pending intent; no background sync is enabled now. Earlier Google, SecureStorage, mobile and release gates remain open.
+Follow GOOGLE_MONITORING.md with a configured Google test calendar for real full/incremental/reset, privacy, backoff and page/window lifecycle acceptance; complete earlier Google/SecureStorage/mobile/release gates. Next planned feature is Phase 14 location reminders, beginning with supported-platform/privacy design. Provider writes and local adoption remain explicit reviewed choices; no unattended mutation is enabled.
 
 ## What to learn now
 
-Trace a displayed local/provider review through a confirmed choice, fresh version checks and an atomic local block/link transaction. Distinguish calendar block adoption from source task mutation, point-in-time provider reads from cross-system transactions, and local detach from remote deletion. See LEARNINGS.md and GOOGLE_RECONCILIATION.md.
+Trace complete pages into one cursor/notices transaction, and compare the same active link cohort before acknowledging it. Distinguish remote scan reset from local pending intent, read-only opt-in detection from automatic conflict resolution, and durable retry delay from a background job. See LEARNINGS.md and GOOGLE_MONITORING.md.
 
 ## Phase 12G verification and delivery
 
@@ -242,4 +242,11 @@ Trace a displayed local/provider review through a confirmed choice, fresh versio
 - Added 25 review cases; all 95 targeted calendar/OAuth/reconciliation checks pass. Full regression: 505 passed, 0 skipped (446 portable, 59 PostgreSQL). Final Windows solution/XAML build: 0 warnings/errors. Google HTTP is mocked; no provider/native automation was performed.
 - calendar.db3 upgrades from 2 to 3 without resetting blocks/links. Tests cover persisted review/read-only snapshots, atomic adoption/overlap rollback, stale local/provider/replaced-review choices, reviewed conditional push/412/lost reply, missing/reappearing events, unsafe detach, orphan/no resurrection, exact UTC DST and local-year boundary handling, confirmation/logout and pending recovery gates.
 - Local adoption changes only the calendar block title/times and acknowledged link baseline. Source task identity/fields, reminders, focus history and task sync remain unchanged. No background sync or incremental cursor is enabled; that remains 13D.2.
-- Isolated PostgreSQL test databases remaining: 0; repository cluster stopped and installed PostgreSQL service remains running. Phase 13C milestone 0dfcc8b is committed and verified; Phase 13D.1 is uncommitted on main. .vscode/ is excluded; no commit/pull/push/provider write was performed by the assistant.
+- Isolated PostgreSQL test databases remaining: 0; repository cluster stopped and installed PostgreSQL service remains running. Phase 13C milestone 0dfcc8b is committed and verified; Phase 13D.1 was uncommitted at delivery and is now committed as d54cee4 (verified at the start of Phase 13D.2). .vscode/ is excluded; no commit/pull/push/provider write was performed by the assistant.
+
+## Phase 13D.2 verification and delivery
+
+- Added 24 feed/monitor cases; 119 targeted calendar/OAuth/reconciliation/feed checks passed. Full regression: 529 passed, 0 skipped (470 portable and 59 PostgreSQL). Final Windows solution/XAML build: 0 warnings/errors. Google HTTP is mocked; actual Google and native monitor lifecycle acceptance remain open.
+- calendar.db3 upgrades transactionally to schema 4 with monitor profiles and linked-event notices. Tests cover schema preservation, complete pages, stable/escaped cursor queries, partial failure, invalid paging, 410 mid-page/full reset/failure, unlinked data discard, notices/stale reviews, preserved pending intent, cohort/profile races, opt-in/backoff/Retry-After/manual override, auth pause, local disable/opt-out precedence, cancellation/account switching, corrupt metadata and bounds.
+- Opt-in checks operate only while the monitor page/window is active and online. No event publish, adoption, deletion, pending-write retry, task completion or OS background job is automatic. Existing file/protocol/server formats otherwise remain unchanged.
+- PostgreSQL test databases remaining: 0; repository cluster stopped and installed service remains running. Phase 13D.1 milestone d54cee4 is committed/verified. Phase 13D.2 remains uncommitted on main; .vscode/ is excluded. No commit/pull/push/live provider write was performed by the assistant.

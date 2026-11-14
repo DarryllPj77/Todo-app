@@ -80,6 +80,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<GoogleEventLinkService>();
         builder.Services.AddScoped<GoogleEventsViewModel>();
         builder.Services.AddTransient<GoogleEventsPage>();
+        builder.Services.AddSingleton<GoogleCalendarFeedService>();
+        builder.Services.AddScoped<GoogleFeedViewModel>();
+        builder.Services.AddTransient<GoogleFeedPage>();
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();

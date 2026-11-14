@@ -8,7 +8,7 @@ using TodoApp.Maui.Models;
 
 namespace TodoApp.Maui.Services;
 
-public sealed class GoogleCalendarApi(HttpClient http)
+public sealed partial class GoogleCalendarApi(HttpClient http)
 {
     private const string Root = "https://www.googleapis.com/calendar/v3/";
     public async Task<IReadOnlyList<GoogleCalendarChoice>> CalendarsAsync(GoogleGrant grant, Action guard, CancellationToken ct)
@@ -82,9 +82,11 @@ public sealed class GoogleCalendarApi(HttpClient http)
         if (body is not null) request.Content = JsonContent.Create(body);
         var response = await http.SendAsync(request, ct);
         if (response.IsSuccessStatusCode || allowMissing && response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) return response;
-        var status = response.StatusCode; response.Dispose();
+        var status = response.StatusCode;
+        var delay = response.Headers.RetryAfter?.Delta ?? (response.Headers.RetryAfter?.Date is { } at ? at - DateTimeOffset.UtcNow : (TimeSpan?)null);
+        response.Dispose();
         if (status == HttpStatusCode.Unauthorized) throw new GoogleAuthorizationException("Google access expired or was revoked. Check/reconnect the Google connection.", true);
-        throw new GoogleCalendarHttpException(status);
+        throw new GoogleCalendarHttpException(status, delay);
     }
     private static GoogleEventResource ParseEvent(JsonElement json, GoogleEventLink link)
     {

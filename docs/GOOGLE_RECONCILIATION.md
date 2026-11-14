@@ -1,11 +1,11 @@
 # Reviewed Google reconciliation - Phase 13D.1
 
-The Google event-links screen now supports explicit review of a linked/conflicted event and a confirmed choice between local and Google fields. This is manual reconciliation of known links, not a background sync loop. Incremental collection cursors, cursor resets and opt-in automation remain Phase 13D.2. Earlier Google/native/mobile acceptance remains open.
+The Google event-links screen now supports explicit review of a linked/conflicted event and a confirmed choice between local and Google fields. This is manual reconciliation of known links, not a background sync loop. Phase 13D.2 now adds separate cursor/reset handling and opt-in read-only monitoring; see [GOOGLE_MONITORING.md](GOOGLE_MONITORING.md). Automatic provider mutation/adoption remains disabled. Earlier Google/native/mobile acceptance remains open.
 
 ## Try it
 
 1. Follow GOOGLE_CALENDAR.md and GOOGLE_EVENT_LINKS.md to connect Google on Windows and publish a saved SyncedAccount time block into an owned test calendar.
-2. Rebuild using `powershell -ExecutionPolicy Bypass -File .\scripts\Run-Windows.ps1` after closing older builds that lock normal output. calendar.db3 upgrades transactionally to schema 3, preserving blocks/links. Older clients refuse this version; no server migration is needed.
+2. Rebuild using `powershell -ExecutionPolicy Bypass -File .\scripts\Run-Windows.ps1` after closing older builds that lock normal output. calendar.db3 now upgrades transactionally to schema 4 (schema 3 introduced reviews), preserving blocks/links. Older clients refuse the newer version; no server migration is needed.
 3. Change the linked event's title/time in Google Calendar. In **Tools > Google event links**, refresh local links, select the Linked/Conflict row and choose **Load Google / local review**.
 4. Inspect the displayed local block and Google snapshot, including their UTC ranges and review timestamp. Loading a review saves comparison metadata but does not change either calendar version. Pending operations must first be reconciled through the existing confirmed Retry action.
 5. Choose one of the following explicit resolutions. Each confirmation includes the saved review; provider/local versions are checked again before applying it.
@@ -48,7 +48,7 @@ The confirmation states that the remote event may remain and a later publish may
 
 calendar.db3 schema 3 adds optional review JSON and Detached-state support. The 2-to-3 upgrade is additive; existing pending/linked snapshots remain intact. Staging a publish/delete or completing a pending operation clears its stale review. Invalid/newer data fails without reset. OAuth credentials remain in SecureStorage, not review JSON. Other local files, server migrations and task-sync protocol versions are unchanged.
 
-This increment GETs a specifically selected, already known event ID. It does not scan all calendar events, import unlinked events, store `nextSyncToken`, subscribe to push notifications, or poll in the background. A future opt-in collection synchronizer must persist a cursor only after a complete page set and handle invalid cursors without losing local links/pending intent; see [Google incremental synchronization](https://developers.google.com/workspace/calendar/api/guides/sync). Automatic adoption/deletion must not be enabled merely because manual review is implemented.
+The reviewed resolution path still GETs a specifically selected known event. Phase 13D.2 adds a separate cursor-based collection checker that flags existing links only; see [GOOGLE_MONITORING.md](GOOGLE_MONITORING.md). It advances cursors after complete pages and handles invalid cursors without losing local pending intent. There is no unlinked import, push subscription or unattended mutation/adoption.
 
 ## Native/provider acceptance still required
 

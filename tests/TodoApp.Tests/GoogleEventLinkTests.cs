@@ -266,6 +266,7 @@ public sealed partial class GoogleEventLinkTests : IDisposable
         public List<Request> Requests { get; } = new();
         public bool LoseCreate, LosePatch, LoseDelete, PreconditionFailure, HideNextGet, RepeatPages;
         public Func<Task>? AfterCreate;
+        public Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? CollectionResponse;
         public bool Owner = true;
         public int Creates, Patches, Deletes;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -277,6 +278,9 @@ public sealed partial class GoogleEventLinkTests : IDisposable
             if (path.EndsWith("/calendarList")) return ClientHarness.Json(new { nextPageToken = RepeatPages ? "repeat" : null, items = new[] {
                 new { id = CalendarId, summary = "Work", accessRole = "owner" }, new { id = "read-only", summary = "Read", accessRole = "reader" } } });
             if (path.Contains("/calendarList/")) return ClientHarness.Json(new { id = path[(path.LastIndexOf('/') + 1)..], summary = "Work", accessRole = Owner ? "owner" : "reader" });
+            if (request.Method == HttpMethod.Get && path.EndsWith("/events")) return CollectionResponse is not null
+                ? await CollectionResponse(request, cancellationToken)
+                : ClientHarness.Json(new { accessRole = "owner", items = Events.Values.ToArray(), nextSyncToken = "cursor-default" });
             if (request.Method == HttpMethod.Post)
             {
                 var data = JsonNode.Parse(body)!.AsObject(); var id = data["id"]!.GetValue<string>();

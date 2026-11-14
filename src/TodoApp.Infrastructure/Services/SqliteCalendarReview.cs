@@ -15,7 +15,7 @@ public sealed partial class SqliteCalendarStore
             if (actual != local) throw new CalendarConflictException();
             var review = new GoogleEventReview(Guid.NewGuid(), (clock ?? TimeProvider.System).GetUtcNow(), kind, actual, remote, problem);
             if (!ValidReview(review, current)) throw new ArgumentException("The Google event cannot be represented by a safe review.");
-            var next = current with { Revision = checked(current.Revision + 1), Review = review };
+            var next = current with { Revision = checked(current.Revision + 1), Review = review, Notice = null };
             WriteLink(connection, transaction, next); return next;
         });
 
@@ -26,7 +26,7 @@ public sealed partial class SqliteCalendarStore
         if (review.Kind != GoogleReviewKind.Present || review.Remote is null || review.Local is null)
             throw new ArgumentException("A live Google event and an unchanged local block are required to keep local fields.");
         var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.PendingUpdate,
-            Desired = CalendarBlockSnapshot.From(review.Local), ETag = review.Remote.ETag, Review = null, Problem = "" };
+            Desired = CalendarBlockSnapshot.From(review.Local), ETag = review.Remote.ETag, Review = null, Problem = "", Notice = null };
         WriteLink(connection, transaction, next); return next;
     });
 
@@ -61,7 +61,7 @@ public sealed partial class SqliteCalendarStore
         }
         else baseline = new(current.BlockId, current.Desired.BlockRevision, remote.Title, remote.StartUtc, remote.EndUtc);
         var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.Linked,
-            Desired = baseline, Published = baseline, ETag = remote.ETag, Review = null, Problem = "" };
+            Desired = baseline, Published = baseline, ETag = remote.ETag, Review = null, Problem = "", Notice = null };
         WriteLink(connection, transaction, next); return next;
     });
 
@@ -69,7 +69,7 @@ public sealed partial class SqliteCalendarStore
     {
         var current = RequireReview(connection, transaction, expected);
         if (current.Review!.Kind != GoogleReviewKind.Missing) throw new ArgumentException("Review the missing Google event before accepting deletion.");
-        var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.Deleted, Review = null,
+        var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.Deleted, Review = null, Notice = null,
             Problem = "Reviewed Google deletion accepted. Local block/task retained; a new publish needs explicit confirmation." };
         WriteLink(connection, transaction, next); return next;
     });
@@ -78,7 +78,7 @@ public sealed partial class SqliteCalendarStore
     {
         var current = RequireLink(connection, transaction, expected);
         if (current.State is not (GoogleLinkState.Linked or GoogleLinkState.Conflict)) throw new ArgumentException("Retry pending work before detaching; closed links are already inactive.");
-        var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.Detached, Review = null,
+        var next = current with { Revision = checked(current.Revision + 1), State = GoogleLinkState.Detached, Review = null, Notice = null,
             Problem = "Detached locally only. The Google event may remain; remove it separately if needed. A new publish may create another event." };
         WriteLink(connection, transaction, next); return next;
     });

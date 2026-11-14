@@ -69,7 +69,7 @@ public sealed partial class SqliteCalendarStore(string path, TimeProvider? clock
         using var transaction = connection.BeginTransaction(deferred: false);
         using var schema = connection.CreateCommand(); schema.Transaction = transaction; schema.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(schema.ExecuteScalar());
-        if (version is < 0 or > 3) throw new InvalidDataException("Calendar data requires a compatible app. Nothing was reset.");
+        if (version is < 0 or > 4) throw new InvalidDataException("Calendar data requires a compatible app. Nothing was reset.");
         if (version == 0)
         {
             schema.CommandText = """
@@ -93,6 +93,17 @@ public sealed partial class SqliteCalendarStore(string path, TimeProvider? clock
         {
             // Additive JSON review fields and Detached state require the newer reader.
             schema.CommandText = "PRAGMA user_version=3;"; schema.ExecuteNonQuery();
+        }
+        if (version < 4)
+        {
+            schema.CommandText = """
+                CREATE TABLE IF NOT EXISTS GoogleCalendarFeeds (
+                    Scope TEXT NOT NULL, Subject TEXT NOT NULL, ClientId TEXT NOT NULL, CalendarId TEXT NOT NULL,
+                    Revision INTEGER NOT NULL CHECK(Revision>0), Data TEXT NOT NULL,
+                    PRIMARY KEY (Scope,Subject,ClientId,CalendarId));
+                PRAGMA user_version=4;
+                """;
+            schema.ExecuteNonQuery();
         }
         var result = action(connection, transaction, scope); transaction.Commit(); return result;
     });
