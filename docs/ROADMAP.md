@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 14B.3 implements Android background arrivals using the existing bounded device run, Play services, staged precise/background permissions and explicit restart invalidation. A standalone debug APK now builds alongside Windows. Real phone/Windows activation, Apple support, package resource warnings and earlier Google/release acceptance remain open. Next: Phase 14B.4 Apple support and native/device acceptance. See ANDROID_GEOFENCES.md.
+Proceed one phase at a time after review. Phase 15A implements Android launcher quick capture after the user chose Android over the pending Apple increment. Device capture and account-scoped offline queueing reuse domain validation with transactional retry receipts. See ANDROID_QUICK_CAPTURE.md. Phase 14B.4 Apple support, Windows/Android native acceptance, earlier Google acceptance and release gates remain pending. Next Android increment: select and implement one additional capture surface after phone acceptance of 15A.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -301,7 +301,10 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 
 **Completion checklist:**
 
-- [ ] Each enabled capture surface handles offline work and authentication safely.
+- [x] **15A - Android launcher shortcut implementation:** compact explicit Save/Cancel, device default, selected account offline queue, shared validation, transactional retry receipts and tests. See ANDROID_QUICK_CAPTURE.md.
+- [ ] **15A device acceptance:** verify launcher/cold/warm activation, interrupted saves, editor stack, accessibility and account/offline behavior on a phone.
+- [ ] **15B - Additional capture surfaces:** choose and implement one at a time; widgets, share targets, Windows hotkeys and browser extension remain unimplemented.
+- [ ] Each enabled capture surface handles offline work and authentication safely on its target devices.
 
 ## Phase 16 — Release hardening
 

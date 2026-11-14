@@ -67,6 +67,31 @@ public sealed class SqliteLocalTaskService : ILocalTaskService
         }, cancellationToken);
     }
 
+    public Task<QuickCaptureResult> CaptureAsync(Guid captureId, QuickCaptureDraft draft,
+        CancellationToken cancellationToken = default) => ExecuteAsync((connection, transaction, token) =>
+    {
+        if (captureId == Guid.Empty) throw new ArgumentException("A capture must have an ID.");
+        ArgumentNullException.ThrowIfNull(draft);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Fingerprint FROM QuickCaptureReceipts WHERE Id=$id;";
+        command.Parameters.AddWithValue("$id", captureId.ToString());
+        if (command.ExecuteScalar() is string fingerprint)
+        {
+            if (fingerprint != draft.Fingerprint) throw new InvalidOperationException("This capture was already used for a different draft.");
+            return new QuickCaptureResult(captureId, true);
+        }
+        // Receipts survive deletion: a retry must never resurrect a removed task.
+        command.CommandText = "SELECT count(*) FROM QuickCaptureReceipts;";
+        if (Convert.ToInt64(command.ExecuteScalar()) >= 10000)
+            throw new InvalidOperationException("Quick capture storage is full. Use the normal task editor.");
+        SaveTask(connection, transaction, TaskItem.CreateWithId(captureId, draft.Title, draft.Description), insert: true);
+        command.CommandText = "INSERT INTO QuickCaptureReceipts (Id,Fingerprint) VALUES ($id,$fingerprint);";
+        command.Parameters.AddWithValue("$fingerprint", draft.Fingerprint);
+        command.ExecuteNonQuery();
+        return new QuickCaptureResult(captureId, false);
+    }, cancellationToken);
+
     public Task<bool> UpdateAsync(Guid id, TaskDetails details, CancellationToken cancellationToken = default)
     {
         return ExecuteAsync((connection, transaction, token) =>

@@ -27,6 +27,7 @@ public sealed class ReplicaState
 {
     public long Cursor { get; set; }
     public Dictionary<Guid, ReplicaRow> Rows { get; set; } = new();
+    public Dictionary<Guid, string> CaptureReceipts { get; set; } = new();
 }
 
 // A separate file/schema from device-only todoapp.db3. Each transaction saves
@@ -36,6 +37,27 @@ public sealed class SqliteSyncStore(string path)
     public event Func<Task>? Written;
     public static string Partition(string origin, Guid user) => origin + "|" + user.ToString("N");
     public Task<ReplicaState> ReadAsync(string partition) => ExecuteAsync(partition, state => state, false);
+
+    public Task<QuickCaptureResult> CaptureAsync(string partition, Guid captureId, QuickCaptureDraft draft,
+        Action authorize) => ExecuteAsync(partition, state =>
+    {
+        authorize();
+        if (captureId == Guid.Empty) throw new ArgumentException("A capture must have an ID.");
+        ArgumentNullException.ThrowIfNull(draft);
+        if (state.CaptureReceipts.TryGetValue(captureId, out var fingerprint))
+        {
+            if (fingerprint != draft.Fingerprint) throw new InvalidOperationException("This capture was already used for a different draft.");
+            return new QuickCaptureResult(captureId, true);
+        }
+        if (state.CaptureReceipts.Count >= 10000)
+            throw new InvalidOperationException("Quick capture storage is full. Use the normal task editor.");
+        if (state.Rows.ContainsKey(captureId)) throw new InvalidOperationException("This task ID already exists.");
+        var row = new ReplicaRow { Id = captureId, Local = new SyncTaskData(draft.Title, draft.Description) };
+        row.Pending = Mutation(row);
+        state.Rows.Add(captureId, row);
+        state.CaptureReceipts.Add(captureId, draft.Fingerprint);
+        return new QuickCaptureResult(captureId, false);
+    }, beforeCommit: authorize);
 
     public Task QueueAsync(string partition, Guid id, SyncTaskData? data, long? expectedRevision = null, SyncTaskData? expectedLocal = null) => ExecuteAsync(partition, state =>
     {
@@ -253,7 +275,7 @@ public sealed class SqliteSyncStore(string path)
             throw new ArgumentException("Category must be at most 100 characters.");
     }
 
-    private async Task<T> ExecuteAsync<T>(string partition, Func<ReplicaState, T> action, bool write = true)
+    private async Task<T> ExecuteAsync<T>(string partition, Func<ReplicaState, T> action, bool write = true, Action? beforeCommit = null)
     {
         var result = await Task.Run(() =>
         {
@@ -267,8 +289,8 @@ public sealed class SqliteSyncStore(string path)
             command.Transaction = transaction;
             command.CommandText = "PRAGMA user_version;";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version > 6) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
-            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=6;";
+            if (version > 7) throw new InvalidDataException("This sync cache needs a newer app. No data was reset.");
+            command.CommandText = "CREATE TABLE IF NOT EXISTS ReplicaPartitions (Partition TEXT PRIMARY KEY, State TEXT NOT NULL); PRAGMA user_version=7;";
             command.ExecuteNonQuery();
             command.CommandText = "SELECT State FROM ReplicaPartitions WHERE Partition=$partition;";
             command.Parameters.AddWithValue("$partition", partition);
@@ -282,6 +304,7 @@ public sealed class SqliteSyncStore(string path)
                 command.Parameters.AddWithValue("$state", JsonSerializer.Serialize(state));
                 command.ExecuteNonQuery();
             }
+            beforeCommit?.Invoke();
             transaction.Commit();
             return operationResult;
         });

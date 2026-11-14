@@ -1,5 +1,12 @@
 # Architecture
 
+## Android quick capture (Phase 15A)
+
+The static launcher shortcut opens an exported native QuickCaptureActivity with a fixed action and separate task affinity. It ignores all external payloads and does not create the normal MAUI window or attach its runtimes. A portable QuickCaptureViewModel coordinates explicit Save/Cancel, validation, frozen retries and duplicate-submit prevention; QuickCaptureService selects device storage or pins the current origin/user/session generation for the existing account cache. Device-only capture does not restore credentials. Account selection can restore an unverified but unexpired session without HTTP; SyncEngine still verifies before server access. Authorization is checked inside the cache transaction and before commit. No API client/engine is called by capture.
+
+Domain TaskItem rules normalize title/description; normal pending/no-date defaults apply. Each screen owns one random capture/task ID. Device task schema 7 atomically saves task plus hashed receipt; sync schema 7 atomically saves local row, immutable outgoing operation and partition receipt. A matching retry never overwrites later edits or resurrects deletion. Receipts persist independently of task lifetime and have a 10,000-per-scope capacity; no automatic pruning. Drafts are memory-only and not accepted from intents or persisted in Bundles. Existing schema-6 data migrates without reset, while protocol 6 and server migrations remain unchanged. See ANDROID_QUICK_CAPTURE.md for manual use and pending native/accessibility/backup acceptance.
+
+
 ## Android mobile background lifecycle (Phase 14B.3)
 
 AndroidBackgroundGeofencePlatform adapts the existing device-only thirty-minute run to Google Play services. AndroidGeofencePolicy separates notification/location-service/precise/background access states: API 29 has a distinct runtime background step; API 30+ uses an explicit settings action and retry. Registration uses a component/action-bound mutable PendingIntent on API 31+, an inner dwell/outer exit pair, original expiry and no initial native entry trigger.

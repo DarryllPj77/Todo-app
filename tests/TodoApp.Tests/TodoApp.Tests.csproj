@@ -21,6 +21,7 @@
   <!-- These presentation types use only .NET APIs. Compile the actual client
        sources here so behavior tests do not require a native MAUI test host. -->
   <ItemGroup>
+    <Compile Include="..\..\src\TodoApp.Maui\Services\QuickCaptureService.cs" Link="Client\QuickCaptureService.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\LocationTaskCatalog.cs" Link="Client\LocationTaskCatalog.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\INativeGeofencePlatform.cs" Link="Client\INativeGeofencePlatform.cs" />
     <Compile Include="..\..\src\TodoApp.Maui\Services\GeofenceSessionService.cs" Link="Client\GeofenceSessionService.cs" />

@@ -1,5 +1,9 @@
 # Database plan
 
+## Quick capture receipts (Phase 15A)
+
+Device tasks and the account replica now use schema **7**. QuickCaptureReceipts stores device capture/task ID and SHA-256 normalized title/description fingerprint; a receipt and new task commit together. The replica adds CaptureReceipts keyed by capture/task ID inside each origin/user partition, committed with the local row and immutable outgoing operation. Receipts survive task deletion and are bounded to 10,000 per device database/partition; capacity refuses new captures without pruning old receipts. A repeated matching capture confirms the original save without modifying an edited/deleted task. A different payload with the same ID fails. No separate draft database or duplicate plaintext draft is retained. Existing version-6 rows/queues migrate without reset; old app versions reject schema 7. Server migrations remain eight and sync protocol remains 6. See ANDROID_QUICK_CAPTURE.md for recovery/backup and runtime acceptance limits.
+
 ## Android lifecycle reuse (Phase 14B.3)
 
 No schema, migration, credential format or protocol change. Android uses its private app-directory copies of the existing encrypted location/background journal and nonsecret Stop control database. Boot, package update and cold foreground Activity creation invalidate a saved run by advancing the blocked generation; cleanup applies only if that generation is still current. Receiver process creation alone does not revoke authorized background work. No sampled location history or account cache/token is added. Native Google Play services receives bounded center/radius registrations outside application encryption; permission/backup/key-recovery/device behavior remains acceptance. See ANDROID_GEOFENCES.md.
@@ -22,7 +26,7 @@ Writes use immediate transactions and expected revisions; capacity is 100 places
 
 ## Current state
 
-Device tasks use todoapp.db3 schema **6** with recurrence JSON plus existing tags/parent/prerequisites/planning. The API has eight migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, AddTaskDependencies, AddTaskPlanning, and AddTaskRecurrence. The last adds Tasks.Recurrence text and bounded SyncRecords.RecurrenceFloor bigint. sync.db3 uses schema **6**, views.db3 remains **3**, reminders.db3 **1**. Existing data/counters/queues/receipts/definitions remain. Only generated test databases were migrated. Follow RECURRENCE.md for coordinated API/client upgrade.
+Device tasks use todoapp.db3 schema **7** with recurrence JSON plus existing tags/parent/prerequisites/planning. The API has eight migrations: InitialCreate, AddAuthenticationOwnership, AddTaskSynchronization, AddTaskTags, AddTaskHierarchy, AddTaskDependencies, AddTaskPlanning, and AddTaskRecurrence. The last adds Tasks.Recurrence text and bounded SyncRecords.RecurrenceFloor bigint. sync.db3 uses schema **7**, views.db3 remains **3**, reminders.db3 **1**. Existing data/counters/queues/receipts/definitions remain. Only generated test databases were migrated. Follow RECURRENCE.md for coordinated API/client upgrade.
 
 ## Initial entities and relationship
 
@@ -50,7 +54,7 @@ SQLite configures and tests category deletion with ON DELETE SET NULL, preservin
 
 ## SQLite: local device storage
 
-The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 6 when absent (initial creation followed by explicit tag/parent/dependency/planning/recurrence upgrades). SQLite data/journal files are ignored by Git. Windows compilation passes; mobile packaging remains unverified.
+The selected [Microsoft.Data.Sqlite 10.0.15 package](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.15) restores successfully against net10.0 and bundles native SQLite. No separate database-server installation is needed. MAUI selects `Path.Combine(FileSystem.AppDataDirectory, "todoapp.db3")`, outside the checkout; tests supply unique temporary paths. Opening the task list creates the directory/file and current schema version 7 when absent (initial creation followed by explicit tag/parent/dependency/planning/recurrence/capture-receipt upgrades). SQLite data/journal files are ignored by Git. Windows and Android compilation/package checks are recorded in DEVELOPMENT_PROGRESS.md; phone runtime acceptance remains pending.
 
 The editor keeps title/description/category/date/priority fields separate from loaded entities until Save. It matches an entered category name case-insensitively against categories visible among existing tasks; new names create a new category on save. Blank category clears the association. Empty stored categories have no browsing/management UI yet. Cancel/Back discards fields without a write. Completion is changed from the list separately, and deleting a task requires a native confirmation.
 
@@ -75,9 +79,9 @@ Microsoft.Data.Sqlite's async APIs run synchronously ([official limitation](http
 
 ### Schema version and upgrade strategy
 
-`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2), parent (2-to-3), prerequisite (3-to-4), planning (4-to-5), and recurrence (5-to-6) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 6 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
+`PRAGMA user_version` is 0 for a new SQLite file. SqliteTaskDatabase creates the initial tables/index, then applies the explicit tag (1-to-2), parent (2-to-3), prerequisite (3-to-4), planning (4-to-5), recurrence (5-to-6), and capture-receipt (6-to-7) upgrades in one transaction. Existing supported files only receive missing upgrades. A version above 7 is rejected, preserving that database's version/data. Existing conflicting unversioned tables produce an error rather than a reset.
 
-Initialization and all five incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
+Initialization and all six incremental upgrades are tested with real earlier rows. Future schema changes need explicit incremental migrations, supported-version updates, and tests against earlier schemas with real rows. Keep each migration transactional and advance user_version only on success. Never drop/reset user data as an upgrade shortcut. Server EF migrations are a separate mechanism.
 
 ## PostgreSQL: server storage
 

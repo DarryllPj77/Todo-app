@@ -33,6 +33,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISecureTokenStore>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.Tokens() : new SecureTokenStore());
         builder.Services.AddSingleton<IClientSettings>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.Settings() : new ClientSettings());
         builder.Services.AddSingleton<ClientSession>();
+        builder.Services.AddTransient<QuickCaptureService>();
+        builder.Services.AddTransient<QuickCaptureViewModel>();
         builder.Services.AddSingleton(_ => new HttpClient(WorkspacePreview.Enabled ? new WorkspacePreview.OfflineHandler() : new HttpClientHandler { AllowAutoRedirect = false })
         {
             Timeout = TimeSpan.FromSeconds(15)

@@ -45,7 +45,7 @@ internal sealed class SqliteTaskDatabase
         command.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(command.ExecuteScalar());
 
-        if (version > 6)
+        if (version > 7)
         {
             throw new InvalidOperationException("This database was created by a newer app. Update the app before opening it.");
         }
@@ -106,6 +106,15 @@ internal sealed class SqliteTaskDatabase
         if (version < 6)
         {
             command.CommandText = "ALTER TABLE TaskItems ADD COLUMN Recurrence TEXT NOT NULL DEFAULT '{\"Rule\":null,\"Occurrence\":0,\"RuleStart\":0}'; PRAGMA user_version=6;";
+            command.ExecuteNonQuery();
+        }
+
+        if (version < 7)
+        {
+            command.CommandText = """
+                CREATE TABLE QuickCaptureReceipts (Id TEXT PRIMARY KEY, Fingerprint TEXT NOT NULL);
+                PRAGMA user_version=7;
+                """;
             command.ExecuteNonQuery();
         }
 

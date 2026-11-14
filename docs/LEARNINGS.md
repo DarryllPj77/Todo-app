@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 15A - A capture surface needs a stable save identity
+
+**Term:** Transactional capture receipt. **Definition:** Commit a stable capture ID and payload fingerprint with the task or account outbox operation. **Short example:** Save succeeds but the screen closes before confirmation; retrying that capture confirms the receipt without creating another task, overwriting a later edit or resurrecting a deletion.
+
+**Term:** Pinned destination. **Definition:** Review and retain one origin/account/session generation before submitting a draft. **Short example:** Sign-out while SQLite waits causes the selected account save to fail instead of writing into whichever account signs in next. Device capture does not need a session.
+
+**Term:** Activation boundary. **Definition:** Treat exported native entry points as untrusted input even when a launcher normally invokes them. **Short example:** The Android shortcut has generic metadata, ignores extras and only opens an empty form; incoming intents cannot select an account or auto-save.
+
+
 ## Phase 14B.3 - Mobile access and lifecycle are separate decisions
 
 **Term:** Staged permission. **Definition:** Request only the next platform-supported access step after contextual opt-in. **Example:** Precise foreground location comes before Android 10 background permission; Android 11+ requires a separate settings visit and explicit Start retry. Approximate permission alone cannot enable this geofence adapter.
