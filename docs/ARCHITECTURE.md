@@ -1,5 +1,12 @@
 # Architecture
 
+## Configuration-aware Android evaluation (Phase 16C)
+
+Build-Android now selects Debug or Release (default Debug), uses separate ignored roots, forces SDK development signing and disables desktop host publish-RID inference for the Android target. SDK Release partial trimming/profiled AOT/Mono/assembly-store/reflection-JSON defaults remain enabled. Each successful build records evaluated settings tied to APK SHA-256, then invokes the selected audit. Release uses a short output root to avoid native AAPT Windows path-length failures.
+
+The audit distinguishes Debug true from Release absent/false debug flags, checks per-profile nonempty assembly payloads, binds Release properties to the same artifact and records public signer certificate SHA-256. Optional expected fingerprint mismatch fails; matching a supplied identity is not approval. Debug uses individual ELF-wrapped assemblies, while Release uses compressed Mono stores plus app/domain/infrastructure AOT modules. Reports remain ReleaseReady=false; store contents and native runtime flows are not certified. No app logic, production key, server or schema change is needed. See ANDROID_RELEASE_EVALUATION.md.
+
+
 ## Android managed-data and network policy (Phase 16B)
 
 AndroidManifest now explicitly disables managed backup and cleartext and references versioned backup/extraction/network resources. Legacy API-23 rules exclude all five available domains; xml-v24 adds device-protected domains. API-31+ extraction rules separately exclude all nine domains for cloud and Android device transfer. No custom backup agent, selective restore, new storage/schema or key migration is added. Existing installed data is untouched, but device-only/unsent data has no automatic recovery path; previous backups/OEM/newer cross-platform tools are outside the static guarantee.

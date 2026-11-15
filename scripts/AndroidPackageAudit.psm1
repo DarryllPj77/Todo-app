@@ -49,7 +49,8 @@ function Get-AndroidNode([xml]$Document, [string]$XPath) {
     return ,$nodes[0]
 }
 
-function Assert-AndroidManifest([xml]$Manifest) {
+function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug') {
+    $Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug' }
     $package = 'com.companyname.todoapp.maui'
     $root = Get-AndroidNode $Manifest '/manifest'
     Assert-AndroidValue $root.GetAttribute('package') $package 'Unexpected APK application ID.'
@@ -75,7 +76,9 @@ function Assert-AndroidManifest([xml]$Manifest) {
         if ($app.GetAttribute($attribute) -cnotmatch '^@0x[0-9a-f]+$') { throw 'Backup/transport configuration reference is missing.' }
     }
     if ($app.HasAttribute('backupAgent')) { throw 'A custom backup agent requires a separate reviewed policy.' }
-    Assert-AndroidValue $app.GetAttribute('debuggable') 'true' 'This audit accepts only the debug development baseline, not a release candidate.'
+    if ($Configuration -eq 'Debug') {
+        Assert-AndroidValue $app.GetAttribute('debuggable') 'true' 'Debug audit requires an explicitly debuggable artifact.'
+    } elseif ($app.GetAttribute('debuggable') -cnotin @('', 'false')) { throw 'Release evaluation must not be debuggable.' }
     $main = @($app.SelectNodes('activity') | Where-Object { $_.GetAttribute('name') -cmatch '^crc[0-9a-f]+\.MainActivity$' })
     if ($main.Count -ne 1) { throw 'Expected one generated main Activity.' }
     Assert-AndroidNames @($main[0].SelectNodes('intent-filter/action') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.action.MAIN') 'Main launcher action changed.'
@@ -125,7 +128,7 @@ function Assert-AndroidManifest([xml]$Manifest) {
     Assert-AndroidValue $lifecycle.GetAttribute('exported') 'true' 'Lifecycle receiver no longer exported.'
     return [pscustomobject]@{
         Package = $package; VersionCode = $root.GetAttribute('versionCode'); VersionName = $root.GetAttribute('versionName')
-        MinSdk = 21; TargetSdk = 36; Debuggable = $true
+        MinSdk = 21; TargetSdk = 36; Configuration = $Configuration; Debuggable = ($Configuration -eq 'Debug')
         AllowBackup = $app.GetAttribute('allowBackup')
         FullBackupContent = $app.GetAttribute('fullBackupContent')
         DataExtractionRules = $app.GetAttribute('dataExtractionRules')
@@ -183,4 +186,46 @@ function Assert-AndroidNetworkRules([xml]$Rules) {
     Assert-AndroidValue $certificates.SelectNodes('*').Count 0 'Unexpected nested certificate rule.'
 }
 
-Export-ModuleMember -Function ConvertFrom-AaptXmlTree, Get-AndroidNode, Assert-AndroidValue, Assert-AndroidNames, Assert-AndroidManifest, Assert-AndroidBackupRules, Assert-AndroidNetworkRules
+function Get-AndroidSignerFingerprint([string[]]$Lines, [string]$ExpectedSha256) {
+    $digests = @($Lines | Where-Object { $_ -cmatch '^Signer #1 certificate SHA-256 digest: [0-9a-fA-F]{64}$' })
+    if ($digests.Count -ne 1) { throw 'Expected exactly one signer certificate SHA-256 digest.' }
+    $fingerprint = ($digests[0] -split ': ', 2)[1].ToUpperInvariant()
+    if ($ExpectedSha256) {
+        if ($ExpectedSha256 -notmatch '^[0-9a-fA-F]{64}$') { throw 'Expected signer fingerprint must contain 64 hexadecimal characters.' }
+        Assert-AndroidValue $fingerprint $ExpectedSha256.ToUpperInvariant() 'Signer certificate does not match the supplied fingerprint.'
+    }
+    return $fingerprint
+}
+
+function Assert-AndroidBuildEvidence($Evidence, [ValidateSet('Debug', 'Release')][string]$Configuration, [string]$ApkSha256) {
+    $Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug' }
+    Assert-AndroidValue $Evidence.Configuration $Configuration 'Build settings configuration does not match the audit.'
+    Assert-AndroidValue $Evidence.ApkSha256 $ApkSha256 'Build settings belong to another APK.'
+    Assert-AndroidValue $Evidence.Properties.AndroidKeyStore 'false' 'Evaluation helper must use development signing.'
+    Assert-AndroidValue $Evidence.Properties.RuntimeIdentifiers 'android-arm64;android-x64' 'Unexpected Android runtime selection.'
+    if ($Configuration -eq 'Release') {
+        foreach ($property in @('RunAOTCompilation', 'AndroidEnableProfiledAot', 'PublishTrimmed', 'AndroidUseAssemblyStore', 'UseMonoRuntime', 'JsonSerializerIsReflectionEnabledByDefault')) {
+            Assert-AndroidValue $Evidence.Properties.$property 'true' 'Release evaluation defaults changed; review build/runtime compatibility.'
+        }
+        Assert-AndroidValue $Evidence.Properties.TrimMode 'partial' 'Release trimming mode changed.'
+    }
+}
+
+function Get-AndroidAssemblyLayout([string[]]$NonEmptyEntries, [ValidateSet('Debug', 'Release')][string]$Configuration) {
+    $required = @()
+    foreach ($abi in @('arm64-v8a', 'x86_64')) {
+        if ($Configuration -eq 'Release') { $required += "lib/$abi/libassemblies.$abi.blob.so" }
+        foreach ($assembly in @('TodoApp.Maui', 'TodoApp.Domain', 'TodoApp.Infrastructure')) {
+            if ($Configuration -eq 'Debug') { $required += "lib/$abi/lib_$assembly.dll.so" }
+            else { $required += "lib/$abi/libaot-$assembly.dll.so" }
+        }
+    }
+    foreach ($entry in $required) {
+        if ($NonEmptyEntries -cnotcontains $entry) { throw 'Required nonempty assembly/AOT payload is missing for the selected configuration/ABI.' }
+    }
+    $format = 'Individual ELF-wrapped app/domain/infrastructure assemblies'
+    if ($Configuration -eq 'Release') { $format = 'Mono assembly-store containers and app/domain/infrastructure AOT modules; individual managed store entries not decoded' }
+    return [pscustomobject]@{ Format = $format; Abis = @('arm64-v8a', 'x86_64'); CheckedEntries = $required }
+}
+
+Export-ModuleMember -Function ConvertFrom-AaptXmlTree, Get-AndroidNode, Assert-AndroidValue, Assert-AndroidNames, Assert-AndroidManifest, Assert-AndroidBackupRules, Assert-AndroidNetworkRules, Get-AndroidSignerFingerprint, Assert-AndroidBuildEvidence, Get-AndroidAssemblyLayout

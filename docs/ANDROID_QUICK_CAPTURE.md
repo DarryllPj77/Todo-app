@@ -63,6 +63,10 @@ Android now excludes app storage from supported managed-backup/Android device-tr
 
 Build-Android.ps1 now automatically runs Test-AndroidPackage.ps1 after debug signing. It checks the actual APK's capture/widget/share resources, native component/permission boundaries, signatures and embedded assemblies and writes ignored .tools/android-audit/debug-report.json. Its success means the development artifact matches the current baseline, not that launcher/phone behavior or release readiness passed. See [ANDROID_RELEASE_READINESS.md](ANDROID_RELEASE_READINESS.md) for commands, failure cases and the open acceptance/recovery matrix.
 
+## Release-mode preparation (Phase 16C)
+
+Build-Android.ps1 -Configuration Release now produces a separate development-signed evaluation APK and audit, without overwriting the Debug output. SDK partial trimming and profiled AOT remain enabled. Use ANDROID_RELEASE_EVALUATION.md for the exact artifact/report paths and mandatory native Release smoke tests; Debug/portable success alone does not prove the trimmed app's capture/navigation/persistence flows. No phone install or production release is performed by this helper.
+
 ## Verification performed
 
 Phase 15C final regression: all 708 existing tests passed with no failures/skips (649 portable, 59 PostgreSQL). The 37 targeted capture cases include 19 new share cases and the earlier 18 capture cases. The Android standalone debug APK and Windows solution compile with zero warnings/errors. APK inspection confirms v1/v2/v3 signatures, embedded assemblies, explicit capture activity/task attributes, its ACTION_SEND/DEFAULT/text/plain filter, preserved launcher metadata and versioned shortcut resources with labels/icon/target. Widget inspection also confirms a nonexported provider with APPWIDGET_UPDATE filter/metadata, packaged button/accessible description, 64dp minimum height, home-screen resizing, zero periodic updates and the generated versioned preview/two-by-one cell hints. apksigner emits AndroidX META-INF/JAR coverage warnings; release packaging remains a separate gate. No native phone/launcher outcome is inferred from these checks.

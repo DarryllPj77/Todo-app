@@ -1,5 +1,10 @@
 # Database plan
 
+## Release evaluation metadata (Phase 16C)
+
+No application storage/schema change. Separate Debug/Release APK reports and build-settings JSON contain artifact hashes, public certificate identity and evaluated compiler/runtime properties only. They do not read or copy app databases/keys/queues and do not implement restore/export. Reflection-based JSON remains enabled in the selected Release defaults, but trimmed/AOT persistence and installed-upgrade behavior still require actual phone acceptance; see ANDROID_RELEASE_EVALUATION.md.
+
+
 ## Android backup exclusion (Phase 16B)
 
 Android now requests no automatic managed backup/Android device transfer of app-storage domains: tasks, account outbox/receipts, preferences/protected ciphertext and encrypted local journals stay local. Legacy and modern rules are explicit and APK-audited. No database/key is opened, cleared, rewritten or migrated by these XML edits; same-identity installed upgrades retain data. Uninstall/clear-data can lose device-only/unsent data, with no automatic export/restore feature. Previous cloud copies, user exports, server/provider data and OEM/newer transfer behavior are not erased or certified. Actual upgrade/restore/lost-key tests remain pending. Existing schemas, eight EF migrations and protocol 6 remain unchanged; see ANDROID_DATA_POLICY.md.

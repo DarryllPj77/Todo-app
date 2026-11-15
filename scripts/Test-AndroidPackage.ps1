@@ -1,14 +1,21 @@
 param(
     [string]$ApkPath,
-    [string]$ReportPath
+    [string]$ReportPath,
+    [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug',
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$ExpectedSignerSha256,
+    [string]$BuildSettingsPath
 )
 
 $ErrorActionPreference = 'Stop'
+$Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug' }
 Set-StrictMode -Version 2
 Import-Module (Join-Path $PSScriptRoot 'AndroidPackageAudit.psm1') -Force -DisableNameChecking
 $root = Split-Path -Parent $PSScriptRoot
-if (!$ApkPath) { $ApkPath = Join-Path $root '.tools/android-build/bin/TodoApp.Maui/debug_net10.0-android/com.companyname.todoapp.maui-Signed.apk' }
-if (!$ReportPath) { $ReportPath = Join-Path $root '.tools/android-audit/debug-report.json' }
+$artifactDirectory = '.tools/android-build'
+if ($Configuration -eq 'Release') { $artifactDirectory = '.tools/android-rel' }
+if (!$ApkPath) { $ApkPath = Join-Path $root ("$artifactDirectory/bin/TodoApp.Maui/{0}_net10.0-android/com.companyname.todoapp.maui-Signed.apk" -f $Configuration.ToLowerInvariant()) }
+if (!$ReportPath) { $ReportPath = Join-Path $root ('.tools/android-audit/{0}-report.json' -f $Configuration.ToLowerInvariant()) }
+if (!$BuildSettingsPath -and $Configuration -eq 'Release') { $BuildSettingsPath = Join-Path $root "$artifactDirectory/build-settings.json" }
 $ApkPath = [IO.Path]::GetFullPath($ApkPath)
 $ReportPath = [IO.Path]::GetFullPath($ReportPath)
 if ([IO.Path]::GetExtension($ApkPath) -ine '.apk' -or [IO.Path]::GetExtension($ReportPath) -ine '.json' -or
@@ -19,8 +26,8 @@ $aapt = Join-Path $root '.tools/android-sdk/build-tools/36.0.0/aapt2.exe'
 $signer = Join-Path $root '.tools/android-sdk/build-tools/36.0.0/apksigner.bat'
 $previousJavaHome = $env:JAVA_HOME
 $report = [ordered]@{
-    Schema = 1; CheckedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
-    Scope = 'Android debug artifact baseline only'; ArtifactStatus = 'Failed'; ReleaseReady = $false
+    Schema = 2; CheckedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+    Scope = "Android $Configuration evaluation artifact only"; Configuration = $Configuration; ArtifactStatus = 'Failed'; ReleaseReady = $false
     ApkPath = $ApkPath; Sha256 = $null; Failure = $null
 }
 
@@ -43,29 +50,35 @@ try {
     $report.Sha256 = (Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256).Hash
     $report.AuditScriptSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
     $report.AuditPolicySha256 = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'AndroidPackageAudit.psm1') -Algorithm SHA256).Hash
-    $signature = @(Invoke-AuditTool $signer @('verify', '--verbose', $ApkPath))
+    $signature = @(Invoke-AuditTool $signer @('verify', '--verbose', '--print-certs', $ApkPath))
     foreach ($scheme in @('v1', 'v2', 'v3')) {
         if (!($signature -cmatch "^Verified using $scheme scheme .*: true$")) { throw "Required APK signature scheme missing: $scheme" }
     }
     if (!($signature -cmatch '^Number of signers: 1$')) { throw 'Expected one APK signer.' }
     $report.Signatures = @('v1', 'v2', 'v3')
-    $report.SignerTrust = 'Not established; no approved release certificate is pinned'
+    $report.SignerCertificateSha256 = Get-AndroidSignerFingerprint $signature $ExpectedSignerSha256
+    $report.SignerTrust = 'Not established; certificate identity recorded without approval'
+    if ($ExpectedSignerSha256) { $report.SignerTrust = 'Matches supplied fingerprint; approval/provenance remain outside this audit' }
     $report.SignatureWarnings = @($signature | Where-Object { $_ -match '^WARNING:' }).Count
     $manifest = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', 'AndroidManifest.xml', $ApkPath))
-    $report.Manifest = Assert-AndroidManifest $manifest
+    $report.Manifest = Assert-AndroidManifest $manifest $Configuration
+    if ($BuildSettingsPath) {
+        $buildEvidence = Get-Content -LiteralPath $BuildSettingsPath -Raw | ConvertFrom-Json
+        Assert-AndroidBuildEvidence $buildEvidence $Configuration $report.Sha256
+        $report.BuildSettings = $buildEvidence.Properties
+        $report.BuildSettingsSha256 = (Get-FileHash -LiteralPath $BuildSettingsPath -Algorithm SHA256).Hash
+    }
     $resourceIds = @{}
     foreach ($line in (Invoke-AuditTool $aapt @('dump', 'resources', $ApkPath))) {
         if ($line -match '^\s*resource (0x[0-9a-f]+) ([\w./]+)$') { $resourceIds[$Matches[2]] = '@' + $Matches[1] }
     }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::OpenRead($ApkPath)
-    try { $entries = @($zip.Entries | Select-Object -ExpandProperty FullName) } finally { $zip.Dispose() }
-    foreach ($abi in @('arm64-v8a', 'x86_64')) {
-        foreach ($assembly in @('TodoApp.Maui', 'TodoApp.Domain', 'TodoApp.Infrastructure')) {
-            if ($entries -cnotcontains "lib/$abi/lib_$assembly.dll.so") { throw 'Standalone APK lacks a required embedded assembly/ABI.' }
-        }
-    }
-    $report.EmbeddedAssemblies = 'App/domain/infrastructure present for arm64-v8a and x86_64'
+    try {
+        $entries = @($zip.Entries | Select-Object -ExpandProperty FullName)
+        $nonEmptyEntries = @($zip.Entries | Where-Object { $_.Length -gt 0 } | Select-Object -ExpandProperty FullName)
+    } finally { $zip.Dispose() }
+    $report.AssemblyLayout = Get-AndroidAssemblyLayout $nonEmptyEntries $Configuration
     $package = $report.Manifest.Package
     $application = Get-AndroidNode $manifest '/manifest/application'
     $policyResources = @{
@@ -148,7 +161,7 @@ try {
     Assert-AndroidValue (Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256).Hash $report.Sha256 'APK changed during audit; rebuild and rerun.'
     $report.OpenReleaseGates = @(
         'Development application ID/version and approved release signing identity'
-        'Debug build only; release build, store/background-location review and distribution validation'
+        'Evaluation signing only; native release-mode runtime, store/background-location review and distribution validation'
         'Actual backup/device-transfer/lost-key/restore acceptance; configuration alone is not evidence of OEM behavior'
         'On-device transport/certificate failures and supported API behavior; HTTPS is enforced by existing client code'
         'Phone launcher/share/widget, lifecycle, offline/account and accessibility acceptance'
@@ -166,4 +179,4 @@ try {
     $report | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $temporaryReport -Encoding UTF8
     Move-Item -LiteralPath $temporaryReport -Destination $ReportPath -Force
 }
-Write-Output "Android debug artifact audit passed. Release readiness remains BLOCKED. Report: $ReportPath"
+Write-Output "Android $Configuration evaluation artifact audit passed. Release readiness remains BLOCKED. Report: $ReportPath"

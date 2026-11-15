@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 16C - Release is a build configuration, not an approval
+
+**Term:** Configuration-bound evidence. **Definition:** An audit must check the optimization profile and APK bytes it actually describes. **Short example:** A Debug APK cannot pass the Release audit, and an old build-settings file with a different APK hash is rejected.
+
+**Term:** Format-aware package inspection. **Definition:** Optimized builds may package managed code differently from development builds. **Short example:** Release has Mono compressed assembly stores and AOT modules; requiring Debug's individual ELF assembly filenames would falsely reject a valid package.
+
+**Term:** Public signer identity versus approval. **Definition:** Certificate SHA-256 identifies who signed a package, while an expected fingerprint checks continuity with a separately reviewed reference. **Short example:** The Release evaluation matches this machine's development signer, yet no production certificate or distribution approval exists.
+
+
 ## Phase 16B - Recovery policy includes what cannot be restored
 
 **Term:** Managed-data exclusion. **Definition:** Declare the complete app-storage domains that Android should omit from supported backup/transfer paths. **Short example:** Excluding shared preferences alone protects a secret envelope but could still copy a SQLite queue or encrypted journal without its key; this increment excludes all configured domains and promises no automatic recovery.

@@ -121,4 +121,62 @@ Test-PolicyRejected 'network cleartext exception' $network { param($d) $d.Select
 Test-PolicyRejected 'user certificate trust' $network { param($d) $d.SelectSingleNode('//certificates').SetAttribute('src','user') } $checkNetwork
 Test-PolicyRejected 'debug certificate override' $network { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('debug-overrides')) } $checkNetwork
 Test-PolicyRejected 'domain override' $network { param($d) [void]$d.DocumentElement.AppendChild($d.CreateElement('domain-config')) } $checkNetwork
+$release = $baseline.CloneNode($true)
+$release.SelectSingleNode('//application').SetAttribute('debuggable', 'false')
+$null = Assert-AndroidManifest $release 'Release'
+$release.SelectSingleNode('//application').RemoveAttribute('debuggable')
+$null = Assert-AndroidManifest $release 'Release'
+$script:passed += 2
+Assert-AndroidValue (Assert-AndroidManifest $release 'release').Configuration 'Release' 'Release profile name was not normalized.'
+Assert-AndroidValue (Assert-AndroidManifest $baseline 'debug').Configuration 'Debug' 'Debug profile name was not normalized.'
+$script:passed += 2
+
+function Test-OperationRejected([string]$Name, [scriptblock]$Operation) {
+    $rejected = $false
+    try { $null = & $Operation } catch { $rejected = $true }
+    if (!$rejected) { throw "Evaluation audit accepted invalid evidence: $Name" }
+    $script:passed++
+}
+Test-OperationRejected 'debug artifact in release audit' { Assert-AndroidManifest $baseline 'Release' }
+Test-OperationRejected 'release artifact in debug audit' { Assert-AndroidManifest $release 'Debug' }
+$fingerprint = ('a' * 64)
+$certificateLines = @("Signer #1 certificate SHA-256 digest: $fingerprint")
+Assert-AndroidValue (Get-AndroidSignerFingerprint $certificateLines) $fingerprint.ToUpperInvariant() 'Certificate identity was not normalized.'
+Assert-AndroidValue (Get-AndroidSignerFingerprint $certificateLines $fingerprint.ToUpperInvariant()) $fingerprint.ToUpperInvariant() 'Supplied signer fingerprint did not match.'
+$script:passed += 2
+Test-OperationRejected 'wrong signer pin' { Get-AndroidSignerFingerprint $certificateLines ('b' * 64) }
+Test-OperationRejected 'missing signer identity' { Get-AndroidSignerFingerprint @('Verified using v1 scheme (JAR signing): true') }
+Test-OperationRejected 'duplicate certificate identities' { Get-AndroidSignerFingerprint @($certificateLines[0], $certificateLines[0]) }
+Test-OperationRejected 'malformed signer fingerprint' { Get-AndroidSignerFingerprint $certificateLines 'not-a-fingerprint' }
+$evidence = [pscustomobject]@{
+    Configuration = 'Release'; ApkSha256 = ('c' * 64)
+    Properties = [pscustomobject]@{ AndroidKeyStore = 'false'; RuntimeIdentifiers = 'android-arm64;android-x64'; RunAOTCompilation = 'true'; AndroidEnableProfiledAot = 'true'; PublishTrimmed = 'true'; AndroidUseAssemblyStore = 'true'; UseMonoRuntime = 'true'; JsonSerializerIsReflectionEnabledByDefault = 'true'; TrimMode = 'partial' }
+}
+Assert-AndroidBuildEvidence $evidence 'Release' ('c' * 64)
+$script:passed++
+Assert-AndroidBuildEvidence $evidence 'release' ('c' * 64)
+$script:passed++
+Test-OperationRejected 'settings from another artifact' { Assert-AndroidBuildEvidence $evidence 'Release' ('d' * 64) }
+Test-OperationRejected 'settings from another configuration' { Assert-AndroidBuildEvidence $evidence 'Debug' ('c' * 64) }
+foreach ($property in @('RunAOTCompilation', 'AndroidEnableProfiledAot', 'PublishTrimmed', 'AndroidUseAssemblyStore', 'UseMonoRuntime', 'JsonSerializerIsReflectionEnabledByDefault', 'TrimMode', 'RuntimeIdentifiers', 'AndroidKeyStore')) {
+    $copy = $evidence | ConvertTo-Json | ConvertFrom-Json
+    $copy.Properties.$property = 'changed'
+    Test-OperationRejected "changed release property $property" { Assert-AndroidBuildEvidence $copy 'Release' ('c' * 64) }
+}
+$debugEntries = @(); $releaseEntries = @()
+foreach ($abi in @('arm64-v8a', 'x86_64')) {
+    $releaseEntries += "lib/$abi/libassemblies.$abi.blob.so"
+    foreach ($assembly in @('TodoApp.Maui', 'TodoApp.Domain', 'TodoApp.Infrastructure')) {
+        $debugEntries += "lib/$abi/lib_$assembly.dll.so"
+        $releaseEntries += "lib/$abi/libaot-$assembly.dll.so"
+    }
+}
+$null = Get-AndroidAssemblyLayout $debugEntries 'Debug'
+$null = Get-AndroidAssemblyLayout $releaseEntries 'Release'
+$script:passed += 2
+Test-OperationRejected 'missing ARM64 store' { Get-AndroidAssemblyLayout @($releaseEntries | Where-Object { $_ -ne 'lib/arm64-v8a/libassemblies.arm64-v8a.blob.so' }) 'Release' }
+Test-OperationRejected 'missing x64 app AOT module' { Get-AndroidAssemblyLayout @($releaseEntries | Where-Object { $_ -ne 'lib/x86_64/libaot-TodoApp.Maui.dll.so' }) 'Release' }
+Test-OperationRejected 'missing debug ABI' { Get-AndroidAssemblyLayout @($debugEntries | Where-Object { $_ -notlike 'lib/x86_64/*' }) 'Debug' }
+Test-OperationRejected 'debug layout mislabeled Release' { Get-AndroidAssemblyLayout $debugEntries 'Release' }
+Test-OperationRejected 'release layout mislabeled Debug' { Get-AndroidAssemblyLayout $releaseEntries 'Debug' }
 Write-Output "Android audit policy/parser tests passed: $script:passed"

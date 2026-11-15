@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16B implements Android managed-backup/transfer exclusion and explicit cleartext/system-certificate policy, enforced by the Phase 16A APK audit. See ANDROID_DATA_POLICY.md and ANDROID_RELEASE_READINESS.md. Device-only/unsynced data has no automatic restore path; actual OEM/restore/TLS, phone/provider/accessibility/signing acceptance remains open. Next: Phase 16C release-mode build/packaging validation and signer-identity preparation, without publishing or claiming release approval.
+Proceed one phase at a time after review. Phase 16C adds isolated Debug/Release Android evaluation builds, hash-bound optimization evidence, configuration-aware package checks and public signer fingerprint matching. Both profiles are development-signed; no publishing or production approval is implied. See ANDROID_RELEASE_EVALUATION.md. Next: Phase 16D permanent identity/signing plan and explicit ownership decisions, while real release-mode/device/restore/TLS/provider/accessibility gates remain open.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -324,7 +324,9 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 - [x] **16A - Android release-hardening preparation implementation:** automatic debug-APK signature/manifest/resource/assembly audit, hash-bound report, 23 PowerShell policy/parser cases and release/recovery checklist. See ANDROID_RELEASE_READINESS.md. No release/native gate is closed by this check.
 - [x] **16B - Android backup/transfer and transport policy implementation:** local-only managed-backup policy, legacy/device-protected and cloud/device-transfer exclusions, explicit cleartext/system-only trust and expanded source/APK policy tests. See ANDROID_DATA_POLICY.md.
 - [ ] **16B device/recovery acceptance:** same-identity upgrade, OEM/cloud/device transfer, fresh-install/lost-key outcomes and valid/invalid TLS across selected APIs.
-- [ ] **16C - Release-mode validation:** compile/inspect the release-mode artifact and prepare signer-identity evidence; no publishing, final identity selection or release approval is implied.
+- [x] **16C - Release-mode validation implementation:** clean Debug/Release builds, default partial trimming/profiled AOT, mode-specific payload/manifest audits, artifact-bound build properties and optional signer fingerprint matching. Both use development signing; see ANDROID_RELEASE_EVALUATION.md.
+- [ ] **16C native Release acceptance:** exercise actual trimmed/AOT startup, persistence/reflection/navigation and enabled features on selected phones.
+- [ ] **16D - Identity/signing preparation:** review permanent application ID/versioning, certificate ownership/backup/rotation and upgrade/distribution plan before creating or using production signing material.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 
