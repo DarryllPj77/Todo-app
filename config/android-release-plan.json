@@ -1,0 +1,22 @@
+{
+  "Schema": 1,
+  "Stage": "PlanningOnly",
+  "ReleaseReady": false,
+  "CurrentDevelopmentApplicationId": "com.companyname.todoapp.maui",
+  "ProposedApplicationId": "io.github.darryllpj77.todoapp",
+  "ApplicationIdDecision": "Confirmed",
+  "Distribution": "PrivateApk",
+  "DistributionDecision": "Pending",
+  "InitialVersionCode": 1,
+  "InitialVersionName": "1.0.0",
+  "CustodianRole": "ProjectOwner",
+  "CustodyDecision": "Pending",
+  "SigningModel": "OwnerManagedAppSigningKey",
+  "KeyStorage": "ExternalEncryptedStore",
+  "IndependentBackupCopies": 2,
+  "RecoveryRehearsal": "Pending",
+  "ApprovedAppSigningCertificateSha256": null,
+  "ApprovedUploadCertificateSha256": null,
+  "MigrationStrategy": "SeparateInstallNoAutomaticLocalMigration",
+  "NativeAcceptance": "Pending"
+}

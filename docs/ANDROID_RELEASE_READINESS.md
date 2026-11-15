@@ -1,6 +1,10 @@
-# Android release readiness: Phases 16A/16B/16C
+# Android release readiness: Phases 16A-16D
 
 Updated 2026-11-15 (Asia/Manila). **Release readiness: BLOCKED.** Phase 16A added debug-APK inspection; Phase 16B implements managed-backup exclusion rules and an explicit transport policy, with automated resource checks. Phase 16C adds isolated development-signed Release evaluation, optimization evidence and optional public signer fingerprint matching. These increments do not create an approved release candidate, install an app, access a phone or approve distribution. Device-only tasks and unsynced changes have no automatic restore path; see ANDROID_DATA_POLICY.md.
+
+## Identity plan prepared (Phase 16D)
+
+The user selected io.github.darryllpj77.todoapp for the permanent-package plan; current development identity remains active. config/android-release-plan.json records the selection and pending distribution/custody, null approved certificate identities and explicit no-automatic-local-migration boundary. ANDROID_SIGNING_PLAN.md supplies the concrete owner/custody/backup/upgrade contract, inventory and structural validation commands. This does not reserve a name, generate a key, enroll a console or approve release.
 
 ## Reproduce the checks
 
@@ -41,7 +45,7 @@ The parser normalizes the Android attribute namespace into a DOM and rejects unk
 | --- | --- | --- |
 | Backup and transfer | Phase 16B sets allowBackup=false with complete legacy/API 24+ and cloud/Android device-transfer exclusions. Local task/sync text is not independently encrypted; no automatic recovery is promised. | Verify actual OEM/cloud/transfer, same-identity upgrade, fresh-install and lost-key behavior. Existing backups/newer cross-platform migration are not certified. See ANDROID_DATA_POLICY.md. |
 | Transport configuration | Phase 16B explicitly disables cleartext; API 24+ uses only system CAs with no user/debug/domain exception. Client validation still requires HTTPS. | Test reachable valid TLS and HTTP/invalid-certificate failures on selected devices, including older platform limits. No certificate bypass is provided. |
-| Identity and signing | Development ID com.companyname.todoapp.maui, version 1/1.0. Debug and non-debuggable Release evaluation use the SDK development signer; signatures/fingerprint continuity verify. Partial trimming/profiled AOT builds succeed. | Choose durable release identity/versioning and approved certificate/distribution plan, protect keys outside Git, verify certificate identity and upgrade compatibility. |
+| Identity and signing | Development ID com.companyname.todoapp.maui, version 1/1.0. Debug and non-debuggable Release evaluation use the SDK development signer; signatures/fingerprint continuity verify. Partial trimming/profiled AOT builds succeed. | Apply/review the user-selected permanent package only in a later identity increment; decide channel/custody, verify namespace availability, approved certificate role and compatible upgrade/recovery controls. See ANDROID_SIGNING_PLAN.md. |
 | Capture on phones | Portable capture tests and APK resource checks pass. | Record real launcher/share/widget behavior, multiple instances/resizing, offline saves/account changes, interrupted Save/recreation/task stacks and supported API/host combinations. See ANDROID_QUICK_CAPTURE.md. |
 | Geofences/notifications | Portable permission/lifecycle/crypto tests and native compilation pass. | Perform ANDROID_GEOFENCES.md device matrix, actual dwell/exit/Stop/restart/revocation/OEM battery cases and notification delivery/privacy. |
 | Accessibility | Native labels/layout exist; no phone acceptance evidence. | TalkBack, switch/keyboard, contrast, large text, small screens, focus/errors and widget tap area on selected devices/launchers. |

@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 16D - Identity is an upgrade and ownership contract
+
+**Term:** Application ID. **Definition:** Android's package identity for the app, separate from a device identifier, visible label and C# namespace. **Short example:** The planned io.github.darryllpj77.todoapp would be a separate installation from the current com.companyname.todoapp.maui; changing a label does not move local tasks.
+
+**Term:** Signing roles. **Definition:** The certificate on an installed app and the credential authorizing a Play upload can be different identities. **Short example:** A private APK needs its owner-controlled app signer, while a Play plan distinguishes that signer from the upload certificate; neither role should use the SDK debug key.
+
+**Term:** Structural plan validation. **Definition:** Check that a planning record is coherent without pretending choices, custody or recovery have been proven. **Short example:** Even confirmed package/channel choices cannot turn ReleaseReady true or mark a native rehearsal passed.
+
+
 ## Phase 16C - Release is a build configuration, not an approval
 
 **Term:** Configuration-bound evidence. **Definition:** An audit must check the optimization profile and APK bytes it actually describes. **Short example:** A Debug APK cannot pass the Release audit, and an old build-settings file with a different APK hash is rejected.

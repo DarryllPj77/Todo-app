@@ -1,5 +1,12 @@
 # Architecture
 
+## Identity/signing planning boundary (Phase 16D)
+
+config/android-release-plan.json is public planning metadata, not an input to MAUI or the existing build/signing helpers. The user-selected future package is io.github.darryllpj77.todoapp; current ApplicationId remains com.companyname.todoapp.maui. Test-AndroidReleasePlan reads the plan/current project/reference files and optional current Debug audit to produce an ignored hash-bound structural report. Its module rejects unrecognized/secret-field shapes, invalid identity/version seeds, confused key roles, a known development certificate in approved roles and manufactured release/recovery/native completion. Stage stays PlanningOnly and ReleaseReady stays false, including after choices are confirmed.
+
+The proposal isolates a future permanent install from existing device data; no cross-package credential/file/queue migration or source rewrite exists. Channel/custody are pending, private APK is only the default proposal, and a Play alternative explicitly separates app-signing/upload roles. The custody/recovery/upgrade contract is in ANDROID_SIGNING_PLAN.md. No keytool, console, private keystore, app data, production signer or deployment is invoked by the checker.
+
+
 ## Configuration-aware Android evaluation (Phase 16C)
 
 Build-Android now selects Debug or Release (default Debug), uses separate ignored roots, forces SDK development signing and disables desktop host publish-RID inference for the Android target. SDK Release partial trimming/profiled AOT/Mono/assembly-store/reflection-JSON defaults remain enabled. Each successful build records evaluated settings tied to APK SHA-256, then invokes the selected audit. Release uses a short output root to avoid native AAPT Windows path-length failures.

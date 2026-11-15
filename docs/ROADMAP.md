@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16C adds isolated Debug/Release Android evaluation builds, hash-bound optimization evidence, configuration-aware package checks and public signer fingerprint matching. Both profiles are development-signed; no publishing or production approval is implied. See ANDROID_RELEASE_EVALUATION.md. Next: Phase 16D permanent identity/signing plan and explicit ownership decisions, while real release-mode/device/restore/TLS/provider/accessibility gates remain open.
+Proceed one phase at a time after review. Phase 16D prepares a public identity/signing plan, custody/backup/recovery and upgrade contract, reference inventory and structural validator. The user selected io.github.darryllpj77.todoapp for the plan; it is not applied to the active development app. Distribution/custody and actual signer/native/release evidence remain pending. See ANDROID_SIGNING_PLAN.md. Next: resolve the remaining plan decisions, then Phase 16E selected identity/profile implementation and evidence; no production key or publishing step is implied.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -326,7 +326,9 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 - [ ] **16B device/recovery acceptance:** same-identity upgrade, OEM/cloud/device transfer, fresh-install/lost-key outcomes and valid/invalid TLS across selected APIs.
 - [x] **16C - Release-mode validation implementation:** clean Debug/Release builds, default partial trimming/profiled AOT, mode-specific payload/manifest audits, artifact-bound build properties and optional signer fingerprint matching. Both use development signing; see ANDROID_RELEASE_EVALUATION.md.
 - [ ] **16C native Release acceptance:** exercise actual trimmed/AOT startup, persistence/reflection/navigation and enabled features on selected phones.
-- [ ] **16D - Identity/signing preparation:** review permanent application ID/versioning, certificate ownership/backup/rotation and upgrade/distribution plan before creating or using production signing material.
+- [x] **16D - Identity/signing plan preparation:** selected package recorded in a public planning JSON, proposed distribution/custody/backup/rotation and upgrade contract, source-reference inventory, structural validation and 33 plan tests. No active identity/key/distribution operation.
+- [ ] **16D decisions/evidence:** choose distribution/custody, confirm namespace availability and key/recovery/signing ownership; no production certificate/acceptance is approved.
+- [ ] **16E - Selected identity/profile implementation:** after the needed plan choices, implement/review the package/component/shortcut/audit mapping and compatible data/install behavior. Production keys/publishing remain separate unimplemented work.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 

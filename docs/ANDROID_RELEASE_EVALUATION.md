@@ -54,6 +54,10 @@ For example, after separately reviewing a reference, store its public SHA-256 in
 
 Do not paste passwords/private keys into commands, reports, documentation or Git. Permanent application ID/versioning, signing ownership, key storage/backup/rotation, allowed upgrade path and distribution workflow still require a concrete approved plan. Changing ID/signing identity is not a harmless way to replace an installed app; preserve the data-loss/upgrade boundaries in ANDROID_DATA_POLICY.md.
 
+## Identity plan after Phase 16D
+
+The user-selected future package, pending channel/custody and upgrade/signing contract are recorded in ANDROID_SIGNING_PLAN.md and config/android-release-plan.json. Existing helpers still build only the current development identity with SDK signing. A structurally valid plan does not switch a build profile or certify a production key; no package has been renamed or published by the plan checker.
+
 ## Verification and manual gates
 
 The PowerShell suite now has 78 passing cases. Added cases reject Debug/Release confusion, missing/duplicate/malformed signer identity, a wrong expected fingerprint, another artifact's settings, altered optimization/runtime/signing defaults and missing or wrong assembly-store/AOT/ABI layouts. Existing permission/component/capture/backup/transport checks apply to both modes.

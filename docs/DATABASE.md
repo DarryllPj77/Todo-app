@@ -1,5 +1,10 @@
 # Database plan
 
+## Planned package separation (Phase 16D)
+
+The selected future application ID is planning metadata only. No database/key/active package is changed. A future different Android application ID creates a separate sandbox and does not automatically recover device-only tasks, unsent outboxes, receipts, preferences or encryption keys. Verified server sync can re-download already uploaded account data, not an unsent queue or device-only tasks. No cross-package copy/export/restore implementation is added. Existing backup exclusions and all schemas remain unchanged; see ANDROID_SIGNING_PLAN.md.
+
+
 ## Release evaluation metadata (Phase 16C)
 
 No application storage/schema change. Separate Debug/Release APK reports and build-settings JSON contain artifact hashes, public certificate identity and evaluated compiler/runtime properties only. They do not read or copy app databases/keys/queues and do not implement restore/export. Reflection-based JSON remains enabled in the selected Release defaults, but trimmed/AOT persistence and installed-upgrade behavior still require actual phone acceptance; see ANDROID_RELEASE_EVALUATION.md.
