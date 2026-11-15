@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16F physical-device acceptance is in progress: the audited Selected Debug APK is installed on the user's Android 15 phone and Android reports a successful cold launch. Visual startup and task behavior await confirmation; see ANDROID_NATIVE_ACCEPTANCE.md. Private APK testing and project-owner key custody are confirmed planning choices. Development remains the default build profile; both evaluation profiles use SDK development signing. Core regression remains blocked by host Application Control; coexistence, Release runtime, recovery, TLS, providers, accessibility and production signing remain pending.
+Proceed one phase at a time after review. Phase 16F physical-device acceptance is in progress: the audited Selected Debug APK is installed on the user's Android 15 phone, Android reports a successful cold launch, and the user confirmed the Todo screen is visible. The user confirmed device-task Save/reopen persistence; see ANDROID_NATIVE_ACCEPTANCE.md. Private APK testing and project-owner key custody are confirmed planning choices. Development remains the default build profile; both evaluation profiles use SDK development signing. Core regression remains blocked by host Application Control; coexistence, Release runtime, recovery, TLS, providers, accessibility and production signing remain pending.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.

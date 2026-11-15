@@ -4,7 +4,7 @@ Last updated: **2026-11-15 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 16F physical-device acceptance started; release remains blocked.** The Selected Debug APK was audited, installed on the user's ARM64 Android 15 phone after user approval, and cold-launched successfully at the Android activity level. Visual startup and task persistence await user confirmation; see ANDROID_NATIVE_ACCEPTANCE.md for exact evidence. Private APK testing and project-owner key custody are now confirmed planning choices; no production key was created. Plan validation and 33 plan tests pass. The Phase 16E core regression remains blocked before discovery by Windows Application Control; no new full-suite pass is claimed. Coexistence, Release runtime, recovery, TLS, providers and accessibility remain pending.
+**Phase 16F physical-device acceptance started; release remains blocked.** The Selected Debug APK was audited, installed on the user's ARM64 Android 15 phone after user approval, and cold-launched successfully at the Android activity level. The user confirmed the Todo screen is visible; the user confirmed a device task was saved and remained after closing/reopening. Cancel and other native cases remain pending. See ANDROID_NATIVE_ACCEPTANCE.md for exact evidence. Private APK testing and project-owner key custody are now confirmed planning choices; no production key was created. Plan validation and 33 plan tests pass. The Phase 16E core regression remains blocked before discovery by Windows Application Control; no new full-suite pass is claimed. Coexistence, Release runtime, recovery, TLS, providers and accessibility remain pending.
 
 ## Completed work
 

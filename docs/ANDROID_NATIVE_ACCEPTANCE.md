@@ -1,6 +1,6 @@
 # Phase 16F: physical Android acceptance
 
-Session date: 2026-11-15 (Asia/Manila). **In progress; installation and Android launcher handoff succeeded. Visual startup and task behavior await user confirmation.**
+Session date: 2026-11-15 (Asia/Manila). **In progress; installation, visible startup and device-only Save/reopen persistence passed. Cancel and other native cases remain pending.**
 
 The user selected their physical Android phone, private APK testing, and project-owner signing-key custody. These decisions are recorded in config/android-release-plan.json. Production key creation, recovery, distribution and release approval remain pending; Stage=PlanningOnly and ReleaseReady=false.
 
@@ -21,8 +21,9 @@ The user selected their physical Android phone, private APK testing, and project
 | USB connection | One authorized target | One authorized physical device; Android/API/ABI read successfully | Passed |
 | Fresh Selected Debug installation | Package installed without deleting data | Initial attempt returned INSTALL_FAILED_USER_RESTRICTED; after the user reported approval, a streamed retry returned Success and package inventory confirmed the selected ID | Passed |
 | Cold launcher handoff | Android starts the selected main activity | am start -W returned Status: ok, LaunchState: COLD, TotalTime: 2032 ms; process present immediately afterward | Passed (OS handoff only) |
-| Visible startup | App screen renders and remains usable | User confirmation requested; OS launch result alone does not establish this | Pending |
-| Device-only Save and reopen | Disposable task persists once | Not run | Pending |
+| Visible startup | App screen renders | User confirmed: The Todo app screen is visible | Passed (user observed) |
+| Device-only Save and reopen | Disposable task appears and remains after closing/reopening | User confirmed Phone smoke test appeared after Save and remained after swiping the app away from Recents and reopening | Passed (user observed; duplicate count not explicitly confirmed) |
+| Main-editor Cancel | Discarding an unsaved draft adds no task | Not run | Pending |
 | Launcher shortcut Save/Cancel | Correct app and destination; Cancel adds nothing | Not run | Pending |
 | Share/widget entry | Correct selected app; explicit Save | Not run | Pending |
 | Release startup/persistence | Audited Release artifact works on device | Not run | Pending |
