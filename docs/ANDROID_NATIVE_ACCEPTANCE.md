@@ -1,6 +1,6 @@
 # Phase 16F: physical Android acceptance
 
-Session date: 2026-11-15 (Asia/Manila). **In progress; installation, visible startup and device-only Save/reopen persistence passed. Cancel and other native cases remain pending.**
+Session date: 2026-11-15 (Asia/Manila). **In progress; installation, visible startup, device-only Save/reopen persistence and main-editor Cancel passed. Launcher/share/widget and other native cases remain pending.**
 
 The user selected their physical Android phone, private APK testing, and project-owner signing-key custody. These decisions are recorded in config/android-release-plan.json. Production key creation, recovery, distribution and release approval remain pending; Stage=PlanningOnly and ReleaseReady=false.
 
@@ -23,7 +23,7 @@ The user selected their physical Android phone, private APK testing, and project
 | Cold launcher handoff | Android starts the selected main activity | am start -W returned Status: ok, LaunchState: COLD, TotalTime: 2032 ms; process present immediately afterward | Passed (OS handoff only) |
 | Visible startup | App screen renders | User confirmed: The Todo app screen is visible | Passed (user observed) |
 | Device-only Save and reopen | Disposable task appears and remains after closing/reopening | User confirmed Phone smoke test appeared after Save and remained after swiping the app away from Recents and reopening | Passed (user observed; duplicate count not explicitly confirmed) |
-| Main-editor Cancel | Discarding an unsaved draft adds no task | Not run | Pending |
+| Main-editor Cancel | Discarding an unsaved draft adds no task | User entered Cancel test, tapped Cancel and confirmed it did not appear in the list | Passed (user observed) |
 | Launcher shortcut Save/Cancel | Correct app and destination; Cancel adds nothing | Not run | Pending |
 | Share/widget entry | Correct selected app; explicit Save | Not run | Pending |
 | Release startup/persistence | Audited Release artifact works on device | Not run | Pending |
