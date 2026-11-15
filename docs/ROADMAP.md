@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16D prepares a public identity/signing plan, custody/backup/recovery and upgrade contract, reference inventory and structural validator. The user selected io.github.darryllpj77.todoapp for the plan; it is not applied to the active development app. Distribution/custody and actual signer/native/release evidence remain pending. See ANDROID_SIGNING_PLAN.md. Next: resolve the remaining plan decisions, then Phase 16E selected identity/profile implementation and evidence; no production key or publishing step is implied.
+Proceed one phase at a time after review. Phase 16E adds an opt-in Selected Android evaluation profile for io.github.darryllpj77.todoapp while keeping Development as default. Both profiles remain SDK-development-signed, with profile-bound resource/manifest/audit evidence; see ANDROID_IDENTITY_PROFILE.md. No install or local migration was performed. Core regression is currently blocked by host Application Control; native coexistence/Release/recovery/TLS/provider/accessibility and production custody/distribution remain pending. Next: resolve the host test-policy block through normal administration and perform selected-device acceptance before further release claims.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.
@@ -328,7 +328,9 @@ Phase 14 remains open until supported native/background behavior and opt-out are
 - [ ] **16C native Release acceptance:** exercise actual trimmed/AOT startup, persistence/reflection/navigation and enabled features on selected phones.
 - [x] **16D - Identity/signing plan preparation:** selected package recorded in a public planning JSON, proposed distribution/custody/backup/rotation and upgrade contract, source-reference inventory, structural validation and 33 plan tests. No active identity/key/distribution operation.
 - [ ] **16D decisions/evidence:** choose distribution/custody, confirm namespace availability and key/recovery/signing ownership; no production certificate/acceptance is approved.
-- [ ] **16E - Selected identity/profile implementation:** after the needed plan choices, implement/review the package/component/shortcut/audit mapping and compatible data/install behavior. Production keys/publishing remain separate unimplemented work.
+- [x] **16E - Selected identity/profile implementation:** opt-in selected package/version/test label, retained explicit component namespace, conditional shortcut target, isolated build outputs and profile-bound artifact/settings/authority checks. No install, migration or production keys.
+- [ ] **16E acceptance/regression:** coexistence and actual data/entry-point isolation on phones; resolve host Application Control block and rerun the full core suite.
+- [ ] **16F - Native acceptance and production decisions:** record real device/Release/recovery/TLS/provider/accessibility evidence and settle channel/custody before a production signing workflow.
 - [ ] Release builds/tests, device acceptance, accessibility, and database recovery pass.
 - [ ] Deployment/security/configuration instructions match the shipped application.
 

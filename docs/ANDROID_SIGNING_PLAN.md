@@ -2,6 +2,10 @@
 
 Prepared 2026-11-15 (Asia/Manila). **Planning only. The user selected io.github.darryllpj77.todoapp for the plan; distribution/custody choices remain pending and release is not approved.** No active application ID, installed data, private key, developer account or distribution setting is changed by this phase.
 
+## Evaluation implementation after this plan
+
+Phase 16E adds an opt-in Selected build/audit profile for the confirmed package, without changing the default Development identity or generating production keys. Its test label and isolated outputs make the candidate explicit; see ANDROID_IDENTITY_PROFILE.md. The public plan is now read by the selected-evaluation guard, which checks the confirmed package only. Channel/custody/certificate/recovery decisions still remain open, and Stage=PlanningOnly continues to describe production-readiness status.
+
 ## What the application ID means
 
 The application ID is the package name Android uses to identify this app and its updates, such as `io.github.darryllpj77.todoapp`. It is not a phone/device identifier. It is also separate from the visible app label and C# namespace. A user can see a friendly name while Android uses the package name internally. This document proposes the name above from the repository owner's GitHub handle; it does not reserve it or prove availability in a store.
@@ -14,7 +18,7 @@ The public, versioned record is `config/android-release-plan.json`:
 
 | Item | Proposed value | State |
 | --- | --- | --- |
-| Permanent package | io.github.darryllpj77.todoapp | Selected by the user for this plan; not applied/reserved/availability-verified |
+| Permanent package | io.github.darryllpj77.todoapp | Selected by the user; opt-in evaluation implemented in Phase 16E, not promoted/reserved/availability-verified |
 | First distribution | Private APK testing first | Pending user selection |
 | First permanent-package version | versionCode 1 / versionName 1.0.0 | Initial plan seed, not applied to the current app |
 | Key custodian | Project owner, under their own control | Pending explicit custody confirmation |
@@ -73,7 +77,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-AndroidReleaseP
 
 The checker reads the public plan and source inventory only. It verifies the active app ID still matches the development planning baseline, rejects unknown/secret-field shapes, placeholder/invalid proposed IDs, bad version seeds, confused signing roles, inadequate backup policy and manufactured release/recovery/native completion claims. If a current hash-matching Debug audit is available, it also rejects that known development certificate in either approved production role. Missing development-certificate evidence remains an open gate, not proof of a safe signer.
 
-The output is **structural validation**, not approval or signing. It writes an ignored plan-hash/module-hash report with open decisions and reference files; it never invokes keytool, changes the app, reads a private keystore, signs a package or calls a console/provider. Validation failure writes a failed report when the output path is writable. This schema intentionally covers the initial planning stage and will need review before any later implementation/signing workflow.
+The output is **structural validation**, not approval or signing. It writes an ignored plan-hash/module-hash report with open decisions and reference files; it never invokes keytool, changes the app, reads a private keystore, signs a package or calls a console/provider. Validation failure writes a failed report when the output path is writable. This schema still covers production planning only; the selected-evaluation guard does not turn it into a production-signing workflow.
 
 ## Evidence still needed before production actions
 

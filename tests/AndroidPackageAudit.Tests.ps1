@@ -179,4 +179,44 @@ Test-OperationRejected 'missing x64 app AOT module' { Get-AndroidAssemblyLayout 
 Test-OperationRejected 'missing debug ABI' { Get-AndroidAssemblyLayout @($debugEntries | Where-Object { $_ -notlike 'lib/x86_64/*' }) 'Debug' }
 Test-OperationRejected 'debug layout mislabeled Release' { Get-AndroidAssemblyLayout $debugEntries 'Release' }
 Test-OperationRejected 'release layout mislabeled Debug' { Get-AndroidAssemblyLayout $releaseEntries 'Debug' }
+Import-Module (Join-Path $PSScriptRoot '../scripts/AndroidIdentityProfiles.psm1') -Force -DisableNameChecking
+$selectedProfile=Get-AndroidIdentityProfile 'selected' 'debug'
+Assert-AndroidValue $selectedProfile.Name 'Selected' 'Identity profile was not normalized.'
+$selected=$baseline.CloneNode($true)
+$selected.DocumentElement.SetAttribute('package',$selectedProfile.Package)
+$selected.DocumentElement.SetAttribute('versionCode','1')
+$selected.DocumentElement.SetAttribute('versionName','1.0.0')
+$selected.SelectSingleNode('//application').SetAttribute('label',$selectedProfile.EvaluationLabel)
+foreach ($n in $selected.SelectNodes('//uses-permission|//permission')) {
+    $n.SetAttribute('name',$n.GetAttribute('name').Replace($package+'.DYNAMIC_RECEIVER',$selectedProfile.Package+'.DYNAMIC_RECEIVER'))
+}
+$null=Assert-AndroidManifest $selected 'Debug' 'Selected'
+$script:passed+=2
+Test-OperationRejected 'selected artifact audited as development' { Assert-AndroidManifest $selected 'Debug' 'Development' }
+Test-OperationRejected 'development artifact audited as selected' { Assert-AndroidManifest $baseline 'Debug' 'Selected' }
+$wrongSelected=$selected.CloneNode($true); $wrongSelected.DocumentElement.SetAttribute('versionName','1.0')
+Test-OperationRejected 'selected version changed' { Assert-AndroidManifest $wrongSelected 'Debug' 'Selected' }
+$wrongSelected=$selected.CloneNode($true); $wrongSelected.DocumentElement.SetAttribute('sharedUserId','shared.fixture')
+Test-OperationRejected 'profiles share application UID' { Assert-AndroidManifest $wrongSelected 'Debug' 'Selected' }
+$wrongSelected=$selected.CloneNode($true); $wrongSelected.SelectSingleNode('//application').SetAttribute('label','TodoApp.Maui')
+Test-OperationRejected 'selected label ambiguous' { Assert-AndroidManifest $wrongSelected 'Debug' 'Selected' }
+$wrongSelected=$selected.CloneNode($true)
+$provider=$wrongSelected.CreateElement('provider'); $provider.SetAttribute('name','fixture.Provider'); $provider.SetAttribute('exported','false'); $provider.SetAttribute('authorities',$package+'.fileProvider'); [void]$wrongSelected.SelectSingleNode('//application').AppendChild($provider)
+Test-OperationRejected 'selected authority collides with development app' { Assert-AndroidManifest $wrongSelected 'Debug' 'Selected' }
+$selectedEvidence=$evidence | ConvertTo-Json | ConvertFrom-Json
+$selectedEvidence | Add-Member NoteProperty IdentityProfile 'Selected'
+$selectedEvidence.Properties | Add-Member NoteProperty ApplicationId $selectedProfile.Package
+$selectedEvidence.Properties | Add-Member NoteProperty ApplicationVersion '1'
+$selectedEvidence.Properties | Add-Member NoteProperty ApplicationDisplayVersion '1.0.0'
+Assert-AndroidBuildEvidence $selectedEvidence 'Release' ('c'*64) 'Selected'
+$script:passed++
+Test-OperationRejected 'selected settings audited as development' { Assert-AndroidBuildEvidence $selectedEvidence 'Release' ('c'*64) 'Development' }
+Test-OperationRejected 'selected settings omit profile' { Assert-AndroidBuildEvidence $evidence 'Release' ('c'*64) 'Selected' }
+$identityPlan=Get-Content (Join-Path $PSScriptRoot '../config/android-release-plan.json') -Raw | ConvertFrom-Json
+Assert-AndroidIdentityChoice $identityPlan $selectedProfile
+$script:passed++
+$identityPlan.ApplicationIdDecision='Pending'
+Test-OperationRejected 'unconfirmed selected identity' { Assert-AndroidIdentityChoice $identityPlan $selectedProfile }
+$identityPlan.ApplicationIdDecision='Confirmed'; $identityPlan.ProposedApplicationId='io.github.another.app'
+Test-OperationRejected 'selected identity differs from plan' { Assert-AndroidIdentityChoice $identityPlan $selectedProfile }
 Write-Output "Android audit policy/parser tests passed: $script:passed"

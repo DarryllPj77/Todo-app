@@ -2,7 +2,7 @@
 
 A learning-focused C#/.NET Todo application, built one phase at a time. It includes an offline MAUI task manager and a separate authenticated online workspace backed by a PostgreSQL API. The synced account workspace reconciles cached changes with the server.
 
-**Current status (2026-11-15): Phase 16D Android identity/signing plan prepared; release remains blocked.** The user selected **io.github.darryllpj77.todoapp** for the permanent-package plan. The active development app has not been renamed. Private APK first is still a proposal; distribution and key custody need decisions. Added a public planning record, source-reference inventory and structural checker: **33 plan tests + 78 existing APK-audit tests passed**. See [ANDROID_SIGNING_PLAN.md](docs/ANDROID_SIGNING_PLAN.md). No production key/account/distribution action was performed; all native Release/recovery/TLS/provider/accessibility/signing gates remain open.
+**Current status (2026-11-15): Phase 16E opt-in Android identity profile implemented.** Build with **-IdentityProfile Selected** to evaluate **io.github.darryllpj77.todoapp**, labelled **Todo App (identity test)**. Development remains the default; no app was installed or data migrated. Both identities build/audit in Debug and Release with **0 compiler warnings/errors**, and Windows builds cleanly; **92 package tests + 33 plan tests pass**. The core regression attempt was blocked before discovery by Windows Application Control, so the prior 708-test baseline is not a new pass. See [ANDROID_IDENTITY_PROFILE.md](docs/ANDROID_IDENTITY_PROFILE.md) for commands, data boundaries and verification limits. Production signing, distribution and native acceptance remain pending.
 
 ## Technology and prerequisites
 

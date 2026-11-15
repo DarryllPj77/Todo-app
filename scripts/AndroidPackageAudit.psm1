@@ -1,4 +1,5 @@
 Set-StrictMode -Version 2
+Import-Module (Join-Path $PSScriptRoot 'AndroidIdentityProfiles.psm1') -Force -DisableNameChecking
 
 function Assert-AndroidValue($Actual, $Expected, [string]$Reason) {
     if ([string]$Actual -cne [string]$Expected) { throw $Reason }
@@ -49,11 +50,18 @@ function Get-AndroidNode([xml]$Document, [string]$XPath) {
     return ,$nodes[0]
 }
 
-function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug') {
+function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug', [ValidateSet('Development', 'Selected')][string]$IdentityProfile = 'Development') {
     $Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug' }
-    $package = 'com.companyname.todoapp.maui'
+    $identity = Get-AndroidIdentityProfile $IdentityProfile $Configuration
+    $package = $identity.Package
+    $components = $identity.Components
     $root = Get-AndroidNode $Manifest '/manifest'
     Assert-AndroidValue $root.GetAttribute('package') $package 'Unexpected APK application ID.'
+    if ($root.HasAttribute('sharedUserId')) { throw 'Evaluation profiles must not share an Android application UID.' }
+    if ($identity.Name -eq 'Selected') {
+        Assert-AndroidValue $root.GetAttribute('versionCode') $identity.VersionCode 'Selected version code changed.'
+        Assert-AndroidValue $root.GetAttribute('versionName') $identity.VersionName 'Selected display version changed.'
+    }
     $sdk = Get-AndroidNode $Manifest '/manifest/uses-sdk'
     Assert-AndroidValue $sdk.GetAttribute('minSdkVersion') '21' 'Minimum SDK changed; review the acceptance matrix.'
     Assert-AndroidValue $sdk.GetAttribute('targetSdkVersion') '36' 'Target SDK changed; review native behavior before updating this baseline.'
@@ -70,6 +78,7 @@ function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')
     Assert-AndroidValue $declaration.GetAttribute('name') "$package.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" 'Unexpected declared permission.'
     Assert-AndroidValue $declaration.GetAttribute('protectionLevel') '0x00000002' 'Internal receiver permission must remain signature protected.'
     $app = Get-AndroidNode $Manifest '/manifest/application'
+    if ($identity.Name -eq 'Selected') { Assert-AndroidValue $app.GetAttribute('label') $identity.EvaluationLabel 'Selected evaluation label changed.' }
     Assert-AndroidValue $app.GetAttribute('allowBackup') 'false' 'Managed backup must remain disabled.'
     Assert-AndroidValue $app.GetAttribute('usesCleartextTraffic') 'false' 'Cleartext traffic must remain explicitly disabled.'
     foreach ($attribute in @('fullBackupContent', 'dataExtractionRules', 'networkSecurityConfig')) {
@@ -79,28 +88,31 @@ function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')
     if ($Configuration -eq 'Debug') {
         Assert-AndroidValue $app.GetAttribute('debuggable') 'true' 'Debug audit requires an explicitly debuggable artifact.'
     } elseif ($app.GetAttribute('debuggable') -cnotin @('', 'false')) { throw 'Release evaluation must not be debuggable.' }
+    foreach ($provider in $app.SelectNodes('provider')) {
+        if (!$provider.GetAttribute('authorities').StartsWith($package + '.', [StringComparison]::Ordinal)) { throw 'Provider authority is not isolated to the selected application package.' }
+    }
     $main = @($app.SelectNodes('activity') | Where-Object { $_.GetAttribute('name') -cmatch '^crc[0-9a-f]+\.MainActivity$' })
     if ($main.Count -ne 1) { throw 'Expected one generated main Activity.' }
     Assert-AndroidNames @($main[0].SelectNodes('intent-filter/action') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.action.MAIN') 'Main launcher action changed.'
     Assert-AndroidNames @($main[0].SelectNodes('intent-filter/category') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.category.LAUNCHER') 'Main launcher category changed.'
     Assert-AndroidValue $main[0].SelectNodes('meta-data[@name="android.app.shortcuts"]').Count 1 'Shortcut metadata must belong to the main launcher Activity.'
-    $capture = Get-AndroidNode $Manifest "/manifest/application/activity[@name='$package.QuickCaptureActivity']"
+    $capture = Get-AndroidNode $Manifest "/manifest/application/activity[@name='$components.QuickCaptureActivity']"
     Assert-AndroidValue $capture.GetAttribute('taskAffinity') '' 'Capture task affinity changed.'
     if (!$capture.HasAttribute('taskAffinity')) { throw 'Capture requires an explicit empty task affinity.' }
     Assert-AndroidValue $capture.GetAttribute('excludeFromRecents') 'true' 'Capture must remain excluded from Recents.'
     Assert-AndroidValue $capture.SelectNodes('intent-filter').Count 1 'Unexpected capture intent filter count.'
     Assert-AndroidNames @($capture.SelectNodes('intent-filter/action') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.action.SEND') 'Capture must accept only single shares.'
     Assert-AndroidNames @($capture.SelectNodes('intent-filter/category') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.category.DEFAULT') 'Unexpected share category.'
-    $data = Get-AndroidNode $Manifest "/manifest/application/activity[@name='$package.QuickCaptureActivity']/intent-filter/data"
+    $data = Get-AndroidNode $Manifest "/manifest/application/activity[@name='$components.QuickCaptureActivity']/intent-filter/data"
     Assert-AndroidValue $data.GetAttribute('mimeType') 'text/plain' 'Capture share MIME type broadened.'
     Assert-AndroidValue $data.Attributes.Count 1 'Capture share filter must not introduce URI routing.'
     foreach ($name in @('BackgroundGeofenceReceiver', 'QuickCaptureWidgetProvider')) {
-        $node = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$package.$name']"
+        $node = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$components.$name']"
         Assert-AndroidValue $node.GetAttribute('exported') 'false' 'Device worker/widget receiver became exported.'
     }
-    $widget = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$package.QuickCaptureWidgetProvider']"
+    $widget = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$components.QuickCaptureWidgetProvider']"
     Assert-AndroidNames @($widget.SelectNodes('intent-filter/action') | ForEach-Object { $_.GetAttribute('name') }) @('android.appwidget.action.APPWIDGET_UPDATE') 'Widget receiver actions changed.'
-    $lifecycle = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$package.BackgroundGeofenceLifecycleReceiver']"
+    $lifecycle = Get-AndroidNode $Manifest "/manifest/application/receiver[@name='$components.BackgroundGeofenceLifecycleReceiver']"
     Assert-AndroidNames @($lifecycle.SelectNodes('intent-filter/action') | ForEach-Object { $_.GetAttribute('name') }) @('android.intent.action.BOOT_COMPLETED', 'android.intent.action.MY_PACKAGE_REPLACED') 'Geofence lifecycle actions changed.'
     $exported = New-Object 'System.Collections.Generic.List[string]'
     foreach ($component in $app.SelectNodes('activity|activity-alias|receiver|service|provider')) {
@@ -109,8 +121,8 @@ function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')
         if ($flag -notin @('', 'true', 'false')) { throw 'Unknown component exported value.' }
         if ($flag -eq '' -and $component.SelectNodes('intent-filter').Count -gt 0) { throw 'Filtered component lacks an explicit export boundary.' }
         if ($flag -ne 'true') { continue }
-        if (($component.LocalName -eq 'activity' -and ($name -ceq $main[0].GetAttribute('name') -or $name -ceq "$package.QuickCaptureActivity")) -or
-            ($component.LocalName -eq 'receiver' -and $name -ceq "$package.BackgroundGeofenceLifecycleReceiver")) {
+        if (($component.LocalName -eq 'activity' -and ($name -ceq $main[0].GetAttribute('name') -or $name -ceq "$components.QuickCaptureActivity")) -or
+            ($component.LocalName -eq 'receiver' -and $name -ceq "$components.BackgroundGeofenceLifecycleReceiver")) {
             $exported.Add($name); continue
         }
         if ($component.LocalName -eq 'receiver' -and $name -cmatch '^crc[0-9a-f]+\.ReminderBootReceiver$') {
@@ -127,7 +139,7 @@ function Assert-AndroidManifest([xml]$Manifest, [ValidateSet('Debug', 'Release')
     Assert-AndroidValue $capture.GetAttribute('exported') 'true' 'Capture Activity no longer exported.'
     Assert-AndroidValue $lifecycle.GetAttribute('exported') 'true' 'Lifecycle receiver no longer exported.'
     return [pscustomobject]@{
-        Package = $package; VersionCode = $root.GetAttribute('versionCode'); VersionName = $root.GetAttribute('versionName')
+        Package = $package; IdentityProfile = $identity.Name; ComponentNamespace = $components; Label = $app.GetAttribute('label'); VersionCode = $root.GetAttribute('versionCode'); VersionName = $root.GetAttribute('versionName')
         MinSdk = 21; TargetSdk = 36; Configuration = $Configuration; Debuggable = ($Configuration -eq 'Debug')
         AllowBackup = $app.GetAttribute('allowBackup')
         FullBackupContent = $app.GetAttribute('fullBackupContent')
@@ -197,8 +209,15 @@ function Get-AndroidSignerFingerprint([string[]]$Lines, [string]$ExpectedSha256)
     return $fingerprint
 }
 
-function Assert-AndroidBuildEvidence($Evidence, [ValidateSet('Debug', 'Release')][string]$Configuration, [string]$ApkSha256) {
+function Assert-AndroidBuildEvidence($Evidence, [ValidateSet('Debug', 'Release')][string]$Configuration, [string]$ApkSha256, [ValidateSet('Development', 'Selected')][string]$IdentityProfile = 'Development') {
     $Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug' }
+    $identity = Get-AndroidIdentityProfile $IdentityProfile $Configuration
+    if ($Evidence.PSObject.Properties['IdentityProfile']) {
+        Assert-AndroidValue $Evidence.IdentityProfile $identity.Name 'Build settings belong to another identity profile.'
+        Assert-AndroidValue $Evidence.Properties.ApplicationId $identity.Package 'Build application ID changed.'
+        Assert-AndroidValue $Evidence.Properties.ApplicationVersion $identity.VersionCode 'Build version code changed.'
+        Assert-AndroidValue $Evidence.Properties.ApplicationDisplayVersion $identity.VersionName 'Build display version changed.'
+    } elseif ($identity.Name -eq 'Selected') { throw 'Selected identity requires profile-bound build settings.' }
     Assert-AndroidValue $Evidence.Configuration $Configuration 'Build settings configuration does not match the audit.'
     Assert-AndroidValue $Evidence.ApkSha256 $ApkSha256 'Build settings belong to another APK.'
     Assert-AndroidValue $Evidence.Properties.AndroidKeyStore 'false' 'Evaluation helper must use development signing.'

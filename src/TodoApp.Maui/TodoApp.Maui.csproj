@@ -32,13 +32,19 @@
 
 		<!-- Display name -->
 		<ApplicationTitle>TodoApp.Maui</ApplicationTitle>
+        <ApplicationTitle Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' and '$(TodoAppAndroidIdentityProfile)' == 'Selected'">Todo App (identity test)</ApplicationTitle>
 
 		<!-- App Identifier -->
 		<ApplicationId>com.companyname.todoapp.maui</ApplicationId>
 
+        <!-- Opt-in evaluation identity; never changes the default development app. -->
+        <TodoAppAndroidIdentityProfile Condition="'$(TodoAppAndroidIdentityProfile)' == ''">Development</TodoAppAndroidIdentityProfile>
+        <ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' and '$(TodoAppAndroidIdentityProfile)' == 'Selected'">io.github.darryllpj77.todoapp</ApplicationId>
+
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
+        <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' and '$(TodoAppAndroidIdentityProfile)' == 'Selected'">1.0.0</ApplicationDisplayVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -52,6 +58,14 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
+
+    <Target Name="ValidateAndroidIdentityProfile" BeforeTargets="PrepareForBuild" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+        <Error Condition="'$(TodoAppAndroidIdentityProfile)' != 'Development' and '$(TodoAppAndroidIdentityProfile)' != 'Selected'" Text="Unknown Android identity profile. Use Development or Selected." />
+    </Target>
+    <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' and '$(TodoAppAndroidIdentityProfile)' == 'Selected'">
+        <AndroidResource Remove="Platforms\Android\Resources\xml\quick_capture_shortcuts.xml" />
+        <AndroidResource Include="Platforms\Android\SelectedIdentity\xml\quick_capture_shortcuts.xml" LogicalName="xml/quick_capture_shortcuts.xml" />
+    </ItemGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->

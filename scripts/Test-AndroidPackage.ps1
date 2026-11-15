@@ -2,6 +2,7 @@ param(
     [string]$ApkPath,
     [string]$ReportPath,
     [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug',
+    [ValidateSet('Development', 'Selected')][string]$IdentityProfile = 'Development',
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$ExpectedSignerSha256,
     [string]$BuildSettingsPath
 )
@@ -11,11 +12,17 @@ $Configuration = if ($Configuration -ieq 'Release') { 'Release' } else { 'Debug'
 Set-StrictMode -Version 2
 Import-Module (Join-Path $PSScriptRoot 'AndroidPackageAudit.psm1') -Force -DisableNameChecking
 $root = Split-Path -Parent $PSScriptRoot
-$artifactDirectory = '.tools/android-build'
-if ($Configuration -eq 'Release') { $artifactDirectory = '.tools/android-rel' }
-if (!$ApkPath) { $ApkPath = Join-Path $root ("$artifactDirectory/bin/TodoApp.Maui/{0}_net10.0-android/com.companyname.todoapp.maui-Signed.apk" -f $Configuration.ToLowerInvariant()) }
-if (!$ReportPath) { $ReportPath = Join-Path $root ('.tools/android-audit/{0}-report.json' -f $Configuration.ToLowerInvariant()) }
-if (!$BuildSettingsPath -and $Configuration -eq 'Release') { $BuildSettingsPath = Join-Path $root "$artifactDirectory/build-settings.json" }
+Import-Module (Join-Path $PSScriptRoot 'AndroidIdentityProfiles.psm1') -Force -DisableNameChecking
+$identity = Get-AndroidIdentityProfile $IdentityProfile $Configuration
+$IdentityProfile = $identity.Name
+if ($IdentityProfile -eq 'Selected') {
+    $plan = Get-Content -LiteralPath (Join-Path $root 'config/android-release-plan.json') -Raw | ConvertFrom-Json
+    Assert-AndroidIdentityChoice $plan $identity
+}
+$artifactDirectory = $identity.Artifacts
+if (!$ApkPath) { $ApkPath = Join-Path $root ("$artifactDirectory/bin/TodoApp.Maui/{0}_net10.0-android/{1}-Signed.apk" -f $Configuration.ToLowerInvariant(), $identity.Package) }
+if (!$ReportPath) { $ReportPath = Join-Path $root ('.tools/android-audit/' + $identity.AuditReport) }
+if (!$BuildSettingsPath -and ($Configuration -eq 'Release' -or $IdentityProfile -eq 'Selected')) { $BuildSettingsPath = Join-Path $root "$artifactDirectory/build-settings.json" }
 $ApkPath = [IO.Path]::GetFullPath($ApkPath)
 $ReportPath = [IO.Path]::GetFullPath($ReportPath)
 if ([IO.Path]::GetExtension($ApkPath) -ine '.apk' -or [IO.Path]::GetExtension($ReportPath) -ine '.json' -or
@@ -26,8 +33,8 @@ $aapt = Join-Path $root '.tools/android-sdk/build-tools/36.0.0/aapt2.exe'
 $signer = Join-Path $root '.tools/android-sdk/build-tools/36.0.0/apksigner.bat'
 $previousJavaHome = $env:JAVA_HOME
 $report = [ordered]@{
-    Schema = 2; CheckedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
-    Scope = "Android $Configuration evaluation artifact only"; Configuration = $Configuration; ArtifactStatus = 'Failed'; ReleaseReady = $false
+    Schema = 3; CheckedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+    Scope = "Android $IdentityProfile/$Configuration evaluation artifact only"; IdentityProfile = $IdentityProfile; Configuration = $Configuration; ArtifactStatus = 'Failed'; ReleaseReady = $false
     ApkPath = $ApkPath; Sha256 = $null; Failure = $null
 }
 
@@ -50,6 +57,8 @@ try {
     $report.Sha256 = (Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256).Hash
     $report.AuditScriptSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
     $report.AuditPolicySha256 = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'AndroidPackageAudit.psm1') -Algorithm SHA256).Hash
+    $report.IdentityPolicySha256 = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'AndroidIdentityProfiles.psm1') -Algorithm SHA256).Hash
+    if ($IdentityProfile -eq 'Selected') { $report.SelectionPlanSha256 = (Get-FileHash -LiteralPath (Join-Path $root 'config/android-release-plan.json') -Algorithm SHA256).Hash }
     $signature = @(Invoke-AuditTool $signer @('verify', '--verbose', '--print-certs', $ApkPath))
     foreach ($scheme in @('v1', 'v2', 'v3')) {
         if (!($signature -cmatch "^Verified using $scheme scheme .*: true$")) { throw "Required APK signature scheme missing: $scheme" }
@@ -61,10 +70,10 @@ try {
     if ($ExpectedSignerSha256) { $report.SignerTrust = 'Matches supplied fingerprint; approval/provenance remain outside this audit' }
     $report.SignatureWarnings = @($signature | Where-Object { $_ -match '^WARNING:' }).Count
     $manifest = ConvertFrom-AaptXmlTree @(Invoke-AuditTool $aapt @('dump', 'xmltree', '--file', 'AndroidManifest.xml', $ApkPath))
-    $report.Manifest = Assert-AndroidManifest $manifest $Configuration
+    $report.Manifest = Assert-AndroidManifest $manifest $Configuration $IdentityProfile
     if ($BuildSettingsPath) {
         $buildEvidence = Get-Content -LiteralPath $BuildSettingsPath -Raw | ConvertFrom-Json
-        Assert-AndroidBuildEvidence $buildEvidence $Configuration $report.Sha256
+        Assert-AndroidBuildEvidence $buildEvidence $Configuration $report.Sha256 $IdentityProfile
         $report.BuildSettings = $buildEvidence.Properties
         $report.BuildSettingsSha256 = (Get-FileHash -LiteralPath $BuildSettingsPath -Algorithm SHA256).Hash
     }
@@ -80,6 +89,7 @@ try {
     } finally { $zip.Dispose() }
     $report.AssemblyLayout = Get-AndroidAssemblyLayout $nonEmptyEntries $Configuration
     $package = $report.Manifest.Package
+    $components = $identity.Components
     $application = Get-AndroidNode $manifest '/manifest/application'
     $policyResources = @{
         fullBackupContent = 'xml/backup_rules'
@@ -91,7 +101,7 @@ try {
         if (!$resourceIds.ContainsKey($resource)) { throw 'Required backup/transport resource is absent.' }
         Assert-AndroidValue $application.GetAttribute($attribute) $resourceIds[$resource] 'Backup/transport manifest resource link changed.'
     }
-    $widgetMetadata = Get-AndroidNode $manifest "/manifest/application/receiver[@name='$package.QuickCaptureWidgetProvider']/meta-data[@name='android.appwidget.provider']"
+    $widgetMetadata = Get-AndroidNode $manifest "/manifest/application/receiver[@name='$components.QuickCaptureWidgetProvider']/meta-data[@name='android.appwidget.provider']"
     Assert-AndroidValue $widgetMetadata.GetAttribute('resource') $resourceIds['xml/quick_capture_widget_info'] 'Widget provider metadata points to the wrong resource.'
     $shortcutMetadata = Get-AndroidNode $manifest "/manifest/application/activity/meta-data[@name='android.app.shortcuts']"
     Assert-AndroidValue $shortcutMetadata.GetAttribute('resource') $resourceIds['xml/quick_capture_shortcuts'] 'Launcher shortcut metadata changed.'
@@ -138,9 +148,9 @@ try {
                 Assert-AndroidValue $shortcut.GetAttribute('shortcutShortLabel') $resourceIds['string/quick_capture_short_label'] 'Launcher shortcut label changed.'
                 $modernShortcut = $true
             }
-            Assert-AndroidValue $intent.GetAttribute('action') "$package.QUICK_CAPTURE" 'Launcher capture action changed.'
+            Assert-AndroidValue $intent.GetAttribute('action') $identity.CaptureAction 'Launcher capture action changed.'
             Assert-AndroidValue $intent.GetAttribute('targetPackage') $package 'Launcher target package changed.'
-            Assert-AndroidValue $intent.GetAttribute('targetClass') "$package.QuickCaptureActivity" 'Launcher capture target changed.'
+            Assert-AndroidValue $intent.GetAttribute('targetClass') "$components.QuickCaptureActivity" 'Launcher capture target changed.'
             $checkedResources.Add($entry)
         }
     }

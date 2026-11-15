@@ -1,5 +1,14 @@
 # Learnings
 
+## Phase 16E - Application package and component names are separate bindings
+
+**Term:** Opt-in identity profile. **Definition:** Build a chosen package deliberately while retaining the established development identity as default. **Short example:** Selected produces io.github.darryllpj77.todoapp in a separate artifact root; omitting the switch still builds com.companyname.todoapp.maui.
+
+**Term:** Explicit component mapping. **Definition:** A fully qualified native class/action can stay stable while the owning APK changes. **Short example:** The selected shortcut targets the selected package but names the retained capture class; a wrong package target could open the development app, so the compiled XML is audited.
+
+**Term:** Host verification limit. **Definition:** A test-loader security failure is neither a passing suite nor an application assertion failure. **Short example:** Windows Application Control blocked TodoApp.Domain.dll before discovery; the old 708-test baseline cannot be counted as current regression evidence.
+
+
 ## Phase 16D - Identity is an upgrade and ownership contract
 
 **Term:** Application ID. **Definition:** Android's package identity for the app, separate from a device identifier, visible label and C# namespace. **Short example:** The planned io.github.darryllpj77.todoapp would be a separate installation from the current com.companyname.todoapp.maui; changing a label does not move local tasks.

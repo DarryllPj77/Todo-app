@@ -2,6 +2,10 @@
 
 Implemented 2026-11-15 (Asia/Manila). **This is development-signed build validation, not a distributable release candidate. ReleaseReady remains false.** No app installation, publishing, store submission or production key operation is performed by the helper.
 
+## Identity dimension added in Phase 16E
+
+The original paths/table below describe the default Development identity. Add -IdentityProfile Selected for the user's chosen package in separate .tools/as-d / .tools/as-r roots and selected-* reports. Selected uses a confirmed plan choice, a distinct test label and package-specific shortcut/authority checks while retaining native component names; see ANDROID_IDENTITY_PROFILE.md. Both identity profiles remain development-signed and not release-approved.
+
 ## Build and inspect both configurations
 
 From the repository root in Windows PowerShell 5.1:
@@ -56,7 +60,7 @@ Do not paste passwords/private keys into commands, reports, documentation or Git
 
 ## Identity plan after Phase 16D
 
-The user-selected future package, pending channel/custody and upgrade/signing contract are recorded in ANDROID_SIGNING_PLAN.md and config/android-release-plan.json. Existing helpers still build only the current development identity with SDK signing. A structurally valid plan does not switch a build profile or certify a production key; no package has been renamed or published by the plan checker.
+The user-selected future package, pending channel/custody and upgrade/signing contract are recorded in ANDROID_SIGNING_PLAN.md and config/android-release-plan.json. Existing helpers keep the development identity as default; Phase 16E adds the explicit selected identity evaluation, still with SDK signing. A structurally valid plan does not switch a build profile or certify a production key; the plan checker itself renames/publishes no package.
 
 ## Verification and manual gates
 

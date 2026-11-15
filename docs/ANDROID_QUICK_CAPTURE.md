@@ -2,6 +2,10 @@
 
 Implemented on 2026-11-14 after the user selected Android quick capture ahead of Apple tooling. Phase 14B.4 and earlier device/provider acceptance remain pending. Phase 15A is the launcher surface, Phase 15B adds plain-text sharing and Phase 15C adds a home-screen capture widget. Windows hotkeys and browser extensions remain future work.
 
+## Selected identity option (Phase 16E)
+
+The original commands below build the default Development package. An explicit -IdentityProfile Selected builds the separate Todo App (identity test) evaluation package using the same capture services with its own sandbox and corrected launcher target. Follow ANDROID_IDENTITY_PROFILE.md before manual testing; no data is migrated and no phone outcome is claimed. Verify which package owns each launcher/share/widget entry if both are later installed.
+
 ## Try it yourself
 
 1. Build the standalone debug APK with `powershell -ExecutionPolicy Bypass -File scripts/Build-Android.ps1`. The existing Android workload, SDK and JDK are required; see [ANDROID_GEOFENCES.md](ANDROID_GEOFENCES.md) for setup. This command builds only; it does not install or launch anything.

@@ -23,7 +23,7 @@ try {
     }
     $result = Assert-AndroidReleasePlan $plan $developmentSigner
     [xml]$project = Get-Content -LiteralPath (Join-Path $root 'src/TodoApp.Maui/TodoApp.Maui.csproj') -Raw
-    $activeId = @($project.SelectNodes('/Project/PropertyGroup/ApplicationId'))
+    $activeId = @($project.SelectNodes('/Project/PropertyGroup/ApplicationId[not(@Condition)]'))
     if ($activeId.Count -ne 1 -or $activeId[0].InnerText -cne $plan.CurrentDevelopmentApplicationId) {
         throw 'The active application ID differs from this planning-only development baseline. Review implementation before updating the plan.'
     }

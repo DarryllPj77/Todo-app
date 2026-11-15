@@ -1,5 +1,10 @@
 # Database plan
 
+## Separate selected-identity sandbox (Phase 16E)
+
+The opt-in Selected build uses io.github.darryllpj77.todoapp while the default Development build retains its original ID. A different package is a separate Android sandbox, with no sharedUserId and package-scoped provider authorities required by artifact audits. No installed app was updated/removed, no storage/key was opened or migrated by the profile tooling, and no schema changed. Uploaded account tasks can be fetched through normal verified sign-in; device-only/unsent data, receipts, credentials and encrypted state are not automatically moved. Native isolation/upgrade acceptance and the currently host-blocked core rerun remain open; see ANDROID_IDENTITY_PROFILE.md.
+
+
 ## Planned package separation (Phase 16D)
 
 The selected future application ID is planning metadata only. No database/key/active package is changed. A future different Android application ID creates a separate sandbox and does not automatically recover device-only tasks, unsent outboxes, receipts, preferences or encryption keys. Verified server sync can re-download already uploaded account data, not an unsent queue or device-only tasks. No cross-package copy/export/restore implementation is added. Existing backup exclusions and all schemas remain unchanged; see ANDROID_SIGNING_PLAN.md.
