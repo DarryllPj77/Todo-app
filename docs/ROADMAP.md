@@ -1,6 +1,6 @@
 # Roadmap
 
-Proceed one phase at a time after review. Phase 16E adds an opt-in Selected Android evaluation profile for io.github.darryllpj77.todoapp while keeping Development as default. Both profiles remain SDK-development-signed, with profile-bound resource/manifest/audit evidence; see ANDROID_IDENTITY_PROFILE.md. No install or local migration was performed. Core regression is currently blocked by host Application Control; native coexistence/Release/recovery/TLS/provider/accessibility and production custody/distribution remain pending. Next: resolve the host test-policy block through normal administration and perform selected-device acceptance before further release claims.
+Proceed one phase at a time after review. Phase 16F physical-device acceptance is in progress: the audited Selected Debug APK is installed on the user's Android 15 phone and Android reports a successful cold launch. Visual startup and task behavior await confirmation; see ANDROID_NATIVE_ACCEPTANCE.md. Private APK testing and project-owner key custody are confirmed planning choices. Development remains the default build profile; both evaluation profiles use SDK development signing. Core regression remains blocked by host Application Control; coexistence, Release runtime, recovery, TLS, providers, accessibility and production signing remain pending.
 ## Phase 1 — Solution foundation (Windows build/launch verified)
 
 **Goal:** Establish understandable project boundaries and runnable startup shells.

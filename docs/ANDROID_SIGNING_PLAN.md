@@ -1,10 +1,10 @@
 # Phase 16D: permanent Android identity and signing plan
 
-Prepared 2026-11-15 (Asia/Manila). **Planning only. The user selected io.github.darryllpj77.todoapp for the plan; distribution/custody choices remain pending and release is not approved.** No active application ID, installed data, private key, developer account or distribution setting is changed by this phase.
+Prepared 2026-11-15 (Asia/Manila). **Planning only. The user selected io.github.darryllpj77.todoapp, private APK testing and project-owner signing-key custody; release is not approved.** These are recorded decisions, not evidence of production keys, recovery or distribution. See ANDROID_NATIVE_ACCEPTANCE.md for the separate physical-device evaluation session.
 
 ## Evaluation implementation after this plan
 
-Phase 16E adds an opt-in Selected build/audit profile for the confirmed package, without changing the default Development identity or generating production keys. Its test label and isolated outputs make the candidate explicit; see ANDROID_IDENTITY_PROFILE.md. The public plan is now read by the selected-evaluation guard, which checks the confirmed package only. Channel/custody/certificate/recovery decisions still remain open, and Stage=PlanningOnly continues to describe production-readiness status.
+Phase 16E adds an opt-in Selected build/audit profile for the confirmed package, without changing the default Development identity or generating production keys. Its test label and isolated outputs make the candidate explicit; see ANDROID_IDENTITY_PROFILE.md. The public plan is read by the selected-evaluation guard, which checks the confirmed package only. Phase 16F records the user's channel/custody choices; certificate provenance, custody implementation, recovery and native acceptance still require evidence. Stage=PlanningOnly continues to describe production-readiness status.
 
 ## What the application ID means
 
@@ -19,9 +19,9 @@ The public, versioned record is `config/android-release-plan.json`:
 | Item | Proposed value | State |
 | --- | --- | --- |
 | Permanent package | io.github.darryllpj77.todoapp | Selected by the user; opt-in evaluation implemented in Phase 16E, not promoted/reserved/availability-verified |
-| First distribution | Private APK testing first | Pending user selection |
+| First distribution | Private APK testing first | Confirmed by the user in Phase 16F; no distribution performed |
 | First permanent-package version | versionCode 1 / versionName 1.0.0 | Initial plan seed, not applied to the current app |
-| Key custodian | Project owner, under their own control | Pending explicit custody confirmation |
+| Key custodian | Project owner, under their own control | Confirmed by the user in Phase 16F; no private key created or accessed |
 | Private APK signer | Owner-managed long-term app-signing key | Proposed; no key/certificate exists in this plan |
 | Key storage | Owner-controlled encrypted storage outside the repository | Proposed; no location/password recorded |
 | Backup | At least two independent encrypted copies, with a recovery rehearsal | Proposed; no copy/rehearsal performed |

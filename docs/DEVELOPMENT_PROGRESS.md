@@ -4,7 +4,7 @@ Last updated: **2026-11-15 (Asia/Manila)**.
 
 ## Current phase
 
-**Phase 16E opt-in selected identity implemented; release remains blocked.** Selected builds io.github.darryllpj77.todoapp as Todo App (identity test), while Development stays default. Both identities build/audit in Debug and Release with **0 compiler warnings/errors**; Windows solution build is clean. **92 APK policy cases + 33 plan cases pass**, and real APK cross-profile checks fail as expected. The core regression attempt failed before discovery because Windows Application Control blocked TodoApp.Domain.dll; no new full-suite pass is claimed. No app was installed or data migrated. See ANDROID_IDENTITY_PROFILE.md; native coexistence/recovery/TLS/provider/accessibility and production decisions remain open.
+**Phase 16F physical-device acceptance started; release remains blocked.** The Selected Debug APK was audited, installed on the user's ARM64 Android 15 phone after user approval, and cold-launched successfully at the Android activity level. Visual startup and task persistence await user confirmation; see ANDROID_NATIVE_ACCEPTANCE.md for exact evidence. Private APK testing and project-owner key custody are now confirmed planning choices; no production key was created. Plan validation and 33 plan tests pass. The Phase 16E core regression remains blocked before discovery by Windows Application Control; no new full-suite pass is claimed. Coexistence, Release runtime, recovery, TLS, providers and accessibility remain pending.
 
 ## Completed work
 
@@ -203,7 +203,7 @@ Phase 9 preserves the server contract and device-local CRUD while adding an inde
 
 ## Next task
 
-Resolve the host Application Control test-loader block through the machine's normal administrator-approved policy workflow, then rerun the original core/PostgreSQL suite; do not bypass the policy or reuse an old pass. Phase 16F is actual selected-device/native acceptance and evidence: profile coexistence, correct launcher/share/widget destinations, sandbox/data/upgrade behavior, Release startup/reflection/persistence and earlier recovery/TLS/geofence/provider/accessibility cases. Channel/custody/approved production certificates still need decisions/evidence before production signing or distribution.
+Continue Phase 16F on the connected physical phone: confirm the visible app, then device-only Save/Cancel and reopen persistence, followed by launcher/share/widget and Release tests. Record actual observations in ANDROID_NATIVE_ACCEPTANCE.md. Resolve the host Application Control block through normal administrator-approved policy review before rerunning the original core/PostgreSQL suite. Coexistence, recovery/TLS/geofence/provider/accessibility, production certificate approval and custody/recovery implementation remain open; channel and custodian planning choices are confirmed.
 
 ## What to learn now
 
