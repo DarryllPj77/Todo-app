@@ -25,4 +25,13 @@ Task-context controls must pin workspace, task ID and account/session generation
 
 Run the solution/core tests appropriate to changed presentation behavior, Windows build and Android build/audit. Add meaningful coverage for task-context identity isolation, Today queries and hierarchy/sync boundaries. Inspect the Windows navigation and task-context screens; report Android compilation separately from physical-device acceptance. Record native/provider/permission checks that were not performed. Preserve existing uncommitted backend setup files and unrelated .vscode/. No commit or push is authorized by this refactor.
 
-Implementation results and remaining limits are recorded in DEVELOPMENT_PROGRESS.md after verification.
+Implementation is committed as b025101. Verification results and remaining limits are recorded in DEVELOPMENT_PROGRESS.md. The user subsequently authorized pushing the committed refactor and follow-up setup/documentation changes.
+
+## Verification result
+
+- Windows-targeted solution and Windows MAUI builds: passed, 0 warnings/errors.
+- Selected Android Debug build and APK audit: passed, 0 compiler warnings/errors; physical phone installation/navigation remains pending.
+- Tests: 653 passed, 59 PostgreSQL integration cases skipped, 0 failed. Four new cases exercise actual SQLite relationships, workspace/account isolation, Today and classification. External/provider/native behavior is not certified by these tests.
+- Desktop sidebar, saved task display and Settings grouping were observed. Computer Use was stopped by the user before final task-details/narrow-window checks; those checks and mobile device acceptance remain incomplete.
+- Existing guarded feature commands were reused. Custom recurrence is limited to the supported daily/weekly/monthly rules and interval; no new recurrence engine or automatic merge was introduced. Save core fields before configuring task-ID-dependent properties. Device-only tasks stay separate, and account edits retain their queue/conflict/retry semantics.
+- Remaining review: selected-task editors and draft preservation on actual Windows/Android devices, native reminder/location lifecycle and Google provider acceptance, and same-account two-device CRUD. No later major phase is started by this refactor or push.

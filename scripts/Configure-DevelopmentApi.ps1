@@ -30,8 +30,10 @@ try {
     Write-Host 'Development user-secrets are stored outside Git, but are NOT encrypted.'
     Write-Host 'This helper configures an existing PostgreSQL database on this PC only.'
     if (-not (Test-ConfiguredSetting $existing 'ConnectionStrings:TodoDatabase' 'ConnectionStrings' 'TodoDatabase')) {
-        $database = (Read-Host 'Existing PostgreSQL database name (for example todoapp)').Trim()
-        $username = (Read-Host 'PostgreSQL role for that database (for example todoapp_dev)').Trim()
+        $database = (Read-Host 'Existing PostgreSQL database name [todoapp_phone_sync]').Trim()
+        if ([string]::IsNullOrWhiteSpace($database)) { $database = 'todoapp_phone_sync' }
+        $username = (Read-Host 'PostgreSQL role for that database [todoapp_sync_dev]').Trim()
+        if ([string]::IsNullOrWhiteSpace($username)) { $username = 'todoapp_sync_dev' }
         $portText = Read-Host 'Local PostgreSQL port [5432]'
         if ([string]::IsNullOrWhiteSpace($portText)) { $portText = '5432' }
         $portNumber = 0
@@ -50,7 +52,7 @@ try {
         $connection['Database'] = $database
         $connection['Username'] = $username
         $connection['Password'] = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
-        $updates['ConnectionStrings:TodoDatabase'] = $connection.ConnectionString
+        $updates['ConnectionStrings:TodoDatabase'] = $connection.get_ConnectionString()
     } else {
         Write-Host 'Preserving the existing database setting.'
     }
@@ -65,8 +67,15 @@ try {
     }
     if ($updates.Count -gt 0) {
         # Use standard input so secrets do not appear in process command-line arguments.
-        $updates | ConvertTo-Json -Compress | & dotnet user-secrets set --project $project
-        if ($LASTEXITCODE -ne 0) { throw 'Could not save development user-secrets.' }
+        # Windows PowerShell 5.1 otherwise encodes native-process input as ASCII.
+        $previousOutputEncoding = $OutputEncoding
+        try {
+            $OutputEncoding = New-Object Text.UTF8Encoding($false)
+            $updates | ConvertTo-Json -Compress | & dotnet user-secrets set --project $project
+            if ($LASTEXITCODE -ne 0) { throw 'Could not save development user-secrets.' }
+        } finally {
+            $OutputEncoding = $previousOutputEncoding
+        }
         Write-Host 'Development settings saved. Database authentication and migrations are NOT verified.'
     } else {
         Write-Host 'Both settings already exist; no changes made.'
