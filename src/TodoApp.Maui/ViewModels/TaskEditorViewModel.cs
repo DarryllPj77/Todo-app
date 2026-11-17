@@ -21,6 +21,9 @@ public sealed class TaskEditorViewModel : ObservableViewModel
     private string errorMessage = "";
     private DateTime? dueDate;
     private TaskPriority priority = TaskPriority.Normal;
+    private Models.QuadrantOption selectedQuadrant = Models.QuadrantOption.Classifications[0];
+    public IReadOnlyList<Models.QuadrantOption> Quadrants => Models.QuadrantOption.Classifications;
+    public Models.QuadrantOption SelectedQuadrant { get => selectedQuadrant; set { if (value is not null) SetProperty(ref selectedQuadrant, value); } }
 
     public AsyncCommand SaveCommand { get; }
     public AsyncCommand CancelCommand { get; }
@@ -81,6 +84,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
             CategoryName = task?.Category?.Name ?? "";
             DueDate = task?.DueDate?.ToDateTime(TimeOnly.MinValue);
             Priority = task?.Priority ?? TaskPriority.Normal;
+            SelectedQuadrant = Quadrants.First(q => q.Value == (task?.Quadrant ?? EisenhowerQuadrant.Unclassified));
             canSave = true;
         }
         catch (Exception)
@@ -108,7 +112,7 @@ public sealed class TaskEditorViewModel : ObservableViewModel
             var category = name.Length == 0 ? null : knownCategories.FirstOrDefault(item =>
                 string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)) ?? new Category(name);
             var details = new TaskDetails(Title, Description,
-                DueDate.HasValue ? DateOnly.FromDateTime(DueDate.Value) : null, Priority, category, TagSet.Parse(TagsInput));
+                DueDate.HasValue ? DateOnly.FromDateTime(DueDate.Value) : null, Priority, category, TagSet.Parse(TagsInput), Quadrant: SelectedQuadrant.Value);
 
             if (taskId.HasValue)
             {

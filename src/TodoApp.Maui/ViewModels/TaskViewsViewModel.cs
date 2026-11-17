@@ -120,7 +120,7 @@ public sealed class TaskViewsViewModel : ObservableViewModel, IDisposable
     {
         if (!Enum.IsDefined(Workspace)) throw new ArgumentException("Choose a workspace.");
         var scope = Workspace == TaskViewWorkspace.Device ? "device" : session.Current is { } saved
-            ? SqliteSyncStore.Partition(saved.Origin, saved.User.Id) : throw new ApiClientException("Sign in through Account & server to select an account cache.");
+            ? SqliteSyncStore.Partition(saved.Origin, saved.User.Id) : throw new ApiClientException("Sign in through Settings > Account to select an account cache.");
         return new(scope, generation, session.Version, Workspace);
     }
     private void Ensure(OperationContext context)

@@ -22,9 +22,22 @@ public static class MauiProgram
 			});
 
         builder.Services.AddScoped<TaskNavigationService>();
+        builder.Services.AddTransient<WorkspacePage>();
+        builder.Services.AddTransient<TodayPage>();
+        builder.Services.AddTransient<ViewsPage>();
+        builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<ServerSettingsPage>();
+        builder.Services.AddTransient<SyncSettingsPage>();
+        builder.Services.AddTransient<NotificationSettingsPage>();
+        builder.Services.AddTransient<LocationSettingsPage>();
+        builder.Services.AddTransient<ServerTasksPage>();
+        builder.Services.AddTransient<TaskDetailsPage>();
+        builder.Services.AddTransient<TaskDetailsViewModel>();
+        builder.Services.AddTransient<TodayViewModel>();
+        builder.Services.AddTransient<WorkspaceTaskReader>();
         builder.Services.AddScoped<ITaskNavigation>(provider => provider.GetRequiredService<TaskNavigationService>());
-        builder.Services.AddScoped<TaskListViewModel>();
-        builder.Services.AddScoped<TaskListPage>();
+        builder.Services.AddTransient<TaskListViewModel>();
+        builder.Services.AddTransient<TaskListPage>();
         builder.Services.AddTransient<TaskEditorViewModel>();
         builder.Services.AddTransient<TaskEditorPage>();
         var dataDirectory = WorkspacePreview.DirectoryPath ?? FileSystem.AppDataDirectory;
@@ -79,13 +92,13 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<BackgroundGeofenceService>();
         builder.Services.AddSingleton<GeofenceSessionService>();
-        builder.Services.AddScoped<LocationRemindersViewModel>();
+        builder.Services.AddTransient<LocationRemindersViewModel>();
         builder.Services.AddTransient<LocationRemindersPage>();
         builder.Services.AddSingleton(_ => new SqliteTaskViewStore(Path.Combine(dataDirectory, "views.db3")));
         builder.Services.AddSingleton(_ => new SqliteFocusStore(Path.Combine(dataDirectory, "focus.db3")));
         builder.Services.AddSingleton(_ => new SqliteCalendarStore(Path.Combine(dataDirectory, "calendar.db3")));
         builder.Services.AddSingleton<ICalendarFileExporter, CalendarFileExporter>();
-        builder.Services.AddScoped<CalendarViewModel>();
+        builder.Services.AddTransient<CalendarViewModel>();
         builder.Services.AddTransient<CalendarPage>();
         builder.Services.AddSingleton<IGoogleTokenVault>(_ => WorkspacePreview.Enabled ? new WorkspacePreview.GoogleVault() : new GoogleTokenVault());
 #if WINDOWS
@@ -103,7 +116,7 @@ public static class MauiProgram
             ? new WorkspacePreview.OfflineHandler() : new HttpClientHandler { AllowAutoRedirect = false })
         { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 262144 }));
         builder.Services.AddSingleton<GoogleEventLinkService>();
-        builder.Services.AddScoped<GoogleEventsViewModel>();
+        builder.Services.AddTransient<GoogleEventsViewModel>();
         builder.Services.AddTransient<GoogleEventsPage>();
         builder.Services.AddSingleton<GoogleCalendarFeedService>();
         builder.Services.AddScoped<GoogleFeedViewModel>();
@@ -111,19 +124,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFocusTaskSource, FocusTaskCatalog>();
         builder.Services.AddSingleton<FocusService>();
         builder.Services.AddSingleton<FocusRuntime>();
-        builder.Services.AddScoped<FocusViewModel>();
+        builder.Services.AddTransient<FocusViewModel>();
         builder.Services.AddTransient<FocusPage>();
-        builder.Services.AddScoped<RecurrenceViewModel>();
+        builder.Services.AddTransient<RecurrenceViewModel>();
         builder.Services.AddTransient<RecurrencePage>();
-        builder.Services.AddScoped<PlanningViewModel>();
+        builder.Services.AddTransient<PlanningViewModel>();
         builder.Services.AddTransient<PlanningPage>();
-        builder.Services.AddScoped<DependenciesViewModel>();
+        builder.Services.AddTransient<DependenciesViewModel>();
         builder.Services.AddTransient<DependenciesPage>();
-        builder.Services.AddScoped<HierarchyViewModel>();
+        builder.Services.AddTransient<HierarchyViewModel>();
         builder.Services.AddTransient<HierarchyPage>();
-        builder.Services.AddScoped<TaskViewsViewModel>();
+        builder.Services.AddTransient<TaskViewsViewModel>();
         builder.Services.AddTransient<TaskViewsPage>();
-        builder.Services.AddScoped<RemindersViewModel>();
+        builder.Services.AddTransient<RemindersViewModel>();
         builder.Services.AddTransient<RemindersPage>();
         builder.Services.AddSingleton<SyncEngine>();
         builder.Services.AddScoped<SyncWorkspaceViewModel>();

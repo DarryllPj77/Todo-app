@@ -35,23 +35,11 @@ public partial class TaskListPage : ContentPage
         Grid.SetColumn(DetailsPane, wide ? 2 : 1);
     }
 
-    private async void OnToolsClicked(object? sender, EventArgs args)
+    private async void OnAccountTasks(object? sender, EventArgs args) => await Navigator.OpenSyncAsync();
+    private async void OnTaskDetails(object? sender, EventArgs args)
     {
-        var commands = new (string Label, AsyncCommand Command)[]
-        {
-            ("Calendar & time blocks", viewModel.CalendarCommand),
-            ("Google Calendar connection", viewModel.GoogleConnectionCommand),
-            ("Google event links", viewModel.GoogleEventsCommand),
-            ("Google change monitoring", viewModel.GoogleFeedCommand),
-            ("Location reminders", viewModel.LocationRemindersCommand),
-            ("Saved views", viewModel.TaskViewsCommand), ("Task hierarchy", viewModel.HierarchyCommand),
-            ("Dependencies", viewModel.DependenciesCommand), ("Urgency & importance", viewModel.PlanningCommand),
-            ("Recurring tasks", viewModel.RecurrenceCommand), ("Focus & history", viewModel.FocusCommand),
-            ("Reminders", viewModel.RemindersCommand), ("Synced tasks", viewModel.SyncCommand),
-            ("Account & server", viewModel.AccountCommand)
-        };
-        var choice = await DisplayActionSheetAsync("Workspace tools", "Cancel", null, commands.Select(item => item.Label).ToArray());
-        var command = commands.FirstOrDefault(item => item.Label == choice).Command;
-        if (command is not null) await command.ExecuteAsync();
+        if (viewModel.SelectedTask is { } task)
+            await Navigator.OpenTaskDetailsAsync(task.Id, TodoApp.Maui.ViewModels.HierarchyWorkspace.Device);
     }
+    private TodoApp.Maui.Services.TaskNavigationService Navigator => Handler!.MauiContext!.Services.GetRequiredService<TodoApp.Maui.Services.TaskNavigationService>();
 }

@@ -7,6 +7,16 @@ public partial class SyncPage : ContentPage
     private readonly SyncWorkspaceViewModel viewModel;
     private readonly IDispatcherTimer timer;
     private bool visible;
+    internal Guid? InitialTaskId { get; set; }
+    private async void OnTaskDetails(object? sender, EventArgs e)
+    {
+        if (viewModel.SelectedTask is { } row)
+            await Handler!.MauiContext!.Services.GetRequiredService<Services.TaskNavigationService>().OpenTaskDetailsAsync(row.Id, HierarchyWorkspace.SyncedAccount);
+    }
+    private async void OnDeviceTasks(object? sender, EventArgs e) =>
+        await Handler!.MauiContext!.Services.GetRequiredService<Services.TaskNavigationService>().OpenDeviceListAsync();
+    private async void OnOnlineTasks(object? sender, EventArgs e) =>
+        await Navigation.PushAsync(Handler!.MauiContext!.Services.GetRequiredService<ServerTasksPage>());
     public SyncPage(SyncWorkspaceViewModel viewModel)
     {
         InitializeComponent();
@@ -21,6 +31,7 @@ public partial class SyncPage : ContentPage
         base.OnAppearing();
         visible = true;
         await viewModel.InitializeAsync();
+        if (InitialTaskId is { } id) { viewModel.SelectedTask = viewModel.Tasks.FirstOrDefault(t => t.Id == id); InitialTaskId = null; }
         if (!visible) return;
         Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
         timer.Start();

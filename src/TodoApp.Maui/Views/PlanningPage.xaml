@@ -5,7 +5,7 @@
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Eisenhower planning" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
   <Label Text="Choose urgency and importance manually. Priority and due date do not set them automatically. Suggestions below do not send messages, schedule events, or delete tasks." Style="{StaticResource TaskMuted}" />
-  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
   <Button Text="Refresh planning" Command="{Binding RefreshCommand}" />
   <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
   <Border Style="{StaticResource TaskCard}"><Label Text="{Binding Counts}" /></Border>
@@ -20,7 +20,7 @@
     </VerticalStackLayout></Border>
    </DataTemplate></CollectionView.ItemTemplate>
   </CollectionView>
-  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+  <Border x:Name="TaskPropertyEditor" Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
    <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
    <Picker Title="Urgency and importance" ItemsSource="{Binding Quadrants}" ItemDisplayBinding="{Binding Label, x:DataType=models:QuadrantOption}" SelectedItem="{Binding SelectedQuadrant, Mode=TwoWay}" />
    <Button Text="Save classification" Command="{Binding SaveCommand}" />

@@ -10,5 +10,5 @@ public partial class TaskViewsPage : ContentPage
     protected override async void OnAppearing()
     { base.OnAppearing(); await viewModel.RefreshCommand.ExecuteAsync(); }
     private async void OnWorkspaceChanged(object? sender, EventArgs e)
-    { if (viewModel is not null) await viewModel.RefreshCommand.ExecuteAsync(); }
+    { if (viewModel is not null && Window is not null) await viewModel.RefreshCommand.ExecuteAsync(); }
 }

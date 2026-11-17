@@ -5,6 +5,7 @@
              x:Class="TodoApp.Maui.App">
     <Application.Resources>
         <ResourceDictionary>
+            <local:WorkspaceNameConverter x:Key="WorkspaceName" />
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />

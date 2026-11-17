@@ -5,13 +5,13 @@
              xmlns:models="clr-namespace:TodoApp.Maui.Models"
              xmlns:calendar="clr-namespace:TodoApp.Domain.Calendar;assembly=TodoApp.Domain"
              x:Class="TodoApp.Maui.Views.CalendarPage" x:DataType="vm:CalendarViewModel"
-             Title="Calendar &amp; time blocks" Style="{StaticResource TaskPage}">
+             Title="Calendar" Style="{StaticResource TaskPage}">
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
             <Label Text="Make time for a task" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
-            <Label Text="Save local time blocks, then export a selected block for manual calendar import. Google consent is available through Tools > Google Calendar connection on Windows; automatic event sync is not enabled yet."
+            <Label Text="Plan local time blocks. Use Linked events to review Google Calendar relationships. Connect Google in Settings > Integrations; publishing and reconciliation are explicit."
                    Style="{StaticResource TaskMuted}" />
-            <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}"
+            <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace}"
                     IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Calendar workspace" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button Text="Refresh" Command="{Binding RefreshCommand}" Style="{StaticResource TaskAction}" />

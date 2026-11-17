@@ -14,6 +14,34 @@ public sealed class TaskNavigationService : ITaskNavigation
     }
 
     public void Attach(NavigationPage navigationPage) => root = navigationPage;
+    public async Task OpenTaskDetailsAsync(Guid id, ViewModels.HierarchyWorkspace workspace)
+    {
+        var context = new Models.TaskContext(workspace, id, services.GetRequiredService<ClientSession>().Version);
+        var page = services.GetRequiredService<TaskDetailsPage>();
+        await page.PrepareAsync(context);
+        await GetRoot().Navigation.PushAsync(page);
+    }
+    public Task OpenDeviceListAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<TaskListPage>());
+    public async Task OpenSyncTaskAsync(Guid id)
+    {
+        var page = services.GetRequiredService<SyncPage>(); page.InitialTaskId = id;
+        await GetRoot().Navigation.PushAsync(page);
+    }
+    public Task OpenTaskFocusAsync(Models.TaskContext context)
+    {
+        if (context.Workspace == ViewModels.HierarchyWorkspace.SyncedAccount)
+            services.GetRequiredService<ClientSession>().EnsureVersion(context.SessionVersion);
+        var vm = services.GetRequiredService<ViewModels.FocusViewModel>(); vm.Workspace = context.Workspace;
+        var page = new FocusPage(vm) { InitialTaskId = context.TaskId,
+            ContextCurrent = () => context.Workspace == ViewModels.HierarchyWorkspace.Device || services.GetRequiredService<ClientSession>().Version == context.SessionVersion };
+        return GetRoot().Navigation.PushAsync(page);
+    }
+    public Task OpenTaskGoogleEventsAsync(Models.TaskContext context)
+    {
+        services.GetRequiredService<ClientSession>().EnsureVersion(context.SessionVersion);
+        var page = services.GetRequiredService<GoogleEventsPage>(); page.Context = context;
+        return GetRoot().Navigation.PushAsync(page);
+    }
     public Task OpenLocationRemindersAsync() => GetRoot().Navigation.PushAsync(services.GetRequiredService<LocationRemindersPage>());
     public Task<bool> ConfirmLocationActionAsync(string action, string details) => GetRoot().CurrentPage.DisplayAlertAsync(action + "?", details, "Continue", "Cancel");
 

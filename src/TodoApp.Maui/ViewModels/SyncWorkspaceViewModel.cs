@@ -18,7 +18,7 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
     private long editorRevision;
     private SyncTaskData? editorLocal;
     private ReplicaRow? selected;
-    private string title = "", description = "", category = "", status = "Sign in through Account & server first.", error = "";
+    private string title = "", description = "", category = "", status = "Sign in through Settings > Account first.", error = "";
     private DateTime? due;
     private TaskPriority priority = TaskPriority.Normal;
     private bool completed;
@@ -171,7 +171,7 @@ public sealed class SyncWorkspaceViewModel : ObservableViewModel, IDisposable
         if (observedVersion == session.Version) return;
         observedVersion = session.Version;
         Tasks.Clear(); SelectedTask = null;
-        Status = "Account state changed. Reload cache; sign in through Account & server if needed.";
+        Status = "Account state changed. Reload cache; sign in through Settings > Account if needed.";
         Error = ""; Notify();
     }
     private void Notify()

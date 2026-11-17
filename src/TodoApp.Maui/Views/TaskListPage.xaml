@@ -1,20 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TodoApp.Maui.ViewModels"
              xmlns:models="clr-namespace:TodoApp.Maui.Models"
              x:Class="TodoApp.Maui.Views.TaskListPage" x:DataType="vm:TaskListViewModel"
              Title="Todo" Style="{StaticResource TaskPage}">
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Tools" Clicked="OnToolsClicked" />
-    </ContentPage.ToolbarItems>
     <Grid Padding="16" RowSpacing="10" RowDefinitions="Auto,Auto,Auto,Auto,*" SizeChanged="OnWorkspaceSizeChanged">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <VerticalStackLayout>
                 <Label Text="My tasks" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
-                <Label Text="Device workspace" Style="{StaticResource TaskMuted}" />
+                <Label Text="On this device (not uploaded)" Style="{StaticResource TaskMuted}" />
+                <Button Text="My account tasks" HorizontalOptions="Start" Clicked="OnAccountTasks" Style="{StaticResource TaskAction}" />
             </VerticalStackLayout>
-            <Button Grid.Column="1" Text="New task" Command="{Binding AddCommand}" Style="{StaticResource TaskAction}" />
+            <Button Grid.Column="1" Text="New task" VerticalOptions="Start" Command="{Binding AddCommand}" Style="{StaticResource TaskAction}" />
         </Grid>
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <Picker Title="Filter tasks" ItemsSource="{Binding Filters}" ItemDisplayBinding="{Binding Label, x:DataType=models:FilterOption}"
@@ -90,19 +88,19 @@
                     <VerticalStackLayout Spacing="14">
                         <Label Text="{Binding DetailsHeading}" FontSize="22" FontAttributes="Bold" LineBreakMode="WordWrap"
                                SemanticProperties.HeadingLevel="Level2" />
-                        <Label Text="Select a task to see its details. Use Tools for synced tasks and advanced features."
+                        <Label Text="Select a task to review its plan, relationships and next action."
                                Style="{StaticResource TaskMuted}" />
                         <VerticalStackLayout IsVisible="{Binding HasSelection}" Spacing="14">
                             <Label Text="{Binding SelectedTask.Summary}" LineBreakMode="WordWrap" />
                             <Label Text="{Binding SelectedTask.Description}" LineBreakMode="WordWrap" />
                             <Label Text="{Binding SelectedTask.Organization}" LineBreakMode="WordWrap" />
                             <Label Text="{Binding SelectedTask.Recurrence}" LineBreakMode="WordWrap" />
-                            <Label Text="{Binding SelectedTask.Relationships}" LineBreakMode="CharacterWrap" Style="{StaticResource TaskMuted}" />
+                            <Button Text="Task properties: subtasks, repeat &amp; reminders" Clicked="OnTaskDetails" Style="{StaticResource TaskAction}" />
                             <Label Text="{Binding SelectedTask.Updated}" Style="{StaticResource TaskMuted}" />
                             <Button Text="Edit task" Command="{Binding EditCommand}" Style="{StaticResource TaskAction}" />
                             <Button Text="{Binding ToggleText}" Command="{Binding ToggleCommand}" Style="{StaticResource TaskAction}" />
                             <Button Text="Delete task" Command="{Binding DeleteCommand}" Style="{StaticResource TaskAction}" />
-                            <Label Text="For recurrence completion, relationships and focus history, open Tools."
+                            <Label Text="Open task properties to plan this task or start a focus session."
                                    Style="{StaticResource TaskMuted}" />
                         </VerticalStackLayout>
                     </VerticalStackLayout>

@@ -9,16 +9,15 @@ public partial class App : Application
 	public App(IServiceProvider services)
 	{
 		InitializeComponent();
+        UserAppTheme = Preferences.Default.Get("appearance", "System") switch { "Light" => AppTheme.Light, "Dark" => AppTheme.Dark, _ => AppTheme.Unspecified };
         this.services = services;
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
         var scope = services.CreateScope();
-        var page = scope.ServiceProvider.GetRequiredService<Views.TaskListPage>();
-        var navigation = new NavigationPage(page);
-        scope.ServiceProvider.GetRequiredService<Services.TaskNavigationService>().Attach(navigation);
-        var window = new Window(navigation);
+        var page = scope.ServiceProvider.GetRequiredService<Views.WorkspacePage>();
+        var window = new Window(page);
         if (Services.WorkspacePreview.Enabled)
         {
             window.Title = "Todo layout preview";

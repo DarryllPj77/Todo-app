@@ -6,8 +6,8 @@
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Find your next task" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
   <Label Text="Combine filters, then Apply. Save named rules to reuse them here. Editing filter fields or selecting a saved view does not change results until Apply." Style="{StaticResource TaskMuted}" />
-  <Label Text="Device tasks and each API/account have separate saved views. Sign in through Account &amp; server and sync first to browse an account's cached tasks." Style="{StaticResource TaskMuted}" />
-  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Device or synced account workspace" />
+  <Label Text="Device tasks and each API/account have separate saved views. Sign in through Settings > Account and sync first to browse an account's cached tasks." Style="{StaticResource TaskMuted}" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" SemanticProperties.Description="Device or synced account workspace" />
   <Label Text="{Binding Status}" />
   <Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
   <Button Text="Refresh saved views &amp; current results" Command="{Binding RefreshCommand}" />

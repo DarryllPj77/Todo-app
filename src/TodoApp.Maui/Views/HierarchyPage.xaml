@@ -5,7 +5,7 @@
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Parents &amp; subtasks" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
   <Label Text="Create tasks in the normal editor first, then move them here. Parents organize tasks; they do not block work or automatically complete children. Manage prerequisites on the Dependencies screen." Style="{StaticResource TaskMuted}" />
-  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
   <Label Text="Sign in and sync first for account tasks. Device tasks remain separate; this screen does not upload them." Style="{StaticResource TaskMuted}" />
   <Button Text="Refresh hierarchy" Command="{Binding RefreshCommand}" />
   <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
@@ -18,7 +18,7 @@
     </VerticalStackLayout></Border>
    </DataTemplate></CollectionView.ItemTemplate>
   </CollectionView>
-  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+  <Border x:Name="TaskPropertyEditor" Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
    <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
    <Label Text="Choose a parent, or Root task to detach. Self/descendant choices are excluded; all moves are validated again when saved." Style="{StaticResource TaskMuted}" />
    <Picker Title="New parent" ItemsSource="{Binding Parents}" ItemDisplayBinding="{Binding Label, x:DataType=models:ParentChoice}" SelectedItem="{Binding SelectedParent, Mode=TwoWay}" />

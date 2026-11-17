@@ -4,7 +4,7 @@
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Task prerequisites" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
   <Label Text="Prerequisites block completion while unfinished. Reopening one does not undo completed dependents. Parent nesting is managed separately in Task hierarchy." Style="{StaticResource TaskMuted}" />
-  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
   <Button Text="Refresh dependencies" Command="{Binding RefreshCommand}" />
   <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
   <CollectionView HeightRequest="280" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
@@ -15,7 +15,7 @@
     </VerticalStackLayout></Border>
    </DataTemplate></CollectionView.ItemTemplate>
   </CollectionView>
-  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+  <Border x:Name="TaskPropertyEditor" Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
    <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
    <Label Text="This task requires these prerequisites. Changes apply only after Save. Remove incoming links before deleting a prerequisite; no automatic completion or deletion cascade." Style="{StaticResource TaskMuted}" />
    <Picker Title="Add prerequisite" ItemsSource="{Binding Choices}" ItemDisplayBinding="{Binding Label, x:DataType=vm:DependencyChoice}" SelectedItem="{Binding Candidate, Mode=TwoWay}" />

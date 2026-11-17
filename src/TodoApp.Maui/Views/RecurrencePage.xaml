@@ -4,7 +4,7 @@
  <ScrollView><VerticalStackLayout Padding="16" Spacing="12" MaximumWidthRequest="900" HorizontalOptions="Fill">
   <Label Text="Repeat after completion" Style="{StaticResource TaskHeading}" SemanticProperties.HeadingLevel="Level1" />
   <Label Text="One task, one current calendar occurrence. Complete it here to advance one date and stay pending. Monthly rules keep the original anchor day, clamping short months. Dates have no time zone conversion; reminders keep their separate time settings." Style="{StaticResource TaskMuted}" />
-  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
+  <Picker Title="Workspace" ItemsSource="{Binding Workspaces}" ItemDisplayBinding="{Binding ., Converter={StaticResource WorkspaceName}}" SelectedItem="{Binding Workspace, Mode=TwoWay}" IsEnabled="{Binding IsIdle}" SelectedIndexChanged="OnWorkspaceChanged" />
   <Button Text="Refresh recurrence" Command="{Binding RefreshCommand}" />
   <Label Text="{Binding Status}" /><Label Text="{Binding Error}" Style="{StaticResource TaskError}" />
   <CollectionView HeightRequest="280" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}" SelectionMode="Single" IsEnabled="{Binding Available}">
@@ -15,7 +15,7 @@
     </VerticalStackLayout></Border>
    </DataTemplate></CollectionView.ItemTemplate>
   </CollectionView>
-  <Border Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
+  <Border x:Name="TaskPropertyEditor" Style="{StaticResource TaskCard}" IsVisible="{Binding HasSelection}"><VerticalStackLayout Spacing="8" IsEnabled="{Binding Available}">
    <Label Text="{Binding SelectedTask.Title}" FontAttributes="Bold" />
    <Label Text="A rule starts at its anchor date. Changing the rule restarts its calendar from the anchor while retaining consumed occurrence counts. Saving an unchanged rule keeps its current occurrence. Stop repeating retains the due date." Style="{StaticResource TaskMuted}" />
    <Picker Title="Repeat frequency" ItemsSource="{Binding Frequencies}" ItemDisplayBinding="{Binding Label, x:DataType=vm:RepeatOption}" SelectedItem="{Binding Frequency, Mode=TwoWay}" />
